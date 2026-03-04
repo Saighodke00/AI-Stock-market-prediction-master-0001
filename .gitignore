@@ -21,10 +21,24 @@ models/*.ckpt
 models/*.pkl
 models/*.pt
 models/*.bin
+models/*.h5
+models/*.keras
 
-# ── Data files ────────────────────────────────────────────────────────────────
+# ── Data & cache files ────────────────────────────────────────────────────────
 *.csv
 plots/
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Debug / Temp / Test output files ─────────────────────────────────────────
+debug_*.py
+verify_*.py
+*_test_results.txt
+backend_check_output.txt
+output.txt
+*.json
+!.env.example
 
 # ── Node / Frontend ───────────────────────────────────────────────────────────
 frontend/node_modules/
@@ -42,3 +56,6 @@ Thumbs.db
 # ── Celery ────────────────────────────────────────────────────────────────────
 celerybeat-schedule
 celerybeat.pid
+
+# ── Streamlit cache ───────────────────────────────────────────────────────────
+.streamlit/
