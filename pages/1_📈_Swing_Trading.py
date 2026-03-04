@@ -132,10 +132,11 @@ with st.sidebar:
         ticker = st.text_input("Enter Custom Ticker (e.g., RELIANCE.NS)", "TSLA").upper()
 
     st.markdown("---")
-    lookback = st.slider("Lookback Memory (Days)", 60, 120, 100)
-    epochs = st.slider("Neural Depth", 10, 50, 30)
+    lookback = st.slider("Lookback Memory (Days)", 30, 120, 60)
+    epochs = st.slider("Neural Depth (Epochs)", 5, 50, 15)
     st.markdown("---")
     show_ma = st.toggle("Overlay SMA 50", value=True)
+    force_retrain = st.button("🔄 Force Retrain", help="Delete saved model and retrain from scratch")
     st.markdown("---")
     
     st.markdown("### 🧪 What-If Analysis")
@@ -216,19 +217,31 @@ if ticker:
         # Safety net: drop any feature that isn't actually in the DataFrame
         features = [f for f in features if f in df.columns]
             
-        X, Y_dir, Y_mag, scaler, scaled_data = create_sequences(df, features, lookback)
-        
-        @st.cache_resource
-        def train_swing_model(t, lb, _X, _Y_dir, _Y_mag, _eps):
-            # Apply causal noise to features
-            X_noisy = add_noise(_X)
-            engine = create_model(input_shape=(X_noisy.shape[1], X_noisy.shape[2]))
-            history = engine.train_ensemble(X_noisy, _Y_dir, _Y_mag, epochs=_eps)
-            return engine, history
+        import pickle, hashlib
+        # ─ Disk-based model persistence ──────────────────────────────────
+        model_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
+        os.makedirs(model_dir, exist_ok=True)
+        cache_key = hashlib.md5(f"{ticker}_{lookback}_{epochs}".encode()).hexdigest()[:10]
+        model_path = os.path.join(model_dir, f"swing_{cache_key}.pkl")
 
-        with st.spinner('Calibrating Causal Ensemble...'):
+        # Delete cache if Force Retrain clicked
+        if force_retrain and os.path.exists(model_path):
+            os.remove(model_path)
+            st.toast("🔄 Cache cleared. Retraining...", icon="⚡")
+
+        with st.spinner('⚡ Loading model...' if os.path.exists(model_path) else '🧠 Calibrating Neural Ensemble (first run takes 1–2 min)...'):
             try:
-                engine, history_data = train_swing_model(ticker, lookback, X, Y_dir, Y_mag, epochs)
+                if os.path.exists(model_path):
+                    with open(model_path, 'rb') as f:
+                        engine, history_data = pickle.load(f)
+                    st.toast("✓ Model loaded from cache", icon="⚡")
+                else:
+                    X_noisy = add_noise(X)
+                    engine = create_model(input_shape=(X_noisy.shape[1], X_noisy.shape[2]))
+                    history_data = engine.train_ensemble(X_noisy, Y_dir, Y_mag, epochs=epochs)
+                    with open(model_path, 'wb') as f:
+                        pickle.dump((engine, history_data), f)
+                    st.toast("✓ Model trained & saved to disk", icon="📦")
                 # Walk-Forward Validation for Signal Gating
                 from utils.backtest import walk_forward_validation, run_backtest, calculate_accuracy
                 cagr, wf_sharpe, max_dd, win_rate, profit_factor = walk_forward_validation(engine, df, features)
