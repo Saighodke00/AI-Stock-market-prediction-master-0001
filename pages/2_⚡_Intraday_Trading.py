@@ -184,20 +184,26 @@ if ticker:
             
         X, Y_dir, Y_mag, scaler, scaled_data = create_sequences(df, features, lookback)
         
-        # Free memory before training
-        gc.collect()
-        
-        @st.cache_resource
-        def train_intraday_model(t, lb, _X, _Y_dir, _Y_mag):
-            # Apply causal noise
-            X_noisy = add_noise(_X)
-            engine = create_model(input_shape=(X_noisy.shape[1], X_noisy.shape[2]))
-            history = engine.train_ensemble(X_noisy, _Y_dir, _Y_mag, epochs=30)
-            return engine, history
+        import pickle, hashlib
+        # ─ Disk-based model persistence ──────────────────────────────────
+        model_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
+        os.makedirs(model_dir, exist_ok=True)
+        cache_key = hashlib.md5(f"{ticker}_{interval}_{lookback}".encode()).hexdigest()[:10]
+        model_path = os.path.join(model_dir, f"intraday_{cache_key}.pkl")
 
-        with st.spinner('Neural sync in progress...'):
+        with st.spinner('⚡ Loading cached model...' if os.path.exists(model_path) else '🧠 Training Intraday Engine (first run takes ~1 min)...'):
             try:
-                engine, history_data = train_intraday_model(ticker + interval, lookback, X, Y_dir, Y_mag)
+                if os.path.exists(model_path):
+                    with open(model_path, 'rb') as f:
+                        engine, history_data = pickle.load(f)
+                    st.toast("✓ Model loaded from cache", icon="⚡")
+                else:
+                    X_noisy = add_noise(X)
+                    engine = create_model(input_shape=(X_noisy.shape[1], X_noisy.shape[2]))
+                    history_data = engine.train_ensemble(X_noisy, Y_dir, Y_mag, epochs=15)
+                    with open(model_path, 'wb') as f:
+                        pickle.dump((engine, history_data), f)
+                    st.toast("✓ Model trained & cached to disk", icon="📦")
                 # Walk-Forward Validation
                 from utils.backtest import walk_forward_validation, run_backtest, calculate_accuracy
                 cagr, wf_sharpe, max_dd, win_rate, profit_factor = walk_forward_validation(engine, df, features)
