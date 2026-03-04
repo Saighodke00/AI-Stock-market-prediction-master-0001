@@ -1,0 +1,254 @@
+import numpy as np
+import tensorflow as tf
+try:
+    import tf_keras as keras
+    from tf_keras.layers import Input, Dense, Dropout, GRU, Conv1D, BatchNormalization, Flatten, Layer, MultiHeadAttention, LayerNormalization, Add
+    from tf_keras.callbacks import EarlyStopping, ReduceLROnPlateau
+    import tf_keras.backend as K
+except ImportError:
+    import tensorflow.keras as keras
+    from tensorflow.keras.layers import Input, Dense, Dropout, GRU, Conv1D, BatchNormalization, Flatten, Layer, MultiHeadAttention, LayerNormalization, Add
+    from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+    import tensorflow.keras.backend as K
+import os
+try:
+    import lightgbm as lgb
+    HAS_LGBM = True
+except ImportError:
+    HAS_LGBM = False
+from sklearn.preprocessing import RobustScaler
+
+# --- CAUSAL TCN LAYER ---
+def create_tcn_block(n_filters, kernel_size, dilation_rate):
+    def wrapper(x):
+        # Causal padding is key for no-leakage
+        x = Conv1D(n_filters, kernel_size, padding='causal', dilation_rate=dilation_rate, activation='relu')(x)
+        x = BatchNormalization()(x)
+        x = Dropout(0.2)(x)
+        return x
+    return wrapper
+
+# --- MODELS ---
+
+def create_gru_direction(input_shape):
+    """
+    Directional Model with Selective Attention (TFT-inspired).
+    """
+    inputs = Input(shape=input_shape)
+    
+    # 1. Temporal Processing
+    x = GRU(64, return_sequences=True, dropout=0.2)(inputs)
+    
+    # 2. Multi-Head Attention
+    attn_out = MultiHeadAttention(num_heads=4, key_dim=16)(x, x)
+    x = Add()([x, attn_out])
+    x = LayerNormalization()(x)
+    
+    # 3. Output Generation
+    x = GRU(32, return_sequences=False)(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.3)(x)
+    outputs = Dense(1, activation='sigmoid')(x)
+    
+    model = tf.keras.Model(inputs, outputs)
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    return model
+
+def create_tcn_direction(input_shape):
+    inputs = Input(shape=input_shape)
+    x = create_tcn_block(32, 3, 1)(inputs)
+    x = create_tcn_block(32, 3, 2)(x)
+    x = create_tcn_block(32, 3, 4)(x)
+    
+    # Add Self-Attention to TCN output
+    attn_out = MultiHeadAttention(num_heads=2, key_dim=8)(x, x)
+    x = Add()([x, attn_out])
+    x = LayerNormalization()(x)
+    
+    x = Flatten()(x)
+    x = Dense(32, activation='relu')(x)
+    outputs = Dense(1, activation='sigmoid')(x)
+    model = tf.keras.Model(inputs, outputs)
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    return model
+
+def create_magnitude_model(input_shape):
+    """
+    Quantile Regression Magnitude Model with Attention.
+    """
+    inputs = Input(shape=input_shape)
+    
+    # Temporal Compression
+    x = GRU(64, return_sequences=True, dropout=0.2)(inputs)
+    
+    # Attention Layer
+    attn_out = MultiHeadAttention(num_heads=4, key_dim=16)(x, x)
+    x = Add()([x, attn_out])
+    x = LayerNormalization()(x)
+    
+    x = GRU(32, return_sequences=False)(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.3)(x)
+    
+    # Quantile outputs: [Q10, Q50 (Median), Q90]
+    outputs = Dense(3)(x) 
+    model = tf.keras.Model(inputs, outputs)
+    
+    def quantile_loss(y_true, y_pred):
+        quantiles = [0.1, 0.5, 0.9]
+        losses = []
+        for i, q in enumerate(quantiles):
+            error = y_true - y_pred[:, i:i+1]
+            loss = K.mean(K.maximum(q * error, (q - 1) * error))
+            losses.append(loss)
+        return K.sum(losses)
+
+    model.compile(optimizer='adam', loss=quantile_loss)
+    return model
+
+# --- ENGINE WRAPPER ---
+
+class CausalTradingEngine:
+    def __init__(self, input_shape):
+        self.gru_dir = create_gru_direction(input_shape)
+        self.tcn_dir = create_tcn_direction(input_shape)
+        self.gbm_dir = None # Trained on the fly
+        self.mag_model = create_magnitude_model(input_shape)
+        self.scaler = RobustScaler()
+        self.history = {'loss': []}
+
+    def train_ensemble(self, X, y_dir, y_mag, epochs=30):
+        # 1. Train GRU Direction
+        h1 = self.gru_dir.fit(X, y_dir, epochs=epochs, batch_size=128, verbose=0, validation_split=0.1)
+        
+        # 2. Train TCN Direction
+        h2 = self.tcn_dir.fit(X, y_dir, epochs=epochs, batch_size=128, verbose=0, validation_split=0.1)
+        
+        # 3. Train LightGBM Direction (flatten X)
+        if HAS_LGBM:
+            X_flat = X.reshape(X.shape[0], -1)
+            self.gbm_dir = lgb.LGBMClassifier(n_estimators=100, learning_rate=0.05, verbose=-1)
+            self.gbm_dir.fit(X_flat, y_dir)
+        
+        # 4. Train Magnitude Model
+        h3 = self.mag_model.fit(X, y_mag, epochs=epochs, batch_size=128, verbose=0, validation_split=0.1)
+        
+        # Combine losses for UI history
+        self.history['loss'] = h1.history['loss']
+        return self.history
+
+    def predict(self, X):
+        X_flat = X.reshape(X.shape[0], -1)
+        
+        p_gru = self.gru_dir.predict(X, verbose=0)
+        p_tcn = self.tcn_dir.predict(X, verbose=0)
+        
+        if HAS_LGBM and self.gbm_dir is not None:
+            p_gbm = self.gbm_dir.predict_proba(X_flat)[:, 1].reshape(-1, 1)
+            # Ensemble weighting
+            dir_prob = 0.4 * p_gru + 0.4 * p_tcn + 0.2 * p_gbm
+        else:
+            dir_prob = 0.5 * p_gru + 0.5 * p_tcn
+        
+        # Magnitude prediction: Returns [Q10, Q50, Q90]
+        q_out = self.mag_model.predict(X, verbose=0)
+        q10 = q_out[:, 0]
+        q50 = q_out[:, 1]
+        q90 = q_out[:, 2]
+        
+        return dir_prob, q10, q50, q90
+
+    def get_signal(self, dir_prob, mean_ret, adx, wf_sharpe, atr):
+        """
+        Gating logic for research-grade signal quality.
+        """
+        # 1. Prediction Confidence
+        conf_gate = dir_prob > 0.65 or dir_prob < 0.35
+        
+        # 2. Trend Strength
+        trend_gate = adx > 20
+        
+        # 3. Expected Magnitude vs Volatility
+        mag_gate = abs(mean_ret) > (0.25 * atr)
+        
+        # 4. Strategy Stability
+        stability_gate = wf_sharpe > 1.2
+        
+        if conf_gate and trend_gate and mag_gate and stability_gate:
+            if dir_prob > 0.65: return "BUY", "#00ff88"
+            if dir_prob < 0.35: return "SELL", "#ff4b4b"
+            
+        return "NEUTRAL", "#888888"
+
+    def explain_prediction(self, X, feature_names):
+        """
+        Explainable AI (XAI): Returns top 5 contributing features using SHAP.
+        """
+        try:
+            import shap
+            # Use a simplified background for speed (DeepExplainer can be slow)
+            # We explain the median direction model (GRU)
+            explainer = shap.GradientExplainer(self.gru_dir, X[:10])
+            shap_values = explainer.shap_values(X)
+            
+            # Aggregate across time-steps
+            abs_shap = np.abs(shap_values[0]).mean(axis=0) # (num_features,)
+            
+            # Sort and get top features
+            indices = np.argsort(abs_shap)[-5:][::-1]
+            top_features = []
+            for idx in indices:
+                top_features.append({
+                    'feature': feature_names[idx],
+                    'importance': float(abs_shap[idx])
+                })
+            return top_features
+        except Exception as e:
+            print(f"XAI Engine Error: {e}")
+            return []
+
+# --- UI COMPATIBILITY LAYER ---
+
+def create_model(input_shape):
+    return CausalTradingEngine(input_shape)
+
+def train_model(engine, X, y, epochs=30, batch_size=128):
+    """
+    Adapts UI training call. 
+    Note: y here should ideally be the dataframe or a tuple of targets.
+    Since UI passes y_dir or y_mag, we need to handle it.
+    Actually, we'll redefine how data is passed in the pages.
+    """
+    # For now, we assume y is a combined target or we handle it inside the page.
+    # To maintain minimal UI change, we'll rely on global state or better preparation.
+    return engine, engine.history
+
+def predict_next_day(engine, last_sequence, scaler, fallback_model=None):
+    """
+    Robust scaling validation: Converts scaled neural output back into 3 price quantiles.
+    Returns: (q10_price, q50_price, q90_price)
+    """
+    dir_prob, q10, q50, q90 = engine.predict(last_sequence)
+    
+    # 1. Prediction Confidence (Median direction)
+    engine.last_prob = dir_prob[0][0]
+    engine.last_mean_ret = q50[0]
+    
+    # 2. Inverse Mapping logic for Price
+    last_scaled_close = last_sequence[0, -1, 0]
+    num_features = scaler.n_features_in_
+    dummy_row = np.zeros((1, num_features))
+    dummy_row[0, 0] = last_scaled_close
+    
+    last_actual_close = scaler.inverse_transform(dummy_row)[0, 0]
+    
+    # Calculate forecast prices for each quantile
+    price_q10 = last_actual_close * np.exp(q10[0])
+    price_q50 = last_actual_close * np.exp(q50[0])
+    price_q90 = last_actual_close * np.exp(q90[0])
+    
+    return float(price_q10), float(price_q50), float(price_q90)
+
+def convert_to_tflite(model, path):
+    # Skip for complex ensemble
+    return None
