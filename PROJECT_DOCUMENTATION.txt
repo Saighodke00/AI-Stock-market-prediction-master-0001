@@ -1,0 +1,81 @@
+APEX AI: STOCK MARKET PREDICTION SYSTEM - DOCUMENTATION (V2 ENHANCED)
+
+This document provides a comprehensive overview of the AI-powered stock prediction platform, including the Product Requirements Document (PRD), Technical Requirements Document (TRD), and the "Multi-Modal Architecture" Roadmap.
+
+================================================================================
+PART 1: PRODUCT REQUIREMENTS DOCUMENT (PRD)
+================================================================================
+
+1. PROJECT OVERVIEW
+Apex AI is a professional-grade stock market analysis and prediction platform. Version 2.0 pivot towards a Multi-Modal Forecasting Engine to overcome common retail AI pitfalls like sequential lag and noise overfitting.
+
+2. PROBLEM STATEMENT
+Current sequential models (LSTM/GRU) often struggle with "lag" (chasing trends) and "noise" (reactionary to short-term spikes) in volatile markets. To exceed 60% accuracy, the system requires a shift towards Attention-based architectures and diverse feature engineering.
+
+3. TARGET AUDIENCE
+- Retail Traders: Seeking "Alpha" signals that aren't purely reactionary.
+- Institutional Analysts: Requiring probabilistic forecast ranges (Quantiles).
+- Quant Developers: Looking for robust, noise-denoised feature pipelines.
+
+4. KEY V2 FEATURES
+- Multi-Modal Inputs: Combining Price, Indicators, Macro Factors (VIX, Rates), and Sector metadata.
+- Attention-Based Forecasting: Using Temporal Fusion Transformers (TFT) to weigh historical relevance.
+- Probabilistic Cones: Predictions presented as "Quantile Intervals" (10th/50th/90th percentiles).
+- Signal Gatekeeping: AI-driven confidence vetting before a "BUY/SELL" signal is triggered.
+
+5. RESEARCH-GRADE FUNCTIONAL FEATURES (PRD Expansion)
+- **Explainable AI (XAI)**: SHAP/LIME plots to decompose AI signals (e.g., "Why 60% Bullish?").
+- **FinBERT Sentiment**: Upgrading to financial-specific BERT for nuanced headline analysis.
+- **Probabilistic Forecasting**: Visualizing "Confidence Clouds" (Std Dev) for price predictions.
+- **Scenario Simulation ("What-If")**: Interactive sliders for user-driven hypothetical testing.
+
+6. ROADMAP
+- Phase 1: Core LSTM framework + basic technical indicators + Streamlit UI (COMPLETED).
+- Phase 2: Multi-Modal Architecture (TFT), Macro Feature Integration (VIX/DXY), and Wavelet Denoising (IN PROGRESS).
+- Phase 3: Live Brokerage API Integration + Multi-Horizon Portfolio Optimization.
+
+
+================================================================================
+PART 2: TECHNICAL REQUIREMENTS DOCUMENT (TRD)
+================================================================================
+
+1. TECHNOLOGY STACK
+- Language: Python 3.10+
+- Frontend: Streamlit (Advanced Glassmorphism & Custom CSS)
+- Deep Learning: PyTorch Forecasting / TensorFlow (TFT Models)
+- Data Source: yfinance (Market Data), Macro APIs (VIX, Bond Yields)
+- Stats & Signal Processing: Scipy (Wavelet Transforms), Pandas (Fractional Diff)
+
+2. NEW V2 ARCHITECTURE: MULTI-MODAL TFT
+The system is transitioning to a Temporal Fusion Transformer (TFT) architecture.
+
+Key Components:
+A. VARIABLE SELECTION NETWORK (VSN): Automatically selects relevant features (e.g., ignoring MACD if it's currently noisy).
+B. MULTI-HEAD SELF-ATTENTION: Identifies long-term patterns (e.g., "This pattern looks like the 2008 crash cycle").
+C. STATIC & DYNAMIC COVARIATES: 
+   - Static: Ticker Sector, Market Cap.
+   - Dynamic: OHLCV, VIX, Interest Rates, P/E Ratio, EPS, Debt-to-Equity.
+
+3. REFINED FEATURE ENGINEERING (V2)
+A. TEMPORAL FUSION TRANSFORMERS (TFT)
+   Instead of standard LSTM, TFT uses Self-Attention to weigh the importance of historical events.
+B. FRACTIONAL DIFFERENTIATION & LAGGED FEATURES
+   Momentum Trends: Integration of lagged RSI and MACD (1d, 3d, 5d) to detect historical trend shifts.
+C. FUNDAMENTAL DATA & MACRO
+   P/E Ratios, EPS, and Debt-to-Equity: Tracking company health via yfinance/FundamentalAnalysis.
+   Global Indices: ^VIX, ^NSEI, ^GSPC for cross-market correlation.
+
+4. DATA FLOW (V2)
+1. FETCH: yfinance grabs Ticker, Benchmark Index, and VIX.
+2. PROCESS: Apply Fractional Diff and Wavelet DWT to denoise the Price target.
+3. MODEL: TFT processes Multi-Modal inputs to produce Multi-Horizon (7d, 14d, 30d) forecasts.
+4. Gating: Signal Engine checks "Attention Confidence" and "Quantile Spread" before outputting signals.
+
+5. SECURITY & RELIABILITY
+- Use of RobustScaler to handle outliers in volatile data.
+- Causal padding in all convolutional (TCN) layers to prevent data leakage.
+
+
+--------------------------------------------------------------------------------
+Documentation Updated on 2026-02-27 - Proposed V2 Architecture
+--------------------------------------------------------------------------------

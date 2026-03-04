@@ -1,0 +1,44 @@
+# ── Python ───────────────────────────────────────────────────────────────────
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+*.egg
+
+# ── Sensitive / credentials ───────────────────────────────────────────────────
+.env
+*.key
+*.pem
+secrets.json
+
+# ── Model artefacts (large binary files) ─────────────────────────────────────
+models/*.ckpt
+models/*.pkl
+models/*.pt
+models/*.bin
+
+# ── Data files ────────────────────────────────────────────────────────────────
+*.csv
+plots/
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# ── OS / Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.user
+
+# ── Celery ────────────────────────────────────────────────────────────────────
+celerybeat-schedule
+celerybeat.pid
