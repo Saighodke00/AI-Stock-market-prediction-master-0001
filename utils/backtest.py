@@ -223,12 +223,14 @@ def calculate_metrics(equity_curve: pd.Series, trades: List[Trade]) -> Dict[str,
     ann_vol = daily_returns.std() * np.sqrt(252)
 
     # Sharpe Ratio (assuming 0% risk free rate for simplicity)
-    sharpe = (cagr / ann_vol) if ann_vol != 0 else 0.0
+    sharpe = (cagr / ann_vol) if ann_vol > 0.0001 else 0.0
+    sharpe = np.clip(sharpe, -100, 100) # Cap extreme values
 
     # Sortino Ratio (downside deviation only)
     downside_returns = daily_returns[daily_returns < 0]
     downside_vol = downside_returns.std() * np.sqrt(252)
-    sortino = (cagr / downside_vol) if downside_vol != 0 else 0.0
+    sortino = (cagr / downside_vol) if downside_vol > 0.0001 else 0.0
+    sortino = np.clip(sortino, -100, 100)
 
     # Maximum Drawdown
     running_max = equity_curve.cummax()
@@ -385,20 +387,29 @@ def run_backtest(engine=None,
             preds_arr   = np.array(preds_list)
             actuals_arr = np.array(actuals_scaled[:len(preds_arr)])
 
-            # Inverse-transform so values are in price space
+            # Accuracy based on direction of return vs actual
             try:
-                dummy = np.zeros((len(preds_arr), n_features))
-                dummy[:, 0] = preds_arr
-                preds_price = scaler.inverse_transform(dummy)[:, 0]
-
                 dummy2 = np.zeros((len(actuals_arr), n_features))
                 dummy2[:, 0] = actuals_arr
                 actuals_price = scaler.inverse_transform(dummy2)[:, 0]
             except Exception:
-                preds_price   = preds_arr
                 actuals_price = actuals_arr
 
-            accuracy = calculate_accuracy(preds_price, actuals_price)
+            # Convert predicted returns to prices for visualization
+            preds_price = []
+            if len(actuals_price) > 0:
+                current_p = actuals_price[0]
+                for r in preds_arr:
+                    current_p = current_p * np.exp(np.clip(r, -0.1, 0.1))
+                    preds_price.append(current_p)
+            preds_price = np.array(preds_price)
+
+            correct = 0
+            for i in range(1, len(actuals_price)):
+                act_dir = np.sign(actuals_price[i] - actuals_price[i-1])
+                pred_dir = np.sign(preds_arr[i]) # Model predicts return directly
+                if act_dir == pred_dir: correct += 1
+            accuracy = (correct / (len(actuals_price)-1)) * 100 if len(actuals_price) > 1 else 50.0
 
             # Build a simple equity curve from directional signals
             initial_capital = 10_000.0
@@ -407,19 +418,19 @@ def run_backtest(engine=None,
 
             for i in range(1, len(actuals_price)):
                 actual_ret = (actuals_price[i] - actuals_price[i - 1]) / (actuals_price[i - 1] + 1e-9)
-                signal_dir = 1 if preds_price[i] > preds_price[i - 1] else 0
+                signal_dir = 1 if preds_arr[i] > 0 else 0 # Use predicted log return for signal
                 strat_ret  = signal_dir * actual_ret - 0.001   # 0.1% fee
                 equity.append(equity[-1] * (1 + strat_ret))
                 returns_list.append(strat_ret)
 
             returns_arr = np.array(returns_list)
             ann_ret     = np.mean(returns_arr) * 252
-            ann_vol     = np.std(returns_arr)  * np.sqrt(252) + 1e-9
-            sharpe      = float(ann_ret / ann_vol)
+            ann_vol     = np.std(returns_arr)  * np.sqrt(252) + 0.0001
+            sharpe      = float(np.clip(ann_ret / ann_vol, -100, 100))
 
             downside        = returns_arr[returns_arr < 0]
-            downside_vol    = (np.std(downside) * np.sqrt(252) + 1e-9) if len(downside) > 0 else ann_vol
-            sortino         = float(ann_ret / downside_vol)
+            downside_vol    = (np.std(downside) * np.sqrt(252) + 0.0001) if len(downside) > 0 else ann_vol
+            sortino         = float(np.clip(ann_ret / downside_vol, -100, 100))
 
             logger.info(
                 "run_backtest (legacy): accuracy=%.1f%%  sharpe=%.2f  sortino=%.2f  trades=%d",

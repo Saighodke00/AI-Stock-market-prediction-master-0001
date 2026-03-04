@@ -23,8 +23,19 @@ Requires: transformers, torch, yfinance, redis
 import json
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
+
+# ── SILENCE TENSORFLOW ────────────────────────────────────────────────────────
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"      # 0=all, 1=no INFO, 2=no INFO/WARN, 3=no INFO/WARN/ERROR
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"     # Disable oneDNN custom operations warnings
+try:
+    import tensorflow as tf
+    tf.get_logger().setLevel("ERROR")            # Suppress Python-level deprecation warnings
+except Exception:
+    pass
+# ──────────────────────────────────────────────────────────────────────────────
 
 import redis
 import yfinance as yf
@@ -272,13 +283,14 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
             try:
                 parsed = json.loads(cached_data)
                 parsed["cached"] = True
-                logger.info("Cache hit for %s sentiment", ticker)
+                logger.debug("Cache hit for %s sentiment", ticker)
                 return parsed
             except json.JSONDecodeError:
                 logger.warning("Corrupted cache payload for %s; re-fetching.", ticker)
 
     # ── 2. Fetch News from yfinance ───────────────────────────────────────────
-    logger.info("Fetching yfinance news for %s...", ticker)
+    # ApexAI Sentiment Engine v1.1
+    logger.info("ApexAI Sentiment Engine v1.1 — Processing %s", ticker)
     _NEUTRAL_FALLBACK = {
         "ticker": ticker,
         "aggregate_score": 0.0,
@@ -294,14 +306,14 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
     except Exception as _net_err:
         # DNS resolution failure, timeout, Yahoo Finance down, etc.
         logger.warning(
-            "fetch_and_score_ticker [%s]: network error fetching news — %s. "
-            "Returning neutral sentiment.",
+            "fetch_and_score_ticker [%s]: network/DNS error fetching news — %s. "
+            "Returning neutral sentiment (HOLD).",
             ticker, _net_err,
         )
         return _NEUTRAL_FALLBACK
 
     if not news_items:
-        logger.warning("No news returned for %s", ticker)
+        logger.info("No news returned for %s", ticker)
         return _NEUTRAL_FALLBACK
 
     # ── 3. Parse Titles & Summaries (Up to 10) ────────────────────────────────
