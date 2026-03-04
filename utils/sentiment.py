@@ -279,20 +279,30 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
 
     # ── 2. Fetch News from yfinance ───────────────────────────────────────────
     logger.info("Fetching yfinance news for %s...", ticker)
-    stock = yf.Ticker(ticker)
-    news_items = stock.news
-    
+    _NEUTRAL_FALLBACK = {
+        "ticker": ticker,
+        "aggregate_score": 0.0,
+        "label": "NEUTRAL",
+        "emoji": "🟡",
+        "article_count": 0,
+        "articles": [],
+        "cached": False,
+    }
+    try:
+        stock = yf.Ticker(ticker)
+        news_items = stock.news
+    except Exception as _net_err:
+        # DNS resolution failure, timeout, Yahoo Finance down, etc.
+        logger.warning(
+            "fetch_and_score_ticker [%s]: network error fetching news — %s. "
+            "Returning neutral sentiment.",
+            ticker, _net_err,
+        )
+        return _NEUTRAL_FALLBACK
+
     if not news_items:
         logger.warning("No news returned for %s", ticker)
-        return {
-            "ticker": ticker,
-            "aggregate_score": 0.0,
-            "label": "NEUTRAL",
-            "emoji": "🟡",
-            "article_count": 0,
-            "articles": [],
-            "cached": False
-        }
+        return _NEUTRAL_FALLBACK
 
     # ── 3. Parse Titles & Summaries (Up to 10) ────────────────────────────────
     headlines_to_score = []
@@ -365,23 +375,34 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
 # ===========================================================================
 def get_market_sentiment(ticker: str) -> Tuple[float, List[Dict[str, Any]]]:
     """Compatibility wrapper for legacy code (e.g., Swing_Trading.py).
-    
-    Calls `fetch_and_score_ticker()` and unpacks its structured dict back 
+
+    Calls `fetch_and_score_ticker()` and unpacks its structured dict back
     into the original `(avg_score, top_news_list)` tuple format.
+
+    Returns ``(0.0, [])`` on any network or model error so the Streamlit
+    page can always continue rendering.
     """
-    result = fetch_and_score_ticker(ticker)
-    
+    try:
+        result = fetch_and_score_ticker(ticker)
+    except Exception as exc:
+        logger.warning(
+            "get_market_sentiment [%s]: unexpected error — %s. "
+            "Returning neutral (0.0, []).",
+            ticker, exc,
+        )
+        return 0.0, []
+
     # Map back to the expected list of dicts format with 'link' instead of 'url'
     legacy_articles = []
-    for art in result["articles"]:
+    for art in result.get("articles", []):
         legacy_articles.append({
-            "title": art["title"],
-            "link": art.get("url", ""),
-            "publisher": "Yahoo Finance News",  # Publisher isn't strictly preserved in the new dict
-            "score": art.get("score", 0.0)
+            "title": art.get("title", ""),
+            "link":  art.get("url", ""),
+            "publisher": art.get("publisher", "Yahoo Finance"),
+            "score": art.get("score", 0.0),
         })
-        
-    return result["aggregate_score"], legacy_articles
+
+    return result.get("aggregate_score", 0.0), legacy_articles
 
 
 # ===========================================================================
