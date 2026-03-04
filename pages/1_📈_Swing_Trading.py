@@ -6,15 +6,19 @@ import sys
 import os
 import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import textwrap
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.data_loader import fetch_data, clean_data, normalize_data, create_sequences, add_noise
 from utils.indicators import add_technical_indicators
-from utils.model import create_model, train_model, predict_next_day, convert_to_tflite
 from utils.sentiment import get_market_sentiment
 from utils.data_pipeline import validate_data
+from utils.india_market import IndiaMarketIntelligence
+from utils.technical_analysis import detect_support_resistance, calculate_position_size, calculate_multi_timeframe_confluence
+
+intel = IndiaMarketIntelligence()
 
 st.set_page_config(page_title="Apex AI - Swing Intelligence", layout="wide")
 
@@ -23,42 +27,40 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
     
-    .stApp { background-color: #080a0f; color: #ffffff; font-family: 'Outfit', sans-serif; }
+    /* Aero Terminal CSS */
+    .stApp { background-color: #060810; color: #c8d0e0; font-family: 'Outfit', sans-serif; }
     
-    /* Metric Cards */
-    .metric-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 15px;
+    /* Panel Glassmorphism */
+    .metric-card, .analysis-block, .india-card {
+        background: rgba(15, 18, 32, 0.6);
+        border: 1px solid rgba(26, 32, 53, 1);
+        border-radius: 12px;
         padding: 20px;
-        text-align: center;
-        backdrop-filter: blur(10px);
-        transition: 0.3s;
+        backdrop-filter: blur(16px);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.3);
     }
-    .metric-card:hover { border-color: #00d2aa; transform: translateY(-5px); }
-    .metric-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-    .metric-value { font-size: 28px; font-weight: 800; color: #fff; margin-top: 5px; }
+    .metric-card:hover { border-color: #f5a623; transform: translateY(-2px); transition: 0.3s; }
     
-    /* Analysis Block */
-    .analysis-block {
-        background: rgba(0, 210, 170, 0.05);
-        border-left: 5px solid #00d2aa;
-        padding: 20px;
-        border-radius: 5px;
-        margin-top: 20px;
-    }
+    .metric-label { font-size: 11px; color: #7a8299; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+    .metric-value { font-size: 28px; font-weight: 700; color: #fff; margin-top: 8px; font-family: 'Share Tech Mono', monospace; }
     
-    /* Sidebar */
-    section[data-testid="stSidebar"] {
-        background-color: rgba(0,0,0,0.3);
-        border-right: 1px solid rgba(255,255,255,0.05);
-    }
+    /* Signal Colors */
+    .color-buy { color: #00d4b4 !important; }
+    .color-sell { color: #ff4560 !important; }
+    .color-hold { color: #3d8bff !important; }
+    .color-amber { color: #f5a623 !important; }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #060810; }
+    ::-webkit-scrollbar-thumb { background: #1a2035; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #f5a623; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- HEADER ---
-st.markdown("<h1 style='font-weight:800; font-size: 42px; margin-bottom:0;'>📈 Swing Intelligence</h1>", unsafe_allow_html=True)
-st.caption("Apex Neural Engine // Multi-Day Trend Forecasting & Wealth Accumulation")
+st.markdown("<h1 style='font-weight:700; color:#f5a623; font-size: 42px; margin-bottom:0;'>APEX AI — <span style='color:#fff'>SWING</span></h1>", unsafe_allow_html=True)
+st.caption("Aero Terminal v4.0 // Predictive Intelligence for Indian & Global Equities")
 st.markdown("---")
 
 # --- SIDEBAR ---
@@ -91,7 +93,21 @@ with st.sidebar:
         value="Neutral"
     )
     st.caption("Adjust to see how the AI reacts to simulated news events.")
-    st.info("Strategy: Trend-Following Momentum")
+    
+    st.markdown("---")
+    st.markdown("### 🇮🇳 India Pulse")
+    fii_data = intel.get_fii_dii_flow()
+    if fii_data:
+        flow_color = "#00d4b4" if fii_data['sentiment'] == "BULLISH" else "#ff4560"
+        st.markdown(textwrap.dedent(f"""
+            <div class="india-card">
+                <div style="font-size:10px; color:#7a8299; letter-spacing:1px;">INSTITUTIONAL FLOW (CR)</div>
+                <div style="font-size:20px; font-weight:700; color:{flow_color}; margin:5px 0;">{fii_data['total_flow']:+d}</div>
+                <div style="font-size:11px; color:#fff;">FII: {fii_data['fii_net']:+d} | DII: {fii_data['dii_net']:+d}</div>
+            </div>
+        """), unsafe_allow_html=True)
+    
+    st.info("Strategy: Institutional Momentum Alignment")
 
 @st.cache_data
 def get_swing_data(ticker):
@@ -139,8 +155,7 @@ if ticker:
         if 'macro_ret' in df.columns:
             features += ['macro_ret', 'alpha_ret', 'macro_corr']
         # Phase-2: VIX / SP500 / NSEI (fetch_multi_modal column names)
-        # Also handles legacy 'VIX_Close' if present from old data
-        for col in ['VIX', 'VIX_Close', 'SP500', 'NSEI', 'VIX_ret']:
+        for col in ['VIX', 'SP500', 'NSEI', 'VIX_ret']:
             if col in df.columns and col not in features:
                 features.append(col)
         # Phase-2 static metadata covariates
@@ -179,7 +194,7 @@ if ticker:
         atr_val = df['ATR'].iloc[-1]
         rsi_val = df['RSI'].iloc[-1]
         
-        signal, color = engine.get_signal(dir_prob[0][0], q50[0], adx_val, wf_sharpe, atr_val)
+        signal, color = engine.get_signal(dir_prob[0][0], q50[0], adx_val, wf_sharpe, atr_val, fii_dii_score=fii_data['total_flow'] if fii_data else 0)
         
         # Live News Sentiment Integration
         sentiment_val, top_news = get_market_sentiment(ticker)
@@ -223,7 +238,8 @@ if ticker:
         with m3:
             st.markdown(f'<div class="metric-card"><div class="metric-label">Action Signal</div><div class="metric-value" style="color:{color}">{signal}</div></div>', unsafe_allow_html=True)
         with m4:
-            st.markdown(f'<div class="metric-card"><div class="metric-label">Model Accuracy</div><div class="metric-value">{acc:.1f}%</div></div>', unsafe_allow_html=True)
+            conf_score = calculate_multi_timeframe_confluence(ticker)
+            st.markdown(f'<div class="metric-card"><div class="metric-label">AI Confluence</div><div class="metric-value" style="color:#f5a623">{conf_score}%</div></div>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -269,34 +285,56 @@ if ticker:
             
             xai_html = "".join([f"<li>{x['feature']}: <span style='color:#00d2aa'>+{x['importance']*100:.1f}%</span></li>" for x in xai_report])
             
-            st.markdown(f"""
-            <div class="analysis-block">
-                <b>Execution Rationale:</b><br>
-                {reason}
-                <hr style='opacity:0.1; margin: 10px 0;'>
-                <b>XAI Driver Analysis:</b><br>
-                <ul style='font-size:13px; margin: 5px 0;'>
-                    {xai_html}
-                </ul>
-                <hr style='opacity:0.1; margin: 10px 0;'>
-                <b>Strategic Vitals:</b><br>
-                Sentiment Flux: <span style="color:{color}">{sentiment_val:+.2f}</span> | 
-                RSI: <span style="color:#00d2aa">{rsi_val:.1f}</span>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(textwrap.dedent(f"""
+                <div class="analysis-block">
+                    <b>Execution Rationale:</b><br>
+                    {reason}
+                    <hr style='opacity:0.1; margin: 10px 0;'>
+                    <b>Strategic Vitals:</b><br>
+                    Sentiment Flux: <span style="color:{color}">{sentiment_val:+.2f}</span> | 
+                    RSI: <span style="color:#00d4b4">{rsi_val:.1f}</span>
+                    <hr style='opacity:0.1; margin: 10px 0;'>
+                    <b>XAI Driver Analysis:</b><br>
+                    <ul style='font-size:11px; margin: 5px 0;'>
+                        {xai_html}
+                    </ul>
+                </div>
+            """), unsafe_allow_html=True)
+            
+            # --- RISK MANAGEMENT TERMINAL ---
+            st.markdown("### 🛡️ Risk Management")
+            with st.container(border=True):
+                account_val = st.number_input("Account Balance ($)", value=10000)
+                risk_p = st.slider("Risk Per Trade (%)", 0.5, 5.0, 2.0)
+                sl_price = st.number_input("Stop Loss Price ($)", value=current_price*0.97)
+                
+                shares = calculate_position_size(account_val, risk_p, current_price, sl_price)
+                
+                st.markdown(textwrap.dedent(f"""
+                    <div style="background:rgba(245,166,35,0.1); padding:15px; border-radius:8px; border:1px solid #f5a623;">
+                        <div style="font-size:12px; color:#f5a623;">RECOMMENDED POSITION SIZE</div>
+                        <div style="font-size:24px; font-weight:700; color:#fff;">{shares} Shares</div>
+                        <div style="font-size:11px; color:#aaa; margin-top:5px;">Total Risk: ${account_val * (risk_p/100):.2f}</div>
+                    </div>
+                """), unsafe_allow_html=True)
 
         # --- MAIN CHART ---
-        st.markdown("<h3 style='margin-top:20px;'>Market Forecast Visualizer</h3>", unsafe_allow_html=True)
-        tab1, tab2 = st.tabs(["📊 Price & Prediction", "🧠 Learning Convergence"])
+        st.markdown("<h3 style='margin-top:20px; font-size:18px; color:#7a8299;'>TERMINAL VIEW</h3>", unsafe_allow_html=True)
+        tab1, tab2, tab_heat = st.tabs(["📊 Price & Prediction", "🧠 Learning Convergence", "🗺️ NSE Sector Heatmap"])
         
         with tab1:
             plot_df = df.iloc[-100:]
             fig = go.Figure()
-            # Historical Candlestick
-            fig.add_trace(go.Candlestick(x=plot_df.index, open=plot_df['Open'], high=plot_df['High'], low=plot_df['Low'], close=plot_df['Close'], name='Market'))
             # SMA Overlay
             if show_ma:
-                fig.add_trace(go.Scatter(x=plot_df.index, y=plot_df['SMA_50'], name='SMA 50', line=dict(color='orange', width=1.5, dash='dot')))
+                fig.add_trace(go.Scatter(x=plot_df.index, y=plot_df['SMA_50'], name='SMA 50', line=dict(color='#f5a623', width=1.5, dash='dot')))
+            
+            # Auto Support & Resistance
+            levels = detect_support_resistance(plot_df)
+            for s in levels['support']:
+                fig.add_hline(y=s, line_dash="dash", line_color="rgba(0, 212, 180, 0.4)", annotation_text="Support", annotation_position="bottom right")
+            for r in levels['resistance']:
+                fig.add_hline(y=r, line_dash="dash", line_color="rgba(255, 69, 96, 0.4)", annotation_text="Resistance", annotation_position="top right")
             
             # Prediction Extension with Confidence Cloud
             last_date = plot_df.index[-1]
@@ -349,6 +387,37 @@ if ticker:
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(fig_loss, width='stretch')
+            
+        with tab_heat:
+            st.markdown("#### Real-time Sector Rotation (NSE)")
+            heatmap = intel.get_sector_heatmap()
+            if heatmap:
+                h_cols = st.columns(len(heatmap))
+                for i, h in enumerate(heatmap):
+                    with h_cols[i]:
+                        h_color = "#00d4b4" if h['change'] > 0 else "#ff4560"
+                        st.markdown(textwrap.dedent(f"""
+                            <div style="text-align:center; padding:10px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size:10px; color:#7a8299;">{h['sector'].replace('NIFTY ', '')}</div>
+                                <div style="font-size:14px; font-weight:700; color:{h_color};">{h['change']:+.2f}%</div>
+                            </div>
+                        """), unsafe_allow_html=True)
+                
+                # Plotly Bar Chart for Heatmap
+                fig_heat = go.Figure(go.Bar(
+                    x=[h['sector'] for h in heatmap],
+                    y=[h['change'] for h in heatmap],
+                    marker_color=[("#00d4b4" if h['change'] > 0 else "#ff4560") for h in heatmap]
+                ))
+                fig_heat.update_layout(
+                    template="plotly_dark", height=350,
+                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                    margin=dict(l=0, r=0, t=20, b=0),
+                    yaxis_title="Change %"
+                )
+                st.plotly_chart(fig_heat, use_container_width=True)
+            else:
+                st.warning("NSE Data link temporarily unavailable. Retrying...")
             
             # Diagnostic message
             if 'val_loss' in history_data:

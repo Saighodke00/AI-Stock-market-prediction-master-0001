@@ -5,6 +5,7 @@ import optuna
 import sys
 import os
 import plotly.graph_objects as go
+import textwrap
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -19,15 +20,19 @@ st.set_page_config(page_title="Apex AI - HyperDrive Tuner", layout="wide")
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
-    .stApp { background-color: #080a0f; color: #ffffff; font-family: 'Outfit', sans-serif; }
-    .tuner-card {
-        background: rgba(0, 210, 170, 0.05);
-        border: 1px solid rgba(0, 210, 170, 0.2);
-        border-radius: 15px;
+    
+    /* Aero Terminal CSS - Tuner */
+    .stApp { background-color: #060810; color: #c8d0e0; font-family: 'Outfit', sans-serif; }
+    
+    .tuner-card, .stStatus {
+        background: rgba(15, 18, 32, 0.6);
+        border: 1px solid rgba(0, 210, 170, 0.3);
+        border-radius: 12px;
         padding: 25px;
-        margin-bottom: 20px;
+        backdrop-filter: blur(16px);
+        box-shadow: 0 4px 20px rgba(0,210,170,0.1);
     }
-    .best-param { color: #00d2aa; font-weight: 800; font-family: 'JetBrains Mono'; }
+    .best-param { color: #00ffcc; font-weight: 800; font-family: 'Share Tech Mono', monospace; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -57,8 +62,10 @@ if run_opt:
         
         features = [
             'Close', 'log_ret', 'range', 'body', 'EMA_21', 'RSI', 'MACD', 'ATR', 'BB_Width',
-            'PE_Ratio', 'EPS', 'Debt_to_Equity', 'VIX_Close'
+            'PE_Ratio', 'EPS', 'Debt_to_Equity', 'VIX'
         ]
+        # Safety check: exclude features not present in df
+        features = [f for f in features if f in df.columns]
         
         def objective(trial):
             # 1. Hyperparameters to tune
@@ -102,26 +109,26 @@ if run_opt:
     best = study.best_params
     
     with r1:
-        st.markdown(f"""
-        <div class="tuner-card">
-            <div style="font-size:12px; color:#888;">OPTIMAL LOOKBACK</div>
-            <div class="best-param" style="font-size:32px;">{best['lookback']} Days</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(textwrap.dedent(f"""
+            <div class="tuner-card">
+                <div style="font-size:12px; color:#888;">OPTIMAL LOOKBACK</div>
+                <div class="best-param" style="font-size:32px;">{best['lookback']} Days</div>
+            </div>
+        """), unsafe_allow_html=True)
     with r2:
-        st.markdown(f"""
-        <div class="tuner-card">
-            <div style="font-size:12px; color:#888;">OPTIMAL EPOCHS</div>
-            <div class="best-param" style="font-size:32px;">{best['epochs']}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(textwrap.dedent(f"""
+            <div class="tuner-card">
+                <div style="font-size:12px; color:#888;">OPTIMAL EPOCHS</div>
+                <div class="best-param" style="font-size:32px;">{best['epochs']}</div>
+            </div>
+        """), unsafe_allow_html=True)
     with r3:
-        st.markdown(f"""
-        <div class="tuner-card">
-            <div style="font-size:12px; color:#888;">MIN VAL LOSS</div>
-            <div class="best-param" style="font-size:32px;">{study.best_value:.6f}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(textwrap.dedent(f"""
+            <div class="tuner-card">
+                <div style="font-size:12px; color:#888;">MIN VAL LOSS</div>
+                <div class="best-param" style="font-size:32px;">{study.best_value:.6f}</div>
+            </div>
+        """), unsafe_allow_html=True)
 
     # Study Visualization
     st.subheader("Optimization History")

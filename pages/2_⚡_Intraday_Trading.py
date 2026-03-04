@@ -7,6 +7,7 @@ import os
 import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import gc
+import textwrap
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -16,49 +17,40 @@ from utils.indicators import add_technical_indicators
 from utils.model import create_model, train_model, predict_next_day, convert_to_tflite
 from utils.sentiment import get_market_sentiment
 from utils.data_pipeline import validate_data
+from utils.india_market import IndiaMarketIntelligence
+from utils.technical_analysis import detect_support_resistance, calculate_position_size, calculate_multi_timeframe_confluence
+
+intel = IndiaMarketIntelligence()
 
 st.set_page_config(page_title="Apex AI - Intraday Precision", layout="wide")
 
-# --- HIGH-TECH TERMINAL CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;700&display=swap');
     
-    .stApp { background-color: #050505; color: #00ffcc; font-family: 'Outfit', sans-serif; }
+    /* Aero Terminal CSS - Intraday */
+    .stApp { background-color: #060810; color: #00ffcc; font-family: 'Outfit', sans-serif; }
     
-    /* Terminal Header */
-    .terminal-header {
-        border-left: 5px solid #00ffcc;
-        padding-left: 20px;
-        margin-bottom: 30px;
-    }
-    
-    /* Metric Cards */
-    .metric-card {
-        background: rgba(0, 255, 204, 0.03);
-        border: 1px solid rgba(0, 255, 204, 0.15);
+    .metric-card, .terminal-analysis, .india-card {
+        background: rgba(15, 18, 32, 0.6);
+        border: 1px solid rgba(0, 255, 204, 0.3);
         border-radius: 12px;
         padding: 20px;
-        text-align: center;
-        transition: 0.3s;
+        backdrop-filter: blur(16px);
+        box-shadow: 0 4px 20px rgba(0,255,204,0.05);
     }
-    .metric-card:hover { border-color: #00ffcc; background: rgba(0, 255, 204, 0.08); }
-    .metric-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #00ffcc; opacity: 0.6; text-transform: uppercase; }
+    .metric-card:hover { border-color: #00ffcc; transform: translateY(-2px); transition: 0.3s; }
+    
+    .metric-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #00ffcc; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
     .metric-value { font-size: 26px; font-weight: 700; color: #00ffcc; margin-top: 5px; }
     
-    /* Analysis Box */
-    .terminal-analysis {
-        background: rgba(0, 255, 204, 0.02);
-        border: 1px solid rgba(0, 255, 204, 0.2);
-        padding: 25px;
-        border-radius: 10px;
-        font-family: 'Outfit', sans-serif;
-    }
-    
-    section[data-testid="stSidebar"] {
-        background-color: #0a0a0a;
-        border-right: 1px solid #1a1a1a;
-    }
+    .terminal-header { border-left: 5px solid #00ffcc; padding-left: 20px; margin-bottom: 30px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #060810; }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 255, 204, 0.2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00ffcc; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -96,6 +88,19 @@ with st.sidebar:
     st.markdown("---")
     show_ema = st.toggle("Overlay EMA 9/21", value=True)
     st.caption("Auto-optimizing for current volatility index...")
+    
+    st.markdown("---")
+    st.markdown("### 🇮🇳 India Pulse")
+    fii_data = intel.get_fii_dii_flow()
+    if fii_data:
+        flow_color = "#00ffcc" if fii_data['sentiment'] == "BULLISH" else "#ff4b4b"
+        st.markdown(textwrap.dedent(f"""
+            <div class="india-card">
+                <div style="font-size:10px; color:rgba(0,255,204,0.6); letter-spacing:1px; font-family:'JetBrains Mono';">INSTITUTIONAL FLOW (CR)</div>
+                <div style="font-size:18px; font-weight:700; color:{flow_color}; margin:5px 0;">{fii_data['total_flow']:+d}</div>
+                <div style="font-size:10px; color:#fff;">FII: {fii_data['fii_net']:+d} | DII: {fii_data['dii_net']:+d}</div>
+            </div>
+        """), unsafe_allow_html=True)
 
 @st.cache_data
 def get_intraday_data(ticker, interval):
@@ -203,10 +208,11 @@ if ticker:
         with m3:
             st.markdown(f'<div class="metric-card"><div class="metric-label">Signal Engine</div><div class="metric-value" style="color:{color}">{signal}</div></div>', unsafe_allow_html=True)
         with m4:
-            st.markdown(f'<div class="metric-card"><div class="metric-label">Neural Reliability</div><div class="metric-value">{acc:.1f}%</div></div>', unsafe_allow_html=True)
+            conf_score = calculate_multi_timeframe_confluence(ticker)
+            st.markdown(f'<div class="metric-card"><div class="metric-label">AI Confluence</div><div class="metric-value" style="color:#00ffcc">{conf_score}%</div></div>', unsafe_allow_html=True)
         with m5:
             # VIX comes from the daily pipeline; intraday df won't have it – handle gracefully
-            vix_col = 'VIX' if 'VIX' in df.columns else ('VIX_Close' if 'VIX_Close' in df.columns else None)
+            vix_col = 'VIX' if 'VIX' in df.columns else None
             if vix_col:
                 vix_val = df[vix_col].iloc[-1]
                 vix_color = '#ff4b4b' if vix_val > 30 else ('#ffcc00' if vix_val > 20 else '#00ffcc')
@@ -241,15 +247,32 @@ if ticker:
             
         with c2:
             st.markdown(f"### 🤖 Scalp Analysis // {ticker}")
-            st.markdown(f"""
-            <div class="terminal-analysis">
-                <span style="color:#888; font-size:12px;">SYSTEM OUTPUT:</span><br>
-                {reason}
-                <br><br>
-                <span style="color:#888; font-size:12px;">SENTIMENT FLUX:</span> <span style="color:{color}">{sentiment_val:+.2f}</span> | 
-                <span style="color:#888; font-size:12px;">RSI:</span> {rsi:.1f}
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(textwrap.dedent(f"""
+                <div class="terminal-analysis">
+                    <span style="color:#888; font-size:12px;">SYSTEM OUTPUT:</span><br>
+                    {reason}
+                    <br><br>
+                    <span style="color:#888; font-size:12px;">SENTIMENT FLUX:</span> <span style="color:{color}">{sentiment_val:+.2f}</span> | 
+                    <span style="color:#888; font-size:12px;">RSI:</span> {rsi:.1f}
+                </div>
+            """), unsafe_allow_html=True)
+            
+            # --- RISK MANAGEMENT TERMINAL ---
+            st.markdown("### 🛡️ Scalp Risk Center")
+            with st.container(border=True):
+                account_val = st.number_input("Capital Buffer ($)", value=5000)
+                risk_p = st.slider("Risk Per Scalp (%)", 0.1, 2.0, 0.5)
+                sl_price = st.number_input("Stop Loss Price ($)", value=current_price*0.995)
+                
+                shares = calculate_position_size(account_val, risk_p, current_price, sl_price)
+                
+                st.markdown(textwrap.dedent(f"""
+                    <div style="background:rgba(0,255,204,0.1); padding:15px; border-radius:8px; border:1px solid #00ffcc;">
+                        <div style="font-size:11px; color:#00ffcc; font-family:'JetBrains Mono';">SCALP QUANTITY</div>
+                        <div style="font-size:22px; font-weight:700; color:#fff;">{shares} Units</div>
+                        <div style="font-size:10px; color:#aaa; margin-top:5px;">Max Loss: ${account_val * (risk_p/100):.2f}</div>
+                    </div>
+                """), unsafe_allow_html=True)
 
         # --- TABS FOR CHARTS ---
         tab1, tab2 = st.tabs(["⚡ Precision Feed", "🧠 Convergence Log"])
@@ -263,6 +286,13 @@ if ticker:
             if show_ema:
                 fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot['EMA_9'], line=dict(color='cyan', width=1), name='EMA 9'))
                 fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot['EMA_21'], line=dict(color='magenta', width=1), name='EMA 21'))
+            
+            # Auto Support & Resistance
+            levels = detect_support_resistance(df_plot, window=10)
+            for s in levels['support']:
+                fig.add_hline(y=s, line_dash="dash", line_color="rgba(0, 255, 204, 0.3)", annotation_text="Support", annotation_position="bottom right")
+            for r in levels['resistance']:
+                fig.add_hline(y=r, line_dash="dash", line_color="rgba(255, 51, 51, 0.3)", annotation_text="Resistance", annotation_position="top right")
             
             # Neural Extension
             last_idx = df_plot.index[-1]

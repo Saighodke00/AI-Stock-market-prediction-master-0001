@@ -1,15 +1,19 @@
 import numpy as np
-import tensorflow as tf
 try:
-    import tf_keras as keras
-    from tf_keras.layers import Input, Dense, Dropout, GRU, Conv1D, BatchNormalization, Flatten, Layer, MultiHeadAttention, LayerNormalization, Add
-    from tf_keras.callbacks import EarlyStopping, ReduceLROnPlateau
-    import tf_keras.backend as K
-except ImportError:
-    import tensorflow.keras as keras
-    from tensorflow.keras.layers import Input, Dense, Dropout, GRU, Conv1D, BatchNormalization, Flatten, Layer, MultiHeadAttention, LayerNormalization, Add
-    from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-    import tensorflow.keras.backend as K
+    import tensorflow as tf
+    try:
+        import tf_keras as keras
+        from tf_keras.layers import Input, Dense, Dropout, GRU, Conv1D, BatchNormalization, Flatten, Layer, MultiHeadAttention, LayerNormalization, Add
+        from tf_keras.callbacks import EarlyStopping, ReduceLROnPlateau
+        import tf_keras.backend as K
+    except ImportError:
+        import tensorflow.keras as keras
+        from tensorflow.keras.layers import Input, Dense, Dropout, GRU, Conv1D, BatchNormalization, Flatten, Layer, MultiHeadAttention, LayerNormalization, Add
+        from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+        import tensorflow.keras.backend as K
+except Exception:
+    # Fallback placeholders for types if needed, but usually we just want to avoid the crash
+    pass
 import os
 try:
     import lightgbm as lgb
@@ -135,6 +139,8 @@ class CausalTradingEngine:
         
         # Combine losses for UI history
         self.history['loss'] = h1.history['loss']
+        if 'val_loss' in h1.history:
+            self.history['val_loss'] = h1.history['val_loss']
         return self.history
 
     def predict(self, X):
@@ -158,7 +164,7 @@ class CausalTradingEngine:
         
         return dir_prob, q10, q50, q90
 
-    def get_signal(self, dir_prob, mean_ret, adx, wf_sharpe, atr):
+    def get_signal(self, dir_prob, mean_ret, adx, wf_sharpe, atr, fii_dii_score=0):
         """
         Gating logic for research-grade signal quality.
         """
@@ -174,7 +180,14 @@ class CausalTradingEngine:
         # 4. Strategy Stability
         stability_gate = wf_sharpe > 1.2
         
-        if conf_gate and trend_gate and mag_gate and stability_gate:
+        # 5. Institutional Flow Alignment (Optional)
+        # If score is > 0 (bullish) and dir is Buy, it passes.
+        # If score is < 0 (bearish) and dir is Sell, it passes.
+        flow_gate = True
+        if fii_dii_score > 500 and dir_prob < 0.5: flow_gate = False # Bearish signal against Bullish flow
+        if fii_dii_score < -500 and dir_prob > 0.5: flow_gate = False # Bullish signal against Bearish flow
+        
+        if conf_gate and trend_gate and mag_gate and stability_gate and flow_gate:
             if dir_prob > 0.65: return "BUY", "#00ff88"
             if dir_prob < 0.35: return "SELL", "#ff4b4b"
             
@@ -240,12 +253,19 @@ def predict_next_day(engine, last_sequence, scaler, fallback_model=None):
     dummy_row = np.zeros((1, num_features))
     dummy_row[0, 0] = last_scaled_close
     
-    last_actual_close = scaler.inverse_transform(dummy_row)[0, 0]
-    
-    # Calculate forecast prices for each quantile
-    price_q10 = last_actual_close * np.exp(q10[0])
-    price_q50 = last_actual_close * np.exp(q50[0])
-    price_q90 = last_actual_close * np.exp(q90[0])
+    try:
+        last_actual_close = scaler.inverse_transform(dummy_row)[0, 0]
+        # Guard against zero or extreme returns
+        q10_ret = np.clip(np.nan_to_num(q10[0]), -0.2, 0.2)
+        q50_ret = np.clip(np.nan_to_num(q50[0]), -0.2, 0.2)
+        q90_ret = np.clip(np.nan_to_num(q90[0]), -0.2, 0.2)
+        
+        price_q10 = last_actual_close * np.exp(q10_ret)
+        price_q50 = last_actual_close * np.exp(q50_ret)
+        price_q90 = last_actual_close * np.exp(q90_ret)
+    except Exception:
+        # Fallback if scaling fails
+        price_q10 = price_q50 = price_q90 = 0.0
     
     return float(price_q10), float(price_q50), float(price_q90)
 

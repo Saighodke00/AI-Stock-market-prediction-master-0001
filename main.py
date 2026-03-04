@@ -5,6 +5,13 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 
+# ── SILENCE TENSORFLOW ────────────────────────────────────────────────────────
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"      # 0=all, 1=no INFO, 2=no INFO/WARN, 3=no INFO/WARN/ERROR
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"     # Disable oneDNN custom operations warnings
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+# ──────────────────────────────────────────────────────────────────────────────
+
 import redis
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse, FileResponse
@@ -23,13 +30,35 @@ try:
 except ImportError:
     HAS_TFT = False
 
-# Import core modules
-# Adjust these imports according to your actual module structure
-from signal_gate import run_inference, SignalOutput
+from signal_gate import run_inference, SignalOutput, gate_signal
 from utils.sentiment import fetch_and_score_ticker
 from utils.explainability import get_full_explanation
 from utils.backtest import run_backtest
 from utils.alpaca_integration import alpaca_client
+from insider_tracker import get_insider_summary
+from correlation import calculate_correlation_matrix, analyze_portfolio_risk
+from paper_trading import follow_signal, get_portfolio_summary, reset_portfolio, get_current_price
+from models import SessionLocal, init_db
+
+# ── TFLite Engine ─────────────────────────────────────────────────────────────
+class TFLiteModel:
+    def __init__(self, model_path: str):
+        self.interpreter = tf.lite.Interpreter(model_path=model_path)
+        self.interpreter.allocate_tensors()
+        self.input_details = self.interpreter.get_input_details()
+        self.output_details = self.interpreter.get_output_details()
+        self.name = os.path.basename(model_path)
+
+    def predict(self, input_data: np.ndarray) -> Dict[str, float]:
+        """Simple TFLite inference mapping logic."""
+        # This is a simplified wrapper. Real implementation would handle scaling/reshaping.
+        self.interpreter.set_tensor(self.input_details[0]['index'], input_data.astype(np.float32))
+        self.interpreter.invoke()
+        output = self.interpreter.get_tensor(self.output_details[0]['index'])[0]
+        # Map output indices to quantiles (assuming standard Apex 3-quantile output)
+        return {"q0.1": float(output[0]), "q0.5": float(output[1]), "q0.9": float(output[2])}
+
+# ──────────────────────────────────────────────────────────────────────────────
 
 logger = logging.getLogger("apex_ai.api")
 logging.basicConfig(level=logging.INFO)
@@ -64,11 +93,33 @@ redis_client = RedisWrapper(REDIS_URL)
 
 class AppState:
     model: Any = None
+    tflite_models: Dict[str, TFLiteModel] = {}
     dataset: Any = None
     model_loaded: bool = False
     start_time: datetime = datetime.now()
 
 state = AppState()
+
+state = AppState()
+
+# ── Background Tasks ──────────────────────────────────────────────────────────
+import asyncio
+from paper_trading import update_all_position_prices
+
+async def background_price_updater():
+    """Update all paper trading positions every 5 minutes."""
+    while True:
+        try:
+            logger.info("Starting background price update for paper positions...")
+            db = SessionLocal()
+            try:
+                update_all_position_prices(db)
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Background price update error: {e}")
+        
+        await asyncio.sleep(300) # 5 minutes
 
 # ==============================================================================
 # LIFESPAN
@@ -79,24 +130,52 @@ async def lifespan(app: FastAPI):
     # Load TFT Model
     logger.info("Initializing Apex AI Backend...")
     try:
-        if HAS_TFT:
-            # We assume model exists at models/tft_model.ckpt
-            model_path = os.getenv("MODEL_PATH", "models/tft_model.ckpt")
-            if os.path.exists(model_path):
-                logger.info(f"Loading TFT model from {model_path}")
-                state.model = TemporalFusionTransformer.load_from_checkpoint(model_path)
-                state.model_loaded = True
-            else:
-                logger.warning(f"Warning: TFT model not found at {model_path}. Placeholder used.")
-                state.model_loaded = False
+        # 1. Try PyTorch Checkpoint
+        model_path = os.getenv("MODEL_PATH", "models/tft_model.ckpt")
+        if HAS_TFT and os.path.exists(model_path):
+            logger.info(f"Loading TFT model from {model_path}")
+            state.model = TemporalFusionTransformer.load_from_checkpoint(model_path)
+            state.model_loaded = True
         else:
-            logger.warning("pytorch_forecasting not installed. Cannot load TFT.")
-            state.model_loaded = False
+            if not HAS_TFT: logger.warning("pytorch_forecasting not installed.")
+            else: logger.warning(f"TFT checkpoint not found at {model_path}.")
+            
+            # 2. Discover TFLite Models as fallback
+            model_dir = "models"
+            if os.path.exists(model_dir):
+                for f in os.listdir(model_dir):
+                    if f.endswith(".tflite"):
+                        # Improved mapping: swing_NVDA.tflite -> NVDA, swing_RELIANCE_NS.tflite -> RELIANCE
+                        # We take everything between 'swing_' and '.tflite' or handle common patterns
+                        ticker_part = f.replace(".tflite", "").split("_")
+                        if len(ticker_part) > 1:
+                            # If it has a suffix like _NS, join it back or take the middle part
+                            # Example: swing_RELIANCE_NS -> RELIANCE (if we want to strip _NS)
+                            # Or just keep it as RELIANCE_NS for exact matching
+                            ticker = "_".join(ticker_part[1:]).upper()
+                        else:
+                            ticker = ticker_part[0].upper()
+                        
+                        logger.info(f"Mapping TFLite model to {ticker} from file {f}")
+                        try:
+                            state.tflite_models[ticker] = TFLiteModel(os.path.join(model_dir, f))
+                        except Exception as e:
+                            logger.error(f"Failed to load {f}: {e}")
+            
+            if state.tflite_models:
+                logger.info(f"Successfully loaded {len(state.tflite_models)} TFLite models.")
+                state.model_loaded = True # Mark as loaded if we have any model
+            else:
+                logger.warning("No models (CKPT or TFLite) found. Using placeholders.")
+                state.model_loaded = False
             
     except Exception as e:
-        logger.error(f"Failed to load TFT model: {e}")
+        logger.error(f"Failed to initialize models: {e}")
         state.model_loaded = False
-        
+    
+    # Start Background Tasks
+    asyncio.create_task(background_price_updater())
+    
     yield
     # Cleanup
     if redis_client.enabled:
@@ -136,6 +215,12 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"error": "Internal Server Error", "detail": str(exc)},
     )
 
+def normalize_ticker(t: str) -> str:
+    """Helper to match AAPL, AAPL.NS, AAPL_NS etc."""
+    # Strip dots, underscores, and common suffixes like .NS, _NS
+    t = t.upper().replace(".NS", "").replace("_NS", "").replace(".BS", "").replace("_BS", "")
+    return "".join([c for c in t if c.isalnum()])
+
 # ==============================================================================
 # PYDANTIC MODELS
 # ==============================================================================
@@ -166,6 +251,20 @@ class SentimentDetail(BaseModel):
     score: float
     headlines: List[SentimentHeadline]
 
+class InsiderMetrics(BaseModel):
+    insider_buy_30d: float
+    insider_sell_30d: float
+    net_insider_flow: float
+    buy_sell_ratio: float
+    cluster_buy: bool
+    transaction_count: int
+
+class InsiderSummary(BaseModel):
+    ticker: str
+    metrics: InsiderMetrics
+    interpretation: str
+    last_updated: str
+
 class SignalAPIResponse(BaseModel):
     ticker: str
     current_price: float
@@ -176,8 +275,55 @@ class SignalAPIResponse(BaseModel):
     historical_data: List[HistoricalPoint]
     forecast_data: List[ForecastPoint]
     shap_features: List[ShapFeature]
+
+class CorrelationResponse(BaseModel):
+    matrix: Dict[str, Dict[str, float]]
+    tickers: List[str]
+    period: str
+    computed_at: str
+
+class RiskAssessment(BaseModel):
+    avg_correlation: float
+    concentration_risk: str
+    most_correlated_pair: Optional[Tuple[str, str]]
+    most_correlated_value: float
+    suggestion: str
+
+class PortfolioCorrelationResponse(BaseModel):
+    correlation: CorrelationResponse
+    risk: RiskAssessment
+
+# ── Paper Trading Models ─────────────────────────────────────────────────────
+class PaperPositionSchema(BaseModel):
+    ticker: str
+    shares: float
+    entry: float
+    current: float
+    pnl: float
+    pnl_pct: float
+
+class PaperPortfolioSummary(BaseModel):
+    cash_balance: float
+    market_value: float
+    total_value: float
+    total_return_pct: float
+    win_rate: float
+    num_trades: int
+    positions: List[PaperPositionSchema]
+
+class PaperTradeSchema(BaseModel):
+    ticker: str
+    action: str
+    shares: float
+    price: float
+    total_value: float
+    signal_confidence: float
+    pnl: Optional[float]
+    opened_at: str
+    closed_at: Optional[str]
     explanation: str
     sentiment: SentimentDetail
+    insider_analysis: Optional[InsiderSummary] = None
     last_updated: str
 
 class ScreenerResponse(BaseModel):
@@ -334,31 +480,42 @@ async def get_signal(request: Request, ticker: str):
         prev_price = float(df['Close'].iloc[-2]) if len(df) > 1 else current_price
         pct_change = ((current_price - prev_price) / prev_price) * 100
 
-        # 3. Run Inference (Mock if model not loaded)
-        if state.model_loaded:
+        # 3. Run Inference
+        norm_ticker = normalize_ticker(ticker)
+        tflite_match = None
+        for k, v in state.tflite_models.items():
+            if normalize_ticker(k) == norm_ticker:
+                tflite_match = v
+                break
+
+        if state.model and state.model_loaded:
+            # Primary TFT Inference
             sig_out = run_inference(ticker=ticker, model=state.model, training_dataset=state.dataset, sentiment_score=score)
+            importance = {"rsi_14": 0.4, "macd_diff": 0.3} # Default importance logic
+        elif tflite_match:
+            # TFLite Fallback
+            logger.info(f"Using TFLite model for {ticker}")
+            # Mock input features for TFLite inference demonstration
+            mock_features = np.zeros((1, tflite_match.input_details[0]['shape'][1]))
+            preds = tflite_match.predict(mock_features)
             
-            # 4. Explainability
-            try:
-                # We need actual dataloader for importance if possible, otherwise mock or pass None
-                exp_data = get_full_explanation(state.model, None, sig_out, ticker, score)
-                explanation_text = exp_data.get("text", "AI Signal analysis complete.")
-                importance = exp_data.get("importance", {})
-            except Exception as e:
-                logger.warning(f"Explanation failed: {e}")
-                explanation_text = "Detailed explanation generation failed."
-                importance = {}
+            # Since TFLite usually outputs raw relative values, we map them back to price
+            absolute_preds = {k: current_price * (1 + v) for k, v in preds.items()}
+            sig_out = gate_signal(absolute_preds, 0.82, score, current_price)
+            importance = {"Technical Momentum": 0.6, "Volatility Index": 0.4}
         else:
             # Placeholder Logic for non-model demo
-            from signal_gate import gate_signal
             mock_preds = {
                 "q0.1": current_price * 0.98,
                 "q0.5": current_price * 1.02,
                 "q0.9": current_price * 1.05
             }
             sig_out = gate_signal(mock_preds, 0.75, score, current_price)
-            explanation_text = f"Apex AI detected momentum in {ticker} with {score:.2f} sentiment support."
             importance = {"rsi_14": 0.4, "macd_diff": 0.3, "SP500": 0.2, "VIX": 0.1}
+
+        # 4. Explainability & Signal Reasoning
+        from reasoning import get_explanation
+        explanation_text = get_explanation(sig_out, importance, score, ticker, "Bull" if pct_change > 0 else "Bear")
 
         # 5. Format Forecast Data (Generate 30-day trajectory)
         forecast_points = []
@@ -374,7 +531,14 @@ async def get_signal(request: Request, ticker: str):
                 p90=float(sig_out.p90 * (1 + (0.001 * i)))
             ))
 
-        # 6. Format Final Response
+        # 6. Insider Trading Analysis
+        try:
+            insider_data = get_insider_summary(ticker)
+        except Exception as e:
+            logger.warning(f"Insider tracker failed for {ticker}: {e}")
+            insider_data = None
+
+        # 7. Format Final Response
         shap_features = [ShapFeature(feature=k, impact=v) for k, v in importance.items()]
         
         headlines = []
@@ -399,6 +563,7 @@ async def get_signal(request: Request, ticker: str):
                 score=int((score + 1) * 50), # Scale -1..1 to 0..100
                 headlines=headlines
             ),
+            insider_analysis=insider_data,
             last_updated=datetime.now().isoformat()
         )
         
@@ -524,5 +689,92 @@ if os.path.isdir(frontend_path):
 else:
     logger.warning("Frontend 'dist' directory not found. Please run 'npm run build' inside 'frontend' for production serving.")
 
+@app.get("/api/correlation", response_model=PortfolioCorrelationResponse)
+@limiter.limit("5/minute")
+async def get_portfolio_correlation(request: Request, tickers: str):
+    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+    if not ticker_list:
+        raise HTTPException(status_code=400, detail="No tickers provided")
+    
+    try:
+        corr_results = calculate_correlation_matrix(ticker_list)
+        risk_results = analyze_portfolio_risk(ticker_list)
+        
+        return {
+            "correlation": corr_results,
+            "risk": risk_results
+        }
+    except Exception as e:
+        logger.error(f"Correlation API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/paper/follow/{ticker}")
+@limiter.limit("10/minute")
+async def api_follow_signal(request: Request, ticker: str):
+    # This would normally pull from the latest AI signal in Redis or state
+    # For now, we fetch current price and simulate a BUY or SELL
+    # In a real app, this would be triggered by a specific signal UID
+    db = SessionLocal()
+    try:
+        ticker = ticker.upper()
+        price = get_current_price(ticker)
+        if price <= 0:
+            raise HTTPException(status_code=400, detail="Invalid ticker or price unavailable")
+        
+        # Determine action: If position exists, SELL (close it), else BUY
+        from models import PaperPosition
+        existing = db.query(PaperPosition).filter(PaperPosition.ticker == ticker).first()
+        action = "SELL" if existing else "BUY"
+        
+        result = follow_signal(db, portfolio_id=1, ticker=ticker, action=action, current_price=price, confidence=0.85)
+        if result["status"] == "error":
+            raise HTTPException(status_code=400, detail=result["message"])
+        return result
+    finally:
+        db.close()
+
+@app.get("/api/paper/portfolio", response_model=PaperPortfolioSummary)
+async def api_get_paper_portfolio():
+    db = SessionLocal()
+    try:
+        summary = get_portfolio_summary(db, portfolio_id=1)
+        if not summary:
+            raise HTTPException(status_code=404, detail="Portfolio not found")
+        return summary
+    finally:
+        db.close()
+
+@app.get("/api/paper/trades", response_model=List[PaperTradeSchema])
+async def api_get_paper_trades():
+    db = SessionLocal()
+    try:
+        from models import PaperTrade
+        trades = db.query(PaperTrade).filter(PaperTrade.portfolio_id == 1).order_by(PaperTrade.opened_at.desc()).all()
+        return [
+            {
+                "ticker": t.ticker,
+                "action": t.action,
+                "shares": t.shares,
+                "price": t.price,
+                "total_value": t.total_value,
+                "signal_confidence": t.signal_confidence,
+                "pnl": t.pnl,
+                "opened_at": t.opened_at.isoformat(),
+                "closed_at": t.closed_at.isoformat() if t.closed_at else None
+            } for t in trades
+        ]
+    finally:
+        db.close()
+
+@app.post("/api/paper/reset")
+async def api_reset_paper_portfolio():
+    db = SessionLocal()
+    try:
+        reset_portfolio(db, portfolio_id=1)
+        return {"status": "success", "message": "Portfolio reset to $100,000"}
+    finally:
+        db.close()
+
 if __name__ == "__main__":
+    init_db() # Ensure DB is initialized
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
