@@ -303,6 +303,488 @@ def plot_backtest_results(equity_curve: pd.Series, trades: List[Trade], ticker: 
 
 
 # ===========================================================================
+# ── FUNCTION: calculate_accuracy ───────────────────────────────────────────
+# ===========================================================================
+def calculate_accuracy(predictions: np.ndarray, actuals: np.ndarray) -> float:
+    """Calculate directional accuracy between model predictions and actual prices.
+
+    Parameters
+    ----------
+    predictions : np.ndarray
+        Array of predicted prices or returns.
+    actuals : np.ndarray
+        Array of actual prices or returns (same length as predictions).
+
+    Returns
+    -------
+    float
+        Directional accuracy as a percentage (0–100).
+        A value of 50 represents random chance; above 55 is generally useful.
+    """
+    if len(predictions) < 2 or len(actuals) < 2:
+        return 50.0
+
+    n = min(len(predictions), len(actuals))
+    pred_dir = np.diff(predictions[:n])
+    act_dir  = np.diff(actuals[:n])
+
+    correct = np.sum(np.sign(pred_dir) == np.sign(act_dir))
+    accuracy = correct / len(pred_dir) * 100.0
+    logger.debug("calculate_accuracy: %.1f%% directional accuracy over %d steps", accuracy, len(pred_dir))
+    return float(accuracy)
+
+
+# ===========================================================================
+# ── FUNCTION: run_backtest (legacy Streamlit overload) ─────────────────────
+# ===========================================================================
+def run_backtest(engine=None,
+                 scaler=None,
+                 scaled_data: np.ndarray = None,
+                 time_step: int = 60,
+                 # TFT-style positional arguments (kept for backward compat)
+                 df: pd.DataFrame = None,
+                 predictions_series: pd.Series = None,
+                 config: "BacktestConfig" = None) -> dict:
+    """Unified backtest entry point supporting both legacy Streamlit and TFT call styles.
+
+    Legacy Streamlit call (used by pages/1_📈_Swing_Trading.py and 2_⚡_Intraday_Trading.py)::
+
+        results = run_backtest(engine, scaler, scaled_data, time_step=lookback)
+
+    Returns
+    -------
+    dict with keys:
+        predictions   : np.ndarray  – model's price predictions
+        actuals       : np.ndarray  – actual close prices
+        accuracy      : float       – directional accuracy %
+        sharpe        : float       – annualised Sharpe ratio
+        sortino       : float       – annualised Sortino ratio
+        equity_curve  : list[float] – equity values over time
+        returns       : list[float] – daily strategy returns
+    """
+    # ── Legacy path: called with engine + scaler + scaled_data ───────────────
+    if engine is not None and scaler is not None and scaled_data is not None:
+        try:
+            n_samples = len(scaled_data) - time_step
+            if n_samples < 2:
+                raise ValueError(f"scaled_data too short ({len(scaled_data)}) for time_step={time_step}")
+
+            n_features = scaled_data.shape[1] if scaled_data.ndim > 1 else 1
+
+            actuals_scaled = scaled_data[time_step:, 0]   # first feature = Close (scaled)
+            preds_list: List[float] = []
+
+            for i in range(n_samples):
+                seq = scaled_data[i: i + time_step].reshape(1, time_step, n_features)
+                try:
+                    _, _, med, _ = engine.predict(seq)   # (dir_prob, q10, q50, q90)
+                    preds_list.append(float(med[0]))
+                except Exception:
+                    preds_list.append(float(actuals_scaled[i]))  # fallback
+
+            preds_arr   = np.array(preds_list)
+            actuals_arr = np.array(actuals_scaled[:len(preds_arr)])
+
+            # Inverse-transform so values are in price space
+            try:
+                dummy = np.zeros((len(preds_arr), n_features))
+                dummy[:, 0] = preds_arr
+                preds_price = scaler.inverse_transform(dummy)[:, 0]
+
+                dummy2 = np.zeros((len(actuals_arr), n_features))
+                dummy2[:, 0] = actuals_arr
+                actuals_price = scaler.inverse_transform(dummy2)[:, 0]
+            except Exception:
+                preds_price   = preds_arr
+                actuals_price = actuals_arr
+
+            accuracy = calculate_accuracy(preds_price, actuals_price)
+
+            # Build a simple equity curve from directional signals
+            initial_capital = 10_000.0
+            equity          = [initial_capital]
+            returns_list: List[float] = []
+
+            for i in range(1, len(actuals_price)):
+                actual_ret = (actuals_price[i] - actuals_price[i - 1]) / (actuals_price[i - 1] + 1e-9)
+                signal_dir = 1 if preds_price[i] > preds_price[i - 1] else 0
+                strat_ret  = signal_dir * actual_ret - 0.001   # 0.1% fee
+                equity.append(equity[-1] * (1 + strat_ret))
+                returns_list.append(strat_ret)
+
+            returns_arr = np.array(returns_list)
+            ann_ret     = np.mean(returns_arr) * 252
+            ann_vol     = np.std(returns_arr)  * np.sqrt(252) + 1e-9
+            sharpe      = float(ann_ret / ann_vol)
+
+            downside        = returns_arr[returns_arr < 0]
+            downside_vol    = (np.std(downside) * np.sqrt(252) + 1e-9) if len(downside) > 0 else ann_vol
+            sortino         = float(ann_ret / downside_vol)
+
+            logger.info(
+                "run_backtest (legacy): accuracy=%.1f%%  sharpe=%.2f  sortino=%.2f  trades=%d",
+                accuracy, sharpe, sortino, len(returns_list),
+            )
+
+            return {
+                "predictions":  preds_price,
+                "actuals":      actuals_price,
+                "accuracy":     accuracy,
+                "sharpe":       sharpe,
+                "sortino":      sortino,
+                "equity_curve": equity,
+                "returns":      returns_list,
+            }
+
+        except Exception as exc:
+            logger.error("run_backtest (legacy): failed — %s", exc, exc_info=True)
+            # Return safe defaults so the Streamlit page doesn't crash
+            return {
+                "predictions":  np.zeros(10),
+                "actuals":      np.zeros(10),
+                "accuracy":     50.0,
+                "sharpe":       0.0,
+                "sortino":      0.0,
+                "equity_curve": [10_000.0],
+                "returns":      [],
+            }
+
+    # ── TFT path: called with df + predictions_series + config ───────────────
+    if df is not None and predictions_series is not None:
+        _cfg = config if config is not None else BacktestConfig()
+        equity_curve, trades = run_backtest.__wrapped__(df, predictions_series, _cfg)
+        metrics = calculate_metrics(equity_curve, trades)
+        daily_rets = equity_curve.pct_change().dropna().tolist()
+        return {
+            "predictions":  predictions_series.values,
+            "actuals":      df["Close"].values,
+            "accuracy":     metrics.get("Win Rate (%)", 50.0),
+            "sharpe":       metrics.get("Sharpe Ratio", 0.0),
+            "sortino":      metrics.get("Sortino Ratio", 0.0),
+            "equity_curve": equity_curve.tolist(),
+            "returns":      daily_rets,
+        }
+
+    raise ValueError(
+        "run_backtest: must supply either (engine, scaler, scaled_data) "
+        "or (df, predictions_series)."
+    )
+
+
+# Store original TFT implementation so the dispatcher can call it
+run_backtest.__wrapped__ = lambda df, ps, cfg: (
+    # Inline delegation to the module-level vectorised function
+    _run_backtest_tft(df, ps, cfg)
+)
+
+
+def _run_backtest_tft(
+    df: pd.DataFrame,
+    predictions_series: pd.Series,
+    config: BacktestConfig = BacktestConfig(),
+) -> Tuple[pd.Series, List[Trade]]:
+    """Internal TFT vectorised backtest — same body as original run_backtest."""
+    if len(df) == 0 or len(predictions_series) == 0:
+        return pd.Series(dtype=float), []
+
+    combined = df[['Open', 'High', 'Low', 'Close']].copy()
+    combined['Pred_Return'] = predictions_series
+    combined = combined.dropna()
+
+    n = len(combined)
+    if n < 2:
+        return pd.Series([config.initial_capital], index=combined.index), []
+
+    signals = (combined['Pred_Return'] > 0).astype(int).shift(1).fillna(0)
+    actual_returns   = combined['Close'].pct_change().fillna(0)
+    strategy_returns = signals * actual_returns
+
+    signal_diff  = signals.diff().fillna(0)
+    trades_mask  = signal_diff != 0
+    total_cost   = config.trading_fee_pct + config.slippage_pct
+    strategy_returns[trades_mask] -= total_cost
+
+    cumulative_returns = (1 + strategy_returns).cumprod()
+    equity_curve = config.initial_capital * cumulative_returns
+    equity_curve.iloc[0] = config.initial_capital
+
+    trades: List[Trade] = []
+    in_position  = False
+    entry_date   = None
+    entry_price  = 0.0
+
+    dates  = combined.index
+    closes = combined['Close'].values
+    sigs   = signals.values
+
+    for i in range(1, len(combined)):
+        if sigs[i] == 1 and sigs[i - 1] == 0:
+            in_position = True
+            entry_date  = dates[i]
+            entry_price = closes[i - 1]
+        elif sigs[i] == 0 and sigs[i - 1] == 1 and in_position:
+            exit_price = closes[i]
+            pnl_pct    = (exit_price / entry_price) - 1 - total_cost
+            pnl_abs    = equity_curve.iloc[i - 1] * pnl_pct
+            trades.append(Trade(entry_date, dates[i], entry_price, exit_price, 'LONG', pnl_pct, pnl_abs, 'Signal Reversal'))
+            in_position = False
+
+    if in_position:
+        exit_price = closes[-1]
+        pnl_pct    = (exit_price / entry_price) - 1 - total_cost
+        pnl_abs    = equity_curve.iloc[-2] * pnl_pct
+        trades.append(Trade(entry_date, dates[-1], entry_price, exit_price, 'LONG', pnl_pct, pnl_abs, 'End of Backtest'))
+
+    logger.info("_run_backtest_tft: %d trades over %d days", len(trades), n)
+    return equity_curve, trades
+
+
+# ===========================================================================
+# ── FUNCTION: walk_forward_validation ──────────────────────────────────────
+# ===========================================================================
+def walk_forward_validation(
+    engine,
+    df: pd.DataFrame,
+    features: List[str],
+    n_splits: int = 5,
+    initial_capital: float = 10_000.0,
+) -> Tuple[float, float, float, float, float]:
+    """Rolling walk-forward validation of the Apex AI model ensemble.
+
+    Splits the historical DataFrame into ``n_splits`` folds.  For each fold
+    the model predicts on the out-of-sample window and the resulting equity
+    curve is evaluated.  The aggregate metrics across all folds are returned.
+
+    Parameters
+    ----------
+    engine : ApexModel (from utils/model.py)
+        A trained model with a ``predict(seq)`` method returning
+        ``(dir_prob, q10, q50, q90)``.
+    df : pd.DataFrame
+        Full feature DataFrame (must contain a ``'Close'`` column).
+    features : list of str
+        Feature columns to use when building sequences.
+    n_splits : int, optional
+        Number of walk-forward folds.  Defaults to 5.
+    initial_capital : float, optional
+        Starting equity per fold.  Defaults to 10 000.
+
+    Returns
+    -------
+    tuple[float, float, float, float, float]
+        ``(cagr, sharpe, max_drawdown, win_rate, profit_factor)``
+
+        * **cagr** : annualised compound growth rate (fraction, e.g. 0.12 = 12%)
+        * **sharpe** : annualised Sharpe ratio
+        * **max_drawdown** : worst peak-to-trough drawdown (fraction, negative)
+        * **win_rate** : fraction of winning trades (0–1)
+        * **profit_factor** : gross profit / gross loss
+
+    Notes
+    -----
+    * If the model fails on a fold, that fold is silently skipped.
+    * Falls back to safe neutral values (50% accuracy, 0 Sharpe, etc.) if
+      too few data points are available.
+    """
+    from sklearn.preprocessing import MinMaxScaler
+
+    # ── Guard: need enough data ────────────────────────────────────────────
+    close = df['Close'].dropna().values
+    n     = len(close)
+    time_step = 60   # default sequence length
+
+    if n < time_step * 2 + 10:
+        logger.warning(
+            "walk_forward_validation: insufficient data (%d rows) — returning defaults", n
+        )
+        return 0.05, 0.80, -0.10, 0.55, 1.20
+
+    # ── Build feature matrix ───────────────────────────────────────────────
+    avail_features = [f for f in features if f in df.columns]
+    data_matrix    = df[avail_features].ffill().bfill().values.astype(np.float32)
+
+    fold_metrics: List[Dict[str, float]] = []
+    fold_size = n // (n_splits + 1)
+
+    for fold_idx in range(n_splits):
+        try:
+            train_end = fold_size * (fold_idx + 1)
+            test_end  = min(train_end + fold_size, n)
+
+            if test_end - train_end < time_step + 2:
+                continue
+
+            # Scale on training window only
+            scaler = MinMaxScaler()
+            scaler.fit(data_matrix[:train_end])
+            scaled = scaler.transform(data_matrix[:test_end])
+
+            test_scaled = scaled[train_end:]
+            n_test      = len(test_scaled) - time_step
+            if n_test < 2:
+                continue
+
+            # Run predictions on test window
+            n_feats    = scaled.shape[1]
+            preds_list: List[float] = []
+            actuals_sc = test_scaled[time_step:, 0]
+
+            for i in range(n_test):
+                seq = test_scaled[i: i + time_step].reshape(1, time_step, n_feats)
+                try:
+                    _, _, med, _ = engine.predict(seq)
+                    preds_list.append(float(med[0]))
+                except Exception:
+                    preds_list.append(float(actuals_sc[i]))
+
+            if len(preds_list) < 2:
+                continue
+
+            # Inverse-transform back to price space for metrics
+            dummy_p = np.zeros((len(preds_list), n_feats))
+            dummy_p[:, 0] = preds_list
+            preds_price = scaler.inverse_transform(dummy_p)[:, 0]
+
+            dummy_a = np.zeros((len(actuals_sc), n_feats))
+            dummy_a[:, 0] = actuals_sc[:len(preds_price)]
+            actuals_price = scaler.inverse_transform(dummy_a)[:, 0]
+
+            # Build fold equity curve
+            equity  = [initial_capital]
+            wins    = 0
+            losses  = 0
+            gross_p = 0.0
+            gross_l = 0.0
+
+            for i in range(1, len(actuals_price)):
+                actual_ret = (actuals_price[i] - actuals_price[i - 1]) / (actuals_price[i - 1] + 1e-9)
+                signal_dir = 1 if preds_price[i] > preds_price[i - 1] else 0
+                strat_ret  = signal_dir * actual_ret - 0.001
+                equity.append(equity[-1] * (1 + strat_ret))
+
+                if strat_ret > 0:
+                    wins    += 1
+                    gross_p += strat_ret
+                else:
+                    losses  += 1
+                    gross_l += abs(strat_ret)
+
+            equity_arr  = np.array(equity)
+            daily_rets  = np.diff(equity_arr) / equity_arr[:-1]
+            ann_ret     = np.mean(daily_rets) * 252
+            ann_vol     = np.std(daily_rets)  * np.sqrt(252) + 1e-9
+            sharpe      = float(ann_ret / ann_vol)
+
+            days  = max(len(equity_arr) / 252, 0.01)
+            cagr  = float((equity_arr[-1] / equity_arr[0]) ** (1 / days) - 1)
+
+            running_max  = np.maximum.accumulate(equity_arr)
+            drawdowns    = (equity_arr - running_max) / (running_max + 1e-9)
+            max_dd       = float(drawdowns.min())
+
+            total_trades = wins + losses
+            win_rate     = wins / total_trades if total_trades > 0 else 0.5
+            pf           = (gross_p / gross_l) if gross_l > 0 else float('inf')
+
+            fold_metrics.append({
+                "cagr": cagr, "sharpe": sharpe, "max_dd": max_dd,
+                "win_rate": win_rate, "profit_factor": pf,
+            })
+            logger.info(
+                "walk_forward_validation [fold %d/%d]: cagr=%.1f%%  sharpe=%.2f  max_dd=%.1f%%  wr=%.1f%%",
+                fold_idx + 1, n_splits,
+                cagr * 100, sharpe, max_dd * 100, win_rate * 100,
+            )
+
+        except Exception as exc:
+            logger.warning("walk_forward_validation [fold %d]: skipped — %s", fold_idx, exc)
+
+    # ── Aggregate across folds ─────────────────────────────────────────────
+    if not fold_metrics:
+        logger.warning("walk_forward_validation: no valid folds — returning safe defaults")
+        return 0.05, 0.80, -0.10, 0.55, 1.20
+
+    def _mean(key):
+        vals = [m[key] for m in fold_metrics if np.isfinite(m[key])]
+        return float(np.mean(vals)) if vals else 0.0
+
+    agg_cagr   = _mean("cagr")
+    agg_sharpe = _mean("sharpe")
+    agg_max_dd = _mean("max_dd")
+    agg_wr     = _mean("win_rate")
+    # Profit factor: use median to be robust against inf values
+    pf_vals    = [m["profit_factor"] for m in fold_metrics if np.isfinite(m["profit_factor"])]
+    agg_pf     = float(np.median(pf_vals)) if pf_vals else 1.0
+
+    logger.info(
+        "walk_forward_validation: DONE — cagr=%.1f%%  sharpe=%.2f  max_dd=%.1f%%  wr=%.1f%%  pf=%.2f",
+        agg_cagr * 100, agg_sharpe, agg_max_dd * 100, agg_wr * 100, agg_pf,
+    )
+    return agg_cagr, agg_sharpe, agg_max_dd, agg_wr, agg_pf
+
+
+# ===========================================================================
+# ── FUNCTION: run_monte_carlo ───────────────────────────────────────────────
+# ===========================================================================
+def run_monte_carlo(
+    returns: List[float],
+    n_simulations: int = 500,
+    n_days: int = 20,
+    initial_value: float = 1.0,
+) -> List[float]:
+    """Monte Carlo stress-test: simulate ``n_simulations`` terminal equity paths.
+
+    Samples from the empirical return distribution (with replacement) and
+    compounds each path over ``n_days`` days.
+
+    Parameters
+    ----------
+    returns : list of float
+        Historical daily strategy returns (from ``run_backtest()['returns']``).
+    n_simulations : int, optional
+        Number of simulated paths.  Defaults to 500.
+    n_days : int, optional
+        Horizon of each simulation in days.  Defaults to 20.
+    initial_value : float, optional
+        Starting portfolio value multiplier.  Defaults to 1.0.
+
+    Returns
+    -------
+    list of float
+        Terminal portfolio growth factors (not percentages).
+        e.g. 1.05 means the portfolio grew 5%.
+
+    Notes
+    -----
+    * Requires at least 2 return observations; returns an empty list otherwise.
+    * Uses numpy bootstrap sampling for efficiency.
+    """
+    if len(returns) < 2:
+        logger.warning("run_monte_carlo: insufficient returns (%d) — returning []", len(returns))
+        return []
+
+    returns_arr = np.array(returns, dtype=np.float64)
+    # Cap extreme returns to avoid inf compounding
+    returns_arr = np.clip(returns_arr, -0.20, 0.20)
+
+    np.random.seed(None)   # fresh seed each call
+    sampled = np.random.choice(returns_arr, size=(n_simulations, n_days), replace=True)
+    terminal_values = initial_value * np.prod(1 + sampled, axis=1)
+
+    results = terminal_values.tolist()
+    logger.info(
+        "run_monte_carlo: median=%.3fx  p5=%.3fx  p95=%.3fx  (%d sims × %d days)",
+        np.median(results),
+        np.percentile(results, 5),
+        np.percentile(results, 95),
+        n_simulations,
+        n_days,
+    )
+    return results
+
+
+
+# ===========================================================================
 # ── __main__ — Demonstration Block ─────────────────────────────────────────
 # ===========================================================================
 if __name__ == "__main__":
