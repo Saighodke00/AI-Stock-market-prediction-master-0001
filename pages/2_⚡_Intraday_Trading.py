@@ -22,6 +22,50 @@ from utils.technical_analysis import detect_support_resistance, calculate_positi
 
 intel = IndiaMarketIntelligence()
 
+def _suggest_ticker_fix(ticker: str):
+    import yfinance as yf
+    suggestions = []
+    t = ticker.upper().strip()
+    if not t.endswith('.NS') and not t.endswith('.BO') and '.' not in t:
+        suggestions.append(f"`{t}.NS` — NSE India")
+        suggestions.append(f"`{t}.BO` — BSE India")
+    if t.endswith('.NS'):
+        suggestions.append(f"`{t[:-3]}.BO` — Try BSE instead")
+    online = True
+    try:
+        test = yf.download("AAPL", period="5d", progress=False)
+        online = test is not None and not test.empty
+    except Exception:
+        online = False
+
+    st.markdown(f"""
+    <div style='background:rgba(255,83,112,0.06); border:1px solid rgba(255,83,112,0.25);
+                border-left:4px solid #ff5370; border-radius:0 12px 12px 0; padding:24px; margin:20px 0;'>
+        <div style='font-family:JetBrains Mono; font-size:11px; letter-spacing:2px; color:#ff5370;
+                    text-transform:uppercase; margin-bottom:12px;'>⚠ Market Data Fetch Failed</div>
+        <div style='font-size:16px; color:#fff;'><b>Ticker:</b> <code>{ticker}</code></div>
+        <div style='font-size:14px; color:#d0d8ef; margin-top:6px;'>Yahoo Finance returned no data for this symbol.</div>
+    </div>
+    """, unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**🌐 Connectivity**")
+        st.success("✓ Yahoo Finance reachable") if online else st.error("✗ Network issue — check connection")
+    with c2:
+        st.markdown("**🔧 Suggestions**")
+        for s in suggestions:
+            st.markdown(f"  • {s}")
+        if not suggestions:
+            st.info("Verify at [finance.yahoo.com](https://finance.yahoo.com)")
+    with st.expander("📖 Intraday Ticker Format Guide"):
+        st.markdown("""
+| Market | Format | Example |
+|---|---|---|
+| NSE India | `SYMBOL.NS` | `TATAMOTORS.NS` |
+| BSE India | `SYMBOL.BO` | `TATAMOTORS.BO` |
+| US Stocks | `SYMBOL` | `AAPL`, `NVDA` |
+        """)
+
 st.set_page_config(page_title="Intraday Precision · Apex AI", page_icon="⚡", layout="wide")
 
 st.markdown("""
@@ -429,6 +473,6 @@ if ticker:
         st.sidebar.success(f"WF Sharpe: {wf_sharpe:.2f}")
         st.sidebar.info(f"Profit Factor: {profit_factor:.2f} | Win Rate: {win_rate*100:.1f}%")
     elif df is not None:
-        st.error("Invalid Ticker or No Data available for this interval.")
+        _suggest_ticker_fix(ticker)
     else:
-        st.error("Invalid Ticker or No Data available for this interval.")
+        _suggest_ticker_fix(ticker)
