@@ -75,7 +75,7 @@ def _get_redis() -> Optional[redis.Redis]:
             _REDIS_CLIENT = client
             logger.info("Connected to Redis cache at localhost:6379")
         except redis.ConnectionError:
-            logger.warning("Redis is unavailable at localhost:6379. Caching will be disabled.")
+            logger.debug("Redis unavailable at localhost:6379 — running without cache (expected in local dev).")
             _REDIS_CLIENT = False  # Use False to mark as explicitly failed to avoid reconnect loops
         except Exception as e:
             logger.error("Unexpected Redis error: %s. Caching disabled.", e)
