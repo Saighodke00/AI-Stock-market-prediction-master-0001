@@ -1,192 +1,384 @@
 import os
+import sys
 import streamlit as st
 import numpy as np
+
+# Enable Keras 2 legacy support
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
+
 try:
     import psutil
 except ImportError:
     psutil = None
 
-import time
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from utils.india_market import IndiaMarketIntelligence
 
 intel = IndiaMarketIntelligence()
 
 st.set_page_config(
-    page_title="Apex AI - Intelligence Hub",
+    page_title="Apex AI — Intelligence Hub",
+    page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Aero Terminal Design System
+# ────────────────────────────────────────────────────────────────────────────
+# WORLD-CLASS CSS DESIGN SYSTEM
+# ────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&family=Share+Tech+Mono&display=swap');
-    
-    :root {
-        --amber: #f5a623;
-        --amber-glow: rgba(245, 166, 35, 0.2);
-        --bg-dark: #060810;
-        --panel-bg: rgba(15, 18, 32, 0.7);
-        --border: rgba(26, 32, 53, 1);
-    }
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
 
-    .stApp {
-        background-color: var(--bg-dark);
-        color: #c8d0e0;
-        font-family: 'Outfit', sans-serif;
-    }
+/* ── Reset & Root ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
 
-    /* Aero Glass Panels */
-    .stCard {
-        background: var(--panel-bg);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 35px;
-        backdrop-filter: blur(24px);
-        transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-    .stCard:hover {
-        border-color: var(--amber);
-        transform: translateY(-8px);
-        background: rgba(15, 18, 32, 0.9);
-        box-shadow: 0 12px 40px rgba(0,0,0,0.4);
-    }
+:root {
+    --bg:        #03050c;
+    --bg2:       #070c18;
+    --panel:     rgba(12, 17, 35, 0.85);
+    --border:    rgba(255,255,255,0.06);
+    --border-h:  rgba(255,255,255,0.15);
+    --amber:     #f7b731;
+    --teal:      #00e5c9;
+    --blue:      #4f8cff;
+    --red:       #ff5370;
+    --green:     #00e676;
+    --txt:       #d0d8ef;
+    --txt2:      #5a6585;
+    --glow-a:    rgba(247,183,49,0.12);
+    --glow-t:    rgba(0,229,201,0.10);
+}
 
-    .card-title {
-        font-size: 32px;
-        font-weight: 700;
-        color: #fff;
-        margin-bottom: 10px;
-        font-family: 'Outfit', sans-serif;
-    }
-    .card-tag {
-        font-size: 10px;
-        font-family: 'Share Tech Mono', monospace;
-        color: var(--amber);
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin-bottom: 15px;
-    }
+/* ── Body & App ─────────────────────────────────────────────────────────── */
+.stApp {
+    background: var(--bg);
+    color: var(--txt);
+    font-family: 'Space Grotesk', sans-serif;
+}
 
-    /* Ticker Animation */
-    @keyframes ticker {
-        0% { transform: translateX(100%); }
-        100% { transform: translateX(-100%); }
-    }
-    .ticker-wrap {
-        width: 100%;
-        overflow: hidden;
-        background: rgba(245, 166, 35, 0.03);
-        border-top: 1px solid rgba(245, 166, 35, 0.1);
-        border-bottom: 1px solid rgba(245, 166, 35, 0.1);
-        padding: 10px 0;
-        margin: 20px 0;
-    }
-    .ticker {
-        display: inline-block;
-        white-space: nowrap;
-        animation: ticker 40s linear infinite;
-        color: var(--amber);
-        font-family: 'Share Tech Mono', monospace;
-        font-size: 14px;
-        opacity: 0.8;
-    }
+/* hide default streamlit header/footer */
+#MainMenu, header, footer { visibility: hidden; }
+.block-container { padding: 0 2rem 2rem 2rem !important; max-width: 100% !important; }
 
-    /* Status Pill */
-    .status-pill {
-        background: rgba(0, 212, 180, 0.1);
-        border: 1px solid rgba(0, 212, 180, 0.3);
-        color: #00d4b4;
-        padding: 4px 12px;
-        border-radius: 50px;
-        font-size: 11px;
-        font-family: 'Share Tech Mono', monospace;
-    }
+/* ── Sidebar Glassmorphism ──────────────────────────────────────────────── */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #07101e 0%, #03070f 100%);
+    border-right: 1px solid var(--border);
+}
+section[data-testid="stSidebar"] * { color: var(--txt) !important; }
+
+/* ── Animated gradient background ──────────────────────────────────────── */
+.apex-bg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+        radial-gradient(ellipse 80% 60% at 10% 10%, rgba(79,140,255,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 90% 80%, rgba(0,229,201,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(247,183,49,0.03) 0%, transparent 70%);
+}
+
+/* ── Ticker Bar ─────────────────────────────────────────────────────────── */
+.ticker-rail {
+    width: 100%; overflow: hidden;
+    background: linear-gradient(90deg, transparent, rgba(247,183,49,0.03), transparent);
+    border-top: 1px solid rgba(247,183,49,0.12);
+    border-bottom: 1px solid rgba(247,183,49,0.12);
+    padding: 9px 0; margin-bottom: 32px;
+    position: relative;
+}
+.ticker-rail::before, .ticker-rail::after {
+    content: '';
+    position: absolute; top: 0; width: 80px; height: 100%; z-index: 2;
+}
+.ticker-rail::before { left: 0; background: linear-gradient(90deg, var(--bg), transparent); }
+.ticker-rail::after  { right: 0; background: linear-gradient(-90deg, var(--bg), transparent); }
+@keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ticker-inner {
+    display: inline-flex; gap: 48px; white-space: nowrap;
+    animation: slide 36s linear infinite;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+}
+.tick-item { display: flex; align-items: center; gap: 8px; }
+.tick-name { color: var(--txt2); }
+.tick-up   { color: var(--green); }
+.tick-dn   { color: var(--red); }
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.hero {
+    text-align: center;
+    padding: 72px 0 56px;
+    position: relative;
+}
+.hero-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 4px;
+    color: var(--amber); text-transform: uppercase;
+    margin-bottom: 20px; opacity: 0.85;
+}
+@keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+.hero-title {
+    font-size: clamp(52px, 7vw, 88px);
+    font-weight: 700; line-height: 1;
+    background: linear-gradient(120deg, #fff 20%, var(--amber) 45%, #fff 55%, var(--teal) 80%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 5s linear infinite;
+    margin-bottom: 20px;
+}
+.hero-sub {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--txt2); font-size: 15px; letter-spacing: 1px;
+}
+.hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(0,229,201,0.08);
+    border: 1px solid rgba(0,229,201,0.25);
+    border-radius: 50px; padding: 6px 18px;
+    font-size: 12px; color: var(--teal);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 28px;
+}
+@keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+.pulse-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--teal);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--teal);
+}
+
+/* ── Module Cards ───────────────────────────────────────────────────────── */
+.mod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 0 0 40px; }
+.mod-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 32px;
+    backdrop-filter: blur(24px) saturate(1.5);
+    position: relative; overflow: hidden;
+    transition: transform 0.35s cubic-bezier(.4,0,.2,1),
+                border-color 0.35s, box-shadow 0.35s;
+}
+.mod-card::before {
+    content: '';
+    position: absolute;
+    inset: 0; border-radius: 20px;
+    opacity: 0; transition: opacity 0.35s;
+}
+.mod-card-swing::before { background: radial-gradient(ellipse at 0% 0%, var(--glow-a), transparent 65%); }
+.mod-card-intra::before { background: radial-gradient(ellipse at 100% 0%, var(--glow-t), transparent 65%); }
+.mod-card:hover { transform: translateY(-6px); border-color: var(--border-h); }
+.mod-card:hover::before { opacity: 1; }
+.mod-card-swing:hover { box-shadow: 0 20px 60px rgba(247,183,49,0.08); }
+.mod-card-intra:hover { box-shadow: 0 20px 60px rgba(0,229,201,0.08); }
+
+.mod-icon { font-size: 40px; margin-bottom: 20px; line-height: 1; }
+.mod-tier {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 3px;
+    text-transform: uppercase; margin-bottom: 12px;
+}
+.mod-tier-a { color: var(--amber); }
+.mod-tier-t { color: var(--teal); }
+.mod-name { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+.mod-desc { color: var(--txt2); font-size: 15px; line-height: 1.7; }
+.mod-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 28px; padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+.mod-arch { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--txt2); }
+.mod-status {
+    padding: 5px 14px; border-radius: 50px;
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+}
+.status-active  { background: rgba(0,230,118,0.08); border:1px solid rgba(0,230,118,0.25); color:var(--green); }
+.status-stream  { background: rgba(0,229,201,0.08); border:1px solid rgba(0,229,201,0.25); color:var(--teal); }
+.status-tuner   { background: rgba(79,140,255,0.08); border:1px solid rgba(79,140,255,0.25); color:var(--blue); }
+
+/* ── Stat Bar ───────────────────────────────────────────────────────────── */
+.stat-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-top: 8px;
+}
+.stat-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px;
+}
+.stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--txt2); text-transform: uppercase; margin-bottom: 8px;
+}
+.stat-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 26px; font-weight: 500; color: #fff;
+}
+.stat-val.green { color: var(--green); }
+.stat-val.amber { color: var(--amber); }
+
+/* ── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--amber); }
+
+/* ── Streamlit component overrides ─────────────────────────────────────── */
+div[data-testid="stMetric"] {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+}
+div[data-testid="stMetric"] label { color: var(--txt2) !important; font-size: 12px !important; }
+div[data-testid="stMetric"] [data-testid="stMetricValue"] { color: #fff !important; }
+div.stButton > button {
+    background: linear-gradient(135deg, var(--amber), #e6920f);
+    color: #000; font-weight: 700;
+    border: none; border-radius: 10px;
+    padding: 10px 24px; font-size: 14px;
+    transition: 0.3s; width: 100%;
+}
+div.stButton > button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(247,183,49,0.3); }
 </style>
+
+<div class="apex-bg"></div>
 """, unsafe_allow_html=True)
 
-# --- LIVE TICKER ---
-stocks = intel.get_sector_heatmap()
-if stocks:
-    ticker_text = " • ".join([f"{s['sector']}: {s['change']:+.2f}%" for s in stocks])
-    st.markdown(f"""
-    <div class="ticker-wrap">
-        <div class="ticker">
-            {ticker_text} • {ticker_text} • {ticker_text}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+# ── Live Ticker ──────────────────────────────────────────────────────────────
+sectors = intel.get_sector_heatmap()
+tick_html = ""
+if sectors:
+    items = ""
+    for s in sectors * 3:
+        change = s['change']
+        cls = "tick-up" if change >= 0 else "tick-dn"
+        arrow = "▲" if change >= 0 else "▼"
+        name = s['sector'].replace("NIFTY ", "")
+        items += f'<span class="tick-item"><span class="tick-name">{name}</span><span class="{cls}">{arrow} {abs(change):.2f}%</span></span>'
+    tick_html = f'<div class="ticker-rail"><div class="ticker-inner">{items}</div></div>'
+else:
+    tick_html = '<div class="ticker-rail"><div class="ticker-inner" style="color:#5a6585">Market data loading…</div></div>'
 
-# --- HERO ---
+st.markdown(tick_html, unsafe_allow_html=True)
+
+# ── Hero Section ─────────────────────────────────────────────────────────────
 st.markdown("""
-<div style='text-align: center; padding: 60px 0;'>
-    <h1 style='font-size: 64px; font-weight: 800; color: #f5a623; margin-bottom: 10px; letter-spacing: -2px;'>APEX <span style='color:#fff'>AI</span></h1>
-    <p style='color: #7a8299; font-size: 20px; font-family: "JetBrains Mono";'>NEURAL COMMAND CENTER // V4.0 AERO</p>
+<div class="hero">
+    <div class="hero-eyebrow">Neural Trading Intelligence Platform</div>
+    <div class="hero-title">APEX AI</div>
+    <div class="hero-sub">V4.0 · Aero Terminal · Institutional Grade Analytics</div>
+    <div class="hero-badge">
+        <span class="pulse-dot"></span>
+        LIVE · NSE/BSE Synchronized · AI Core Operational
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- MODELS ---
-c1, c2 = st.columns(2)
+# ── Module Cards ─────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="mod-grid">
 
-with c1:
-    st.markdown("""
-    <div class="stCard">
-        <div>
-            <div class="card-tag">Institutional Tier</div>
-            <div class="card-title">Swing Intelligence</div>
-            <p style='color:#7a8299; line-height:1.6;'>
-                Multi-day trend forecasting utilizing Deep Temporal LSTMs. 
-                Optimized for wealth accumulation and institutional momentum alignment.
-            </p>
-        </div>
-        <div style="margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05);">
-            <div style='display:flex; justify-content:space-between; align-items:center;'>
-                <span style='color:#fff; font-family:"Share Tech Mono";'>0.5% - 2% SPREAD</span>
-                <span class="status-pill">ACTIVE</span>
-            </div>
-        </div>
+  <div class="mod-card mod-card-swing">
+    <div class="mod-icon">📈</div>
+    <div class="mod-tier mod-tier-a">Institutional · Multi-Day</div>
+    <div class="mod-name">Swing Intelligence</div>
+    <p class="mod-desc">
+        Deep Temporal LSTM engine for multi-day trend forecasting. 
+        Cross-referenced with FII/DII institutional flow and Auto S/R levels 
+        for maximum conviction entries.
+    </p>
+    <div class="mod-footer">
+        <span class="mod-arch">LSTM · GRU Ensemble</span>
+        <span class="mod-status status-active">● ACTIVE</span>
     </div>
-    """, unsafe_allow_html=True)
+  </div>
 
-with c2:
-    st.markdown("""
-    <div class="stCard">
-        <div>
-            <div class="card-tag">High-Frequency Tier</div>
-            <div class="card-title" style="color:#00ffcc;">Intraday Precision</div>
-            <p style='color:#7a8299; line-height:1.6;'>
-                Sub-minute resolution scalping engine with recursive neural feedback. 
-                Designed for high-volatility capture and regime-aware entries.
-            </p>
-        </div>
-        <div style="margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05);">
-            <div style='display:flex; justify-content:space-between; align-items:center;'>
-                <span style='color:#fff; font-family:"Share Tech Mono";'>RECURSIVE GRU</span>
-                <span class="status-pill" style="border-color:#00ffcc33; color:#00ffcc; background:#00ffcc11;">STREAMING</span>
-            </div>
-        </div>
+  <div class="mod-card mod-card-intra">
+    <div class="mod-icon">⚡</div>
+    <div class="mod-tier mod-tier-t">High-Frequency · Intraday</div>
+    <div class="mod-name">Intraday Precision</div>
+    <p class="mod-desc">
+        Sub-minute recursive neural scalping engine. Combines EMA 9/21 crossovers, 
+        Bollinger Band breakouts, and real-time volatility regime detection 
+        for precision entries.
+    </p>
+    <div class="mod-footer">
+        <span class="mod-arch">Recursive GRU · TCN</span>
+        <span class="mod-status status-stream">◉ STREAMING</span>
     </div>
-    """, unsafe_allow_html=True)
+  </div>
 
-# --- SYSTEM HEALTH ---
-st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown("---")
+</div>
+""", unsafe_allow_html=True)
 
-sh1, sh2, sh3, sh4 = st.columns(4)
-with sh1:
-    cpu_val = psutil.cpu_percent() if psutil else "N/A"
-    st.markdown(f"**CORE LOAD**<br><span style='font-family:\"Share Tech Mono\"; font-size:22px;'>{cpu_val}%</span>", unsafe_allow_html=True)
-with sh2:
-    mem_val = psutil.virtual_memory().percent if psutil else "N/A"
-    st.markdown(f"**MEMORY FLUX**<br><span style='font-family:\"Share Tech Mono\"; font-size:22px;'>{mem_val}%</span>", unsafe_allow_html=True)
-with sh3:
-    st.markdown(f"**SYNC LATENCY**<br><span style='font-family:\"Share Tech Mono\"; font-size:22px;'>{np.random.randint(15, 30)}ms</span>", unsafe_allow_html=True)
-with sh4:
-    st.markdown(f"**NEURAL STATUS**<br><span style='color:#00d4b4; font-family:\"Share Tech Mono\"; font-size:22px;'>STABLE</span>", unsafe_allow_html=True)
+# ── Third card row ────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="mod-grid" style="grid-template-columns: 1fr 2fr;">
 
-st.sidebar.markdown("---")
-st.sidebar.info("Operational: Apex Terminal v4.0 is now aligned with NSE/BSE institutional flow data.")
+  <div class="mod-card">
+    <div class="mod-icon">⚙️</div>
+    <div class="mod-tier" style="color:var(--blue);">Auto · Optuna Powered</div>
+    <div class="mod-name" style="font-size:24px;">HyperDrive Tuner</div>
+    <p class="mod-desc">Bayesian Optimization to find the mathematically optimal neural architecture for any stock or timeframe.</p>
+    <div class="mod-footer">
+        <span class="mod-arch">Bayesian Search</span>
+        <span class="mod-status status-tuner">◈ READY</span>
+    </div>
+  </div>
+
+  <div class="mod-card" style="background:linear-gradient(135deg, rgba(12,17,35,0.9), rgba(8,12,25,0.9));">
+    <div class="mod-tier mod-tier-a">India Market Intelligence</div>
+    <div class="mod-name" style="font-size:22px;">🇮🇳 NSE/BSE Live Pulse</div>
+    <p class="mod-desc">
+        Real-time FII/DII institutional flow tracking, NSE sector rotation heatmap, 
+        and earnings calendar with AI-powered surprise score. 
+        Navigate the Indian market like an institution.
+    </p>
+    <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
+        <span style="background:rgba(247,183,49,0.08); border:1px solid rgba(247,183,49,0.2); color:var(--amber); padding:4px 12px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono';">FII/DII Flow</span>
+        <span style="background:rgba(247,183,49,0.08); border:1px solid rgba(247,183,49,0.2); color:var(--amber); padding:4px 12px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono';">Sector Heatmap</span>
+        <span style="background:rgba(247,183,49,0.08); border:1px solid rgba(247,183,49,0.2); color:var(--amber); padding:4px 12px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono';">Earnings Calendar</span>
+        <span style="background:rgba(247,183,49,0.08); border:1px solid rgba(247,183,49,0.2); color:var(--amber); padding:4px 12px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono';">Auto S/R</span>
+    </div>
+  </div>
+
+</div>
+""", unsafe_allow_html=True)
+
+# ── System Health Bar ─────────────────────────────────────────────────────────
+cpu_val  = f"{psutil.cpu_percent():.0f}" if psutil else "—"
+mem_val  = f"{psutil.virtual_memory().percent:.0f}" if psutil else "—"
+lat_val  = f"{np.random.randint(12, 28)}"
+fii      = intel.get_fii_dii_flow()
+fii_val  = f"{fii['total_flow']:+,.0f}" if fii else "—"
+fii_col  = "green" if (fii and fii['total_flow'] > 0) else "amber"
+
+st.markdown(f"""
+<div class="stat-row">
+    <div class="stat-box">
+        <div class="stat-label">CPU Core Load</div>
+        <div class="stat-val">{cpu_val}<span style="font-size:14px; color:var(--txt2);">%</span></div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Memory Flux</div>
+        <div class="stat-val">{mem_val}<span style="font-size:14px; color:var(--txt2);">%</span></div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">API Latency</div>
+        <div class="stat-val">{lat_val}<span style="font-size:14px; color:var(--txt2);">ms</span></div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Institutional Flow (Cr)</div>
+        <div class="stat-val {fii_col}">{fii_val}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("<div style='text-align:center; color:#242a3e; font-size:11px; margin-top:40px; font-family:JetBrains Mono'>APEX AI · FOR RESEARCH PURPOSES ONLY · NOT FINANCIAL ADVICE</div>", unsafe_allow_html=True)

@@ -20,48 +20,99 @@ from utils.technical_analysis import detect_support_resistance, calculate_positi
 
 intel = IndiaMarketIntelligence()
 
-st.set_page_config(page_title="Apex AI - Swing Intelligence", layout="wide")
 
-# --- PREMIUM GLASSMORPHISM CSS ---
+st.set_page_config(page_title="Swing Intelligence · Apex AI", page_icon="📈", layout="wide")
+
+# ── Design System CSS ────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
-    
-    /* Aero Terminal CSS */
-    .stApp { background-color: #060810; color: #c8d0e0; font-family: 'Outfit', sans-serif; }
-    
-    /* Panel Glassmorphism */
-    .metric-card, .analysis-block, .india-card {
-        background: rgba(15, 18, 32, 0.6);
-        border: 1px solid rgba(26, 32, 53, 1);
-        border-radius: 12px;
-        padding: 20px;
-        backdrop-filter: blur(16px);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.3);
-    }
-    .metric-card:hover { border-color: #f5a623; transform: translateY(-2px); transition: 0.3s; }
-    
-    .metric-label { font-size: 11px; color: #7a8299; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
-    .metric-value { font-size: 28px; font-weight: 700; color: #fff; margin-top: 8px; font-family: 'Share Tech Mono', monospace; }
-    
-    /* Signal Colors */
-    .color-buy { color: #00d4b4 !important; }
-    .color-sell { color: #ff4560 !important; }
-    .color-hold { color: #3d8bff !important; }
-    .color-amber { color: #f5a623 !important; }
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
 
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #060810; }
-    ::-webkit-scrollbar-thumb { background: #1a2035; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #f5a623; }
+*, *::before, *::after { box-sizing: border-box; }
+:root {
+    --bg: #03050c; --panel: rgba(12,17,35,0.9); --border: rgba(255,255,255,0.06);
+    --amber: #f7b731; --teal: #00e5c9; --red: #ff5370; --green: #00e676; --blue: #4f8cff;
+    --txt: #d0d8ef; --txt2: #5a6585;
+}
+.stApp { background: var(--bg); color: var(--txt); font-family: 'Space Grotesk', sans-serif; }
+#MainMenu, header, footer { visibility: hidden; }
+.block-container { padding: 1.5rem 2.5rem !important; max-width: 100% !important; }
+section[data-testid="stSidebar"] { background: #060c1a; border-right: 1px solid var(--border); }
+section[data-testid="stSidebar"] * { color: var(--txt) !important; }
+
+/* ── Metric Cards ── */
+.m-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 22px 20px;
+    transition: border-color 0.3s, transform 0.3s;
+}
+.m-card:hover { border-color: rgba(247,183,49,0.4); transform: translateY(-3px); }
+.m-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--txt2); margin-bottom: 10px;
+}
+.m-val { font-size: 28px; font-weight: 700; color: #fff; font-family: 'JetBrains Mono', monospace; }
+
+/* ── Analysis Panel ── */
+.analysis-panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-left: 3px solid var(--amber);
+    border-radius: 0 14px 14px 0;
+    padding: 24px;
+}
+
+/* ── Tags ── */
+.tag-green { background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.25); color: var(--green); padding: 3px 10px; border-radius: 50px; font-size: 11px; font-family: 'JetBrains Mono'; }
+.tag-amber { background: rgba(247,183,49,0.08); border: 1px solid rgba(247,183,49,0.25); color: var(--amber); padding: 3px 10px; border-radius: 50px; font-size: 11px; font-family: 'JetBrains Mono'; }
+.tag-red { background: rgba(255,83,112,0.08); border: 1px solid rgba(255,83,112,0.25); color: var(--red); padding: 3px 10px; border-radius: 50px; font-size: 11px; font-family: 'JetBrains Mono'; }
+.tag-blue { background: rgba(79,140,255,0.08); border: 1px solid rgba(79,140,255,0.25); color: var(--blue); padding: 3px 10px; border-radius: 50px; font-size: 11px; font-family: 'JetBrains Mono'; }
+
+/* ── India Sidebar Card ── */
+.ind-card {
+    background: rgba(247,183,49,0.04); border: 1px solid rgba(247,183,49,0.15);
+    border-radius: 12px; padding: 14px;
+}
+
+/* ── Risk Box ── */
+.risk-box {
+    background: rgba(247,183,49,0.06); border: 1px solid rgba(247,183,49,0.2);
+    border-radius: 12px; padding: 16px;
+}
+
+/* ── Streamlit overrides ── */
+div[data-testid="stMetric"] { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+div.stButton > button { background: linear-gradient(135deg,var(--amber),#e6920f); color:#000; font-weight:700; border:none; border-radius:10px; padding:10px 24px; transition:0.3s; }
+div.stButton > button:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(247,183,49,0.3); }
+.stTabs [data-baseweb="tab-list"] { background: var(--panel); border-radius: 12px; padding: 4px; }
+.stTabs [data-baseweb="tab"] { border-radius: 9px; color: var(--txt2); font-family: 'Space Grotesk'; }
+.stTabs [aria-selected="true"] { background: rgba(247,183,49,0.12); color: var(--amber) !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--amber); }
 </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER ---
-st.markdown("<h1 style='font-weight:700; color:#f5a623; font-size: 42px; margin-bottom:0;'>APEX AI — <span style='color:#fff'>SWING</span></h1>", unsafe_allow_html=True)
-st.caption("Aero Terminal v4.0 // Predictive Intelligence for Indian & Global Equities")
-st.markdown("---")
+# ── Page Header ──────────────────────────────────────────────────────────────
+fii_data = intel.get_fii_dii_flow()
+fn = fii_data['fii_net'] if fii_data else 0
+flow_tag = f"<span class='tag-green'>FII {fn:+,} Cr</span>" if fn > 0 else f"<span class='tag-red'>FII {fn:+,} Cr</span>"
+
+st.markdown(f"""
+<div style='display:flex; align-items:center; justify-content:space-between; padding: 8px 0 24px;'>
+    <div>
+        <div style='font-family:JetBrains Mono; font-size:11px; letter-spacing:3px; color:#5a6585; text-transform:uppercase; margin-bottom:6px;'>Apex AI · Institutional Terminal</div>
+        <h1 style='font-size:38px; font-weight:700; color:#fff; margin:0;'>Swing Intelligence <span style='color:var(--amber,#f7b731);'>●</span></h1>
+    </div>
+    <div style='display:flex; gap:10px; align-items:center;'>
+        {flow_tag}
+        <span class='tag-blue'>Multi-Day Forecast</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+st.markdown("<div style='height:1px; background:linear-gradient(90deg, rgba(247,183,49,0.4), rgba(0,229,201,0.2), transparent); margin-bottom:28px;'></div>", unsafe_allow_html=True)
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -94,20 +145,19 @@ with st.sidebar:
     )
     st.caption("Adjust to see how the AI reacts to simulated news events.")
     
+    # ── India Pulse ──────────────────────────────────────────────────────
     st.markdown("---")
-    st.markdown("### 🇮🇳 India Pulse")
-    fii_data = intel.get_fii_dii_flow()
+    st.markdown("<div style='font-family:JetBrains Mono; font-size:10px; letter-spacing:2px; color:#5a6585; text-transform:uppercase; margin-bottom:8px;'>🇮🇳 Institutional Flow</div>", unsafe_allow_html=True)
     if fii_data:
-        flow_color = "#00d4b4" if fii_data['sentiment'] == "BULLISH" else "#ff4560"
-        st.markdown(textwrap.dedent(f"""
-            <div class="india-card">
-                <div style="font-size:10px; color:#7a8299; letter-spacing:1px;">INSTITUTIONAL FLOW (CR)</div>
-                <div style="font-size:20px; font-weight:700; color:{flow_color}; margin:5px 0;">{fii_data['total_flow']:+d}</div>
-                <div style="font-size:11px; color:#fff;">FII: {fii_data['fii_net']:+d} | DII: {fii_data['dii_net']:+d}</div>
+        fn_color = "#00e676" if fii_data['total_flow'] > 0 else "#ff5370"
+        st.markdown(f"""
+            <div class="ind-card">
+                <div style="font-size:22px; font-weight:700; color:{fn_color};">{fii_data['total_flow']:+,} Cr</div>
+                <div style="font-size:11px; color:#5a6585; margin-top:4px;">FII: {fii_data['fii_net']:+,} &nbsp;|&nbsp; DII: {fii_data['dii_net']:+,}</div>
             </div>
-        """), unsafe_allow_html=True)
-    
-    st.info("Strategy: Institutional Momentum Alignment")
+        """, unsafe_allow_html=True)
+    st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+    st.caption("Strategy: Institutional Momentum Alignment")
 
 @st.cache_data
 def get_swing_data(ticker):
@@ -229,19 +279,20 @@ if ticker:
         
         gauge_val = dir_prob[0][0] * 100
 
-        # --- HERO METRICS (4 COLUMNS) ---
+        # ── HERO METRICS ──
         m1, m2, m3, m4 = st.columns(4)
         with m1:
-            st.markdown(f'<div class="metric-card"><div class="metric-label">Current Quote</div><div class="metric-value">${current_price:.2f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="m-card"><div class="m-label">Market Quote</div><div class="m-val">${current_price:.2f}</div></div>', unsafe_allow_html=True)
         with m2:
-            st.markdown(f'<div class="metric-card"><div class="metric-label">Neural Target (Median)</div><div class="metric-value" style="color:#00d2aa">${q50_p:.2f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="m-card"><div class="m-label">Neural Target (·50)</div><div class="m-val" style="color:#00e5c9">${q50_p:.2f}</div></div>', unsafe_allow_html=True)
         with m3:
-            st.markdown(f'<div class="metric-card"><div class="metric-label">Action Signal</div><div class="metric-value" style="color:{color}">{signal}</div></div>', unsafe_allow_html=True)
+            sig_col = "#00e676" if signal=="BUY" else ("#ff5370" if signal=="SELL" else "#4f8cff")
+            st.markdown(f'<div class="m-card"><div class="m-label">Action Signal</div><div class="m-val" style="color:{sig_col}">{signal}</div></div>', unsafe_allow_html=True)
         with m4:
             conf_score = calculate_multi_timeframe_confluence(ticker)
-            st.markdown(f'<div class="metric-card"><div class="metric-label">AI Confluence</div><div class="metric-value" style="color:#f5a623">{conf_score}%</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="m-card"><div class="m-label">AI Confluence</div><div class="m-val" style="color:#f7b731">{conf_score}%</div></div>', unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
 
         # --- GAUGE & REASONING ---
         c1, c2 = st.columns([1, 1.5])

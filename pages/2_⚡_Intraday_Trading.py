@@ -22,44 +22,81 @@ from utils.technical_analysis import detect_support_resistance, calculate_positi
 
 intel = IndiaMarketIntelligence()
 
-st.set_page_config(page_title="Apex AI - Intraday Precision", layout="wide")
+st.set_page_config(page_title="Intraday Precision · Apex AI", page_icon="⚡", layout="wide")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;700&display=swap');
-    
-    /* Aero Terminal CSS - Intraday */
-    .stApp { background-color: #060810; color: #00ffcc; font-family: 'Outfit', sans-serif; }
-    
-    .metric-card, .terminal-analysis, .india-card {
-        background: rgba(15, 18, 32, 0.6);
-        border: 1px solid rgba(0, 255, 204, 0.3);
-        border-radius: 12px;
-        padding: 20px;
-        backdrop-filter: blur(16px);
-        box-shadow: 0 4px 20px rgba(0,255,204,0.05);
-    }
-    .metric-card:hover { border-color: #00ffcc; transform: translateY(-2px); transition: 0.3s; }
-    
-    .metric-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #00ffcc; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
-    .metric-value { font-size: 26px; font-weight: 700; color: #00ffcc; margin-top: 5px; }
-    
-    .terminal-header { border-left: 5px solid #00ffcc; padding-left: 20px; margin-bottom: 30px; }
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
 
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #060810; }
-    ::-webkit-scrollbar-thumb { background: rgba(0, 255, 204, 0.2); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #00ffcc; }
+*, *::before, *::after { box-sizing: border-box; }
+:root {
+    --bg: #03050c; --panel: rgba(12,17,35,0.9); --border: rgba(255,255,255,0.06);
+    --amber: #f7b731; --teal: #00e5c9; --red: #ff5370; --green: #00e676; --blue: #4f8cff;
+    --txt: #d0d8ef; --txt2: #5a6585;
+}
+.stApp { background: var(--bg); color: var(--txt); font-family: 'Space Grotesk', sans-serif; }
+#MainMenu, header, footer { visibility: hidden; }
+.block-container { padding: 1.5rem 2.5rem !important; max-width: 100% !important; }
+section[data-testid="stSidebar"] { background: #04080f; border-right: 1px solid rgba(0,229,201,0.08); }
+section[data-testid="stSidebar"] * { color: var(--txt) !important; }
+
+/* ─ Metric Cards (Teal accent for intraday) ─ */
+.m-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 18px;
+    transition: border-color 0.3s, transform 0.3s;
+}
+.m-card:hover { border-color: rgba(0,229,201,0.35); transform: translateY(-3px); }
+.m-label { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--txt2); margin-bottom:10px; }
+.m-val { font-size:26px; font-weight:700; color:#fff; font-family:'JetBrains Mono',monospace; }
+
+/* ─ Analysis Panel (teal left border) ─ */
+.analysis-panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-left: 3px solid var(--teal);
+    border-radius: 0 14px 14px 0; padding: 24px;
+}
+
+/* ─ Tags ─ */
+.tag-green { background:rgba(0,230,118,.08); border:1px solid rgba(0,230,118,.25); color:var(--green); padding:3px 10px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono'; }
+.tag-teal  { background:rgba(0,229,201,.08); border:1px solid rgba(0,229,201,.25); color:var(--teal);  padding:3px 10px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono'; }
+.tag-red   { background:rgba(255,83,112,.08); border:1px solid rgba(255,83,112,.25); color:var(--red);   padding:3px 10px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono'; }
+.tag-blue  { background:rgba(79,140,255,.08); border:1px solid rgba(79,140,255,.25); color:var(--blue);  padding:3px 10px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono'; }
+
+/* ─ India Sidebar Card ─ */
+.ind-card { background:rgba(0,229,201,0.04); border:1px solid rgba(0,229,201,0.15); border-radius:12px; padding:14px; }
+
+/* ─ Risk Box ─ */
+.risk-box { background:rgba(0,229,201,0.06); border:1px solid rgba(0,229,201,0.2); border-radius:12px; padding:16px; }
+
+/* ─ Tabs ─ */
+.stTabs [data-baseweb="tab-list"] { background:var(--panel); border-radius:12px; padding:4px; }
+.stTabs [data-baseweb="tab"] { border-radius:9px; color:var(--txt2); font-family:'Space Grotesk'; }
+.stTabs [aria-selected="true"] { background:rgba(0,229,201,0.10); color:var(--teal) !important; }
+
+div[data-testid="stMetric"] { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; }
+div.stButton > button { background:linear-gradient(135deg,var(--teal),#00b8a6); color:#000; font-weight:700; border:none; border-radius:10px; padding:10px 24px; transition:0.3s; }
+div.stButton > button:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,229,201,0.25); }
+
+::-webkit-scrollbar { width:5px; } ::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--teal); }
 </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER ---
+# ── Page Header ──────────────────────────────────────────────────────────────
 st.markdown("""
-<div class="terminal-header">
-    <h1 style='font-weight:700; font-size: 38px; margin:0;'>⚡ INTRADAY PRECISION</h1>
-    <p style='color: #00ffcc; opacity:0.6; font-family: "JetBrains Mono";'>V4.0 // NEURAL SCALPING TERMINAL</p>
+<div style='display:flex; align-items:center; justify-content:space-between; padding: 8px 0 24px;'>
+    <div>
+        <div style='font-family:JetBrains Mono; font-size:11px; letter-spacing:3px; color:#5a6585; text-transform:uppercase; margin-bottom:6px;'>Apex AI · Neural Scalp Engine</div>
+        <h1 style='font-size:38px; font-weight:700; color:#fff; margin:0;'>Intraday Precision <span style='color:#00e5c9;'>◆</span></h1>
+    </div>
+    <div style='display:flex; gap:10px; align-items:center;'>
+        <span class='tag-teal'>Scalping Mode</span>
+        <span class='tag-blue'>Real-Time Feed</span>
+    </div>
 </div>
+<div style='height:1px; background:linear-gradient(90deg, rgba(0,229,201,0.4), rgba(79,140,255,0.2), transparent); margin-bottom:28px;'></div>
 """, unsafe_allow_html=True)
 
 # --- SIDEBAR ---
@@ -199,51 +236,53 @@ if ticker:
         
         gauge_val = dir_prob[0][0] * 100
 
-        # --- HERO METRICS (5 COLUMNS: 4 original + VIX) ---
+        # ── HERO METRICS ──
         m1, m2, m3, m4, m5 = st.columns(5)
         with m1:
-            st.markdown(f'<div class="metric-card"><div class="metric-label">Market Quote</div><div class="metric-value">${current_price:.2f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="m-card"><div class="m-label">Market Quote</div><div class="m-val">${current_price:.2f}</div></div>', unsafe_allow_html=True)
         with m2:
-            st.markdown(f'<div class="metric-card"><div class="metric-label">AI Target ({interval})</div><div class="metric-value" style="color:#00ffcc">${predicted:.2f}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="m-card"><div class="m-label">AI Target ({interval})</div><div class="m-val" style="color:#00e5c9">${predicted:.2f}</div></div>', unsafe_allow_html=True)
         with m3:
-            st.markdown(f'<div class="metric-card"><div class="metric-label">Signal Engine</div><div class="metric-value" style="color:{color}">{signal}</div></div>', unsafe_allow_html=True)
+            sig_col = "#00e676" if signal=="BUY" else ("#ff5370" if signal=="SELL" else "#4f8cff")
+            st.markdown(f'<div class="m-card"><div class="m-label">Signal Engine</div><div class="m-val" style="color:{sig_col}">{signal}</div></div>', unsafe_allow_html=True)
         with m4:
             conf_score = calculate_multi_timeframe_confluence(ticker)
-            st.markdown(f'<div class="metric-card"><div class="metric-label">AI Confluence</div><div class="metric-value" style="color:#00ffcc">{conf_score}%</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="m-card"><div class="m-label">AI Confluence</div><div class="m-val" style="color:#00e5c9">{conf_score}%</div></div>', unsafe_allow_html=True)
         with m5:
-            # VIX comes from the daily pipeline; intraday df won't have it – handle gracefully
             vix_col = 'VIX' if 'VIX' in df.columns else None
             if vix_col:
                 vix_val = df[vix_col].iloc[-1]
-                vix_color = '#ff4b4b' if vix_val > 30 else ('#ffcc00' if vix_val > 20 else '#00ffcc')
-                st.markdown(f'<div class="metric-card"><div class="metric-label">Market Fear (VIX)</div><div class="metric-value" style="color:{vix_color}">{vix_val:.1f}</div></div>', unsafe_allow_html=True)
+                vix_color = '#ff5370' if vix_val > 30 else ('#f7b731' if vix_val > 20 else '#00e5c9')
+                st.markdown(f'<div class="m-card"><div class="m-label">Market Fear (VIX)</div><div class="m-val" style="color:{vix_color}">{vix_val:.1f}</div></div>', unsafe_allow_html=True)
             else:
-                st.markdown('<div class="metric-card"><div class="metric-label">Market Fear (VIX)</div><div class="metric-value" style="color:#555">N/A</div></div>', unsafe_allow_html=True)
+                st.markdown('<div class="m-card"><div class="m-label">Market Fear (VIX)</div><div class="m-val" style="color:#2a3050">N/A</div></div>', unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
 
-        # --- GAUGE & REASONING ---
-        c1, c2 = st.columns([1, 1.5])
+        # ── GAUGE & ANALYSIS ──
+        c1, c2 = st.columns([1, 1.6])
         with c1:
+            g_color = sig_col if 'sig_col' in dir() else "#4f8cff"
             fig_gauge = go.Figure(go.Indicator(
                 mode = "gauge+number",
                 value = gauge_val,
-                title = {'text': "Volatility Score", 'font': {'size': 18, 'color': '#00ffcc'}},
+                domain = {'x': [0, 1], 'y': [0, 1]},
+                title = {'text': "Neural Confidence", 'font': {'size': 14, 'color': '#5a6585'}},
+                number = {'font': {'color': '#fff', 'size': 44}},
                 gauge = {
-                    'axis': {'range': [0, 100], 'tickcolor': "#00ffcc"},
-                    'bar': {'color': color},
-                    'bgcolor': "black",
-                    'borderwidth': 1,
-                    'bordercolor': "#00ffcc",
+                    'axis': {'range': [0, 100], 'tickwidth': 0, 'tickcolor': '#1a2035', 'tickfont': {'color': '#5a6585'}},
+                    'bar': {'color': '#00e5c9', 'thickness': 0.22},
+                    'bgcolor': 'rgba(0,0,0,0)',
+                    'borderwidth': 0,
                     'steps': [
-                        {'range': [0, 30], 'color': 'rgba(255,51,51,0.15)'},
-                        {'range': [30, 70], 'color': 'rgba(255,255,0,0.15)'},
-                        {'range': [70, 100], 'color': 'rgba(0,255,204,0.15)'}
+                        {'range': [0, 35], 'color': 'rgba(255,83,112,0.06)'},
+                        {'range': [35, 65], 'color': 'rgba(79,140,255,0.06)'},
+                        {'range': [65, 100], 'color': 'rgba(0,230,118,0.06)'}
                     ]
                 }
             ))
-            fig_gauge.update_layout(height=280, margin=dict(l=30, r=30, t=50, b=20), paper_bgcolor='rgba(0,0,0,0)', font={'color': "#00ffcc", 'family': "JetBrains Mono"})
-            st.plotly_chart(fig_gauge, width='stretch')
+            fig_gauge.update_layout(height=260, margin=dict(l=20,r=20,t=45,b=20), paper_bgcolor='rgba(0,0,0,0)', font=dict(family='JetBrains Mono'))
+            st.plotly_chart(fig_gauge, use_container_width=True)
             
         with c2:
             st.markdown(f"### 🤖 Scalp Analysis // {ticker}")
