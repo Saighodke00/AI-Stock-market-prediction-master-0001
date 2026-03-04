@@ -199,15 +199,9 @@ class CausalTradingEngine:
         """
         try:
             import shap
-            # Use a simplified background for speed (DeepExplainer can be slow)
-            # We explain the median direction model (GRU)
             explainer = shap.GradientExplainer(self.gru_dir, X[:10])
             shap_values = explainer.shap_values(X)
-            
-            # Aggregate across time-steps
-            abs_shap = np.abs(shap_values[0]).mean(axis=0) # (num_features,)
-            
-            # Sort and get top features
+            abs_shap = np.abs(shap_values[0]).mean(axis=0)
             indices = np.argsort(abs_shap)[-5:][::-1]
             top_features = []
             for idx in indices:
@@ -219,6 +213,52 @@ class CausalTradingEngine:
         except Exception as e:
             print(f"XAI Engine Error: {e}")
             return []
+
+    def save_to_dir(self, directory: str, history: dict = None):
+        """Save all sub-models to a directory using native formats (no pickle).
+        
+        Keras models  → <dir>/gru_dir.keras, tcn_dir.keras, mag_model.keras
+        LightGBM      → <dir>/gbm_dir.txt  (text format, always portable)
+        History       → <dir>/history.json
+        """
+        import json
+        os.makedirs(directory, exist_ok=True)
+        self.gru_dir.save(os.path.join(directory, "gru_dir.keras"))
+        self.tcn_dir.save(os.path.join(directory, "tcn_dir.keras"))
+        self.mag_model.save(os.path.join(directory, "mag_model.keras"))
+        if HAS_LGBM and self.gbm_dir is not None:
+            self.gbm_dir.booster_.save_model(os.path.join(directory, "gbm_dir.txt"))
+        hist = history if history is not None else self.history
+        with open(os.path.join(directory, "history.json"), "w") as f:
+            json.dump({k: [float(v) for v in vals] for k, vals in hist.items()}, f)
+
+    @classmethod
+    def load_from_dir(cls, directory: str, input_shape):
+        """Reconstruct a CausalTradingEngine from a saved directory.
+        
+        Creates a fresh engine (builds architecture), then loads weights only
+        — avoiding any pickle/class-identity issues caused by hot-reloads.
+        """
+        import json
+        engine = cls(input_shape)  # Builds fresh architecture
+        gru_path = os.path.join(directory, "gru_dir.keras")
+        tcn_path = os.path.join(directory, "tcn_dir.keras")
+        mag_path = os.path.join(directory, "mag_model.keras")
+        gbm_path = os.path.join(directory, "gbm_dir.txt")
+        hist_path = os.path.join(directory, "history.json")
+        if os.path.exists(gru_path):
+            engine.gru_dir = tf.keras.models.load_model(gru_path)
+        if os.path.exists(tcn_path):
+            engine.tcn_dir = tf.keras.models.load_model(tcn_path)
+        if os.path.exists(mag_path):
+            engine.mag_model = tf.keras.models.load_model(mag_path)
+        if HAS_LGBM and os.path.exists(gbm_path):
+            booster = lgb.Booster(model_file=gbm_path)
+            engine.gbm_dir = booster
+        if os.path.exists(hist_path):
+            with open(hist_path) as f:
+                engine.history = json.load(f)
+        return engine
 
 # --- UI COMPATIBILITY LAYER ---
 

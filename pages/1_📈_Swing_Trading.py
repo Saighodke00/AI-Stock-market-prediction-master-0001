@@ -278,34 +278,35 @@ if ticker:
         # Safety net: drop any feature that isn't actually in the DataFrame
         features = [f for f in features if f in df.columns]
             
-        import pickle, hashlib
-        # ─ Build sequences (always needed for inference shape / walk-forward) ─
+        import hashlib
+        # ─ Build sequences (always needed for inference / walk-forward) ─
         X, Y_dir, Y_mag, scaler, scaled_data = create_sequences(df, features, lookback)
 
-        # ─ Disk-based model persistence ──────────────────────────────────
+        # ─ Directory-based model cache (no pickle – Keras native format) ─
         model_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
-        os.makedirs(model_dir, exist_ok=True)
         cache_key = hashlib.md5(f"{ticker}_{lookback}_{epochs}".encode()).hexdigest()[:10]
-        model_path = os.path.join(model_dir, f"swing_{cache_key}.pkl")
+        cache_dir = os.path.join(model_dir, f"swing_{cache_key}")
+        input_shape = (X.shape[1], X.shape[2])
 
         # Delete cache if Force Retrain clicked
-        if force_retrain and os.path.exists(model_path):
-            os.remove(model_path)
+        if force_retrain and os.path.isdir(cache_dir):
+            import shutil; shutil.rmtree(cache_dir)
             st.toast("🔄 Cache cleared. Retraining...", icon="⚡")
 
-        with st.spinner('⚡ Loading model...' if os.path.exists(model_path) else '🧠 Calibrating Neural Ensemble (first run takes 1–2 min)...'):
+        cached = os.path.isdir(cache_dir) and os.path.exists(os.path.join(cache_dir, "gru_dir.keras"))
+        with st.spinner('⚡ Loading cached model...' if cached else '🧠 Calibrating Neural Ensemble (first run takes 1–2 min)...'):
             try:
-                if os.path.exists(model_path):
-                    with open(model_path, 'rb') as f:
-                        engine, history_data = pickle.load(f)
+                if cached:
+                    from utils.model import CausalTradingEngine
+                    engine = CausalTradingEngine.load_from_dir(cache_dir, input_shape)
+                    history_data = engine.history
                     st.toast("✓ Model loaded from cache", icon="⚡")
                 else:
                     X_noisy = add_noise(X)
-                    engine = create_model(input_shape=(X_noisy.shape[1], X_noisy.shape[2]))
+                    engine = create_model(input_shape=input_shape)
                     history_data = engine.train_ensemble(X_noisy, Y_dir, Y_mag, epochs=epochs)
-                    with open(model_path, 'wb') as f:
-                        pickle.dump((engine, history_data), f)
-                    st.toast("✓ Model trained & saved to disk", icon="📦")
+                    engine.save_to_dir(cache_dir, history_data)
+                    st.toast("✓ Model trained & saved", icon="📦")
                 # Walk-Forward Validation for Signal Gating
                 from utils.backtest import walk_forward_validation, run_backtest, calculate_accuracy
                 cagr, wf_sharpe, max_dd, win_rate, profit_factor = walk_forward_validation(engine, df, features)
