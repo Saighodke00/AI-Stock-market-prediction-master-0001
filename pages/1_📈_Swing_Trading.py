@@ -21,6 +21,67 @@ from utils.technical_analysis import detect_support_resistance, calculate_positi
 
 intel = IndiaMarketIntelligence()
 
+def _suggest_ticker_fix(ticker: str):
+    """Show a smart diagnostic panel when data fetch fails."""
+    import yfinance as yf
+
+    # Auto-suggest ticker corrections
+    suggestions = []
+    t = ticker.upper().strip()
+    if not t.endswith('.NS') and not t.endswith('.BO') and '.' not in t:
+        suggestions.append(f"`{t}.NS` — NSE (National Stock Exchange)")
+        suggestions.append(f"`{t}.BO` — BSE (Bombay Stock Exchange)")
+    if t.endswith('.NS'):
+        suggestions.append(f"`{t[:-3]}.BO` — Try BSE instead of NSE")
+
+    # Quick connectivity test
+    online = True
+    try:
+        test = yf.download("AAPL", period="5d", progress=False)
+        online = test is not None and not test.empty
+    except Exception:
+        online = False
+
+    st.markdown(f"""
+    <div style='background:rgba(255,83,112,0.06); border:1px solid rgba(255,83,112,0.25);
+                border-left:4px solid #ff5370; border-radius:0 12px 12px 0; padding:24px; margin:20px 0;'>
+        <div style='font-family:JetBrains Mono; font-size:11px; letter-spacing:2px; color:#ff5370;
+                    text-transform:uppercase; margin-bottom:12px;'>⚠ Market Data Fetch Failed</div>
+        <div style='font-size:16px; color:#fff; margin-bottom:8px;'><b>Ticker:</b> <code>{ticker}</code></div>
+        <div style='font-size:14px; color:#d0d8ef; margin-bottom:16px;'>
+            Yahoo Finance returned no data for this symbol.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**🌐 Connectivity Status**")
+        if online:
+            st.success("✓ Internet & Yahoo Finance reachable")
+        else:
+            st.error("✗ Cannot reach Yahoo Finance — check your network")
+
+    with col2:
+        st.markdown("**🔧 Common Fixes**")
+        if suggestions:
+            st.info("Try these corrected ticker symbols:")
+            for s in suggestions:
+                st.markdown(f"  • {s}")
+        else:
+            st.info("Verify the ticker at [finance.yahoo.com](https://finance.yahoo.com)")
+
+    with st.expander("📖 Ticker Format Guide", expanded=True):
+        st.markdown("""
+| Market | Format | Example |
+|---|---|---|
+| NSE India | `SYMBOL.NS` | `RELIANCE.NS` |
+| BSE India | `SYMBOL.BO` | `RELIANCE.BO` |
+| US Stocks | `SYMBOL` | `AAPL`, `TSLA` |
+| Nifty 50 | `^NSEI` | `^NSEI` |
+| Sensex | `^BSESN` | `^BSESN` |
+        """)
+
 
 st.set_page_config(page_title="Swing Intelligence · Apex AI", page_icon="📈", layout="wide")
 
@@ -582,6 +643,6 @@ if ticker:
 
         st.info("The system uses multivariate backtracking to confirm that current neural weights align with established historical trends before issuing a signal.")
     elif df is not None:
-        st.error("Market connection failed for this ticker.")
+        _suggest_ticker_fix(ticker)
     else:
-        st.error("Market connection failed for this ticker.")
+        _suggest_ticker_fix(ticker)
