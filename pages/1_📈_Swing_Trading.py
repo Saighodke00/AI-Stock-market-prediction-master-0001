@@ -13,6 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.data_loader import fetch_data, clean_data, normalize_data, create_sequences, add_noise
 from utils.indicators import add_technical_indicators
+from utils.model import create_model, predict_next_day
 from utils.sentiment import get_market_sentiment
 from utils.data_pipeline import validate_data
 from utils.india_market import IndiaMarketIntelligence
