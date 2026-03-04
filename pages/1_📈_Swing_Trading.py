@@ -279,6 +279,9 @@ if ticker:
         features = [f for f in features if f in df.columns]
             
         import pickle, hashlib
+        # ─ Build sequences (always needed for inference shape / walk-forward) ─
+        X, Y_dir, Y_mag, scaler, scaled_data = create_sequences(df, features, lookback)
+
         # ─ Disk-based model persistence ──────────────────────────────────
         model_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
         os.makedirs(model_dir, exist_ok=True)
