@@ -7,6 +7,8 @@ import os
 import plotly.graph_objects as go
 import textwrap
 
+from utils.data_loader import fetch_data, clean_data, create_sequences
+from utils.indicators import add_technical_indicators
 from utils.model import create_model
 from utils.ui import metric_card, apply_chart_style
 

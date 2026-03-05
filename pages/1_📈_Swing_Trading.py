@@ -8,8 +8,15 @@ import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import textwrap
 
+from utils.data_loader import fetch_data, clean_data, normalize_data, create_sequences, add_noise
+from utils.indicators import add_technical_indicators
+from utils.model import create_model, train_model, predict_next_day, convert_to_tflite
+from utils.sentiment import get_market_sentiment
+from utils.data_pipeline import validate_data
+from utils.india_market import IndiaMarketIntelligence
 from utils.technical_analysis import detect_support_resistance, calculate_position_size, calculate_multi_timeframe_confluence
 from utils.ui import metric_card, terminal_header, apply_chart_style
+from utils.backtest import run_backtest
 
 intel = IndiaMarketIntelligence()
 

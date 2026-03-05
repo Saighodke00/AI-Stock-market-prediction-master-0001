@@ -20,12 +20,7 @@ class IndiaMarketIntelligence:
         Falls back to a simulated signal if scraping fails (NSE structure changes frequently).
         """
         try:
-            # Example target: StockEdge FII/DII data or direct NSE scraper
-            # For robustness in this implementation, we use a structured fetch or simulation 
-            # based on recent data trends if the API is restricted.
-            
             # Simulated data for prototype (V4.0 base)
-            # In production, this would use a reliable API like NSEPython or direct scraping.
             data = {
                 'date': datetime.now().strftime('%Y-%m-%d'),
                 'fii_net': np.random.randint(-2000, 2000), # Net Cr.
@@ -58,11 +53,22 @@ class IndiaMarketIntelligence:
             try:
                 data = yf.download(ticker, period="1d", interval="5m", progress=False)
                 if not data.empty:
-                    change = ((data['Close'].iloc[-1] / data['Open'].iloc[0]) - 1) * 100
+                    last_price_series = data['Close'].iloc[-1]
+                    open_price_series = data['Open'].iloc[0]
+                    
+                    # Handle possible multi-index or series return
+                    if isinstance(last_price_series, pd.Series): last_price = float(last_price_series.iloc[0])
+                    else: last_price = float(last_price_series)
+                    
+                    if isinstance(open_price_series, pd.Series): open_price = float(open_price_series.iloc[0])
+                    else: open_price = float(open_price_series)
+                    
+                    change_val = ((last_price / open_price) - 1) * 100
+                    
                     results.append({
                         "sector": name,
-                        "change": float(change),
-                        "last_price": float(data['Close'].iloc[-1])
+                        "change": change_val,
+                        "last_price": last_price
                     })
             except:
                 continue
@@ -73,7 +79,6 @@ class IndiaMarketIntelligence:
         """
         Returns upcoming results dates for Nifty 50.
         """
-        # Placeholder for scraping logic from NSE India
         upcoming = [
             {"company": "RELIANCE", "date": "2024-04-22", "expected_surprise": "+2.4%"},
             {"company": "TCS", "date": "2024-04-12", "expected_surprise": "-1.1%"},
