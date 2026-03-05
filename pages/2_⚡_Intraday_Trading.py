@@ -9,16 +9,8 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import gc
 import textwrap
 
-# Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from utils.data_loader import fetch_data, clean_data, normalize_data, create_sequences, add_noise
-from utils.indicators import add_technical_indicators
-from utils.model import create_model, train_model, predict_next_day, convert_to_tflite
-from utils.sentiment import get_market_sentiment
-from utils.data_pipeline import validate_data
-from utils.india_market import IndiaMarketIntelligence
 from utils.technical_analysis import detect_support_resistance, calculate_position_size, calculate_multi_timeframe_confluence
+from utils.ui import metric_card, terminal_header, apply_chart_style
 
 intel = IndiaMarketIntelligence()
 
@@ -68,80 +60,8 @@ def _suggest_ticker_fix(ticker: str):
 
 st.set_page_config(page_title="Intraday Precision · Apex AI", page_icon="⚡", layout="wide")
 
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
-
-*, *::before, *::after { box-sizing: border-box; }
-:root {
-    --bg: #03050c; --panel: rgba(12,17,35,0.9); --border: rgba(255,255,255,0.06);
-    --amber: #f7b731; --teal: #00e5c9; --red: #ff5370; --green: #00e676; --blue: #4f8cff;
-    --txt: #d0d8ef; --txt2: #5a6585;
-}
-.stApp { background: var(--bg); color: var(--txt); font-family: 'Space Grotesk', sans-serif; }
-#MainMenu, header, footer { visibility: hidden; }
-.block-container { padding: 1.5rem 2.5rem !important; max-width: 100% !important; }
-section[data-testid="stSidebar"] { background: #04080f; border-right: 1px solid rgba(0,229,201,0.08); }
-section[data-testid="stSidebar"] * { color: var(--txt) !important; }
-
-/* ─ Metric Cards (Teal accent for intraday) ─ */
-.m-card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 16px; padding: 20px 18px;
-    transition: border-color 0.3s, transform 0.3s;
-}
-.m-card:hover { border-color: rgba(0,229,201,0.35); transform: translateY(-3px); }
-.m-label { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--txt2); margin-bottom:10px; }
-.m-val { font-size:26px; font-weight:700; color:#fff; font-family:'JetBrains Mono',monospace; }
-
-/* ─ Analysis Panel (teal left border) ─ */
-.analysis-panel {
-    background: var(--panel); border: 1px solid var(--border);
-    border-left: 3px solid var(--teal);
-    border-radius: 0 14px 14px 0; padding: 24px;
-}
-
-/* ─ Tags ─ */
-.tag-green { background:rgba(0,230,118,.08); border:1px solid rgba(0,230,118,.25); color:var(--green); padding:3px 10px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono'; }
-.tag-teal  { background:rgba(0,229,201,.08); border:1px solid rgba(0,229,201,.25); color:var(--teal);  padding:3px 10px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono'; }
-.tag-red   { background:rgba(255,83,112,.08); border:1px solid rgba(255,83,112,.25); color:var(--red);   padding:3px 10px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono'; }
-.tag-blue  { background:rgba(79,140,255,.08); border:1px solid rgba(79,140,255,.25); color:var(--blue);  padding:3px 10px; border-radius:50px; font-size:11px; font-family:'JetBrains Mono'; }
-
-/* ─ India Sidebar Card ─ */
-.ind-card { background:rgba(0,229,201,0.04); border:1px solid rgba(0,229,201,0.15); border-radius:12px; padding:14px; }
-
-/* ─ Risk Box ─ */
-.risk-box { background:rgba(0,229,201,0.06); border:1px solid rgba(0,229,201,0.2); border-radius:12px; padding:16px; }
-
-/* ─ Tabs ─ */
-.stTabs [data-baseweb="tab-list"] { background:var(--panel); border-radius:12px; padding:4px; }
-.stTabs [data-baseweb="tab"] { border-radius:9px; color:var(--txt2); font-family:'Space Grotesk'; }
-.stTabs [aria-selected="true"] { background:rgba(0,229,201,0.10); color:var(--teal) !important; }
-
-div[data-testid="stMetric"] { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; }
-div.stButton > button { background:linear-gradient(135deg,var(--teal),#00b8a6); color:#000; font-weight:700; border:none; border-radius:10px; padding:10px 24px; transition:0.3s; }
-div.stButton > button:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,229,201,0.25); }
-
-::-webkit-scrollbar { width:5px; } ::-webkit-scrollbar-track { background:var(--bg); }
-::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--teal); }
-</style>
-""", unsafe_allow_html=True)
-
-# ── Page Header ──────────────────────────────────────────────────────────────
-st.markdown("""
-<div style='display:flex; align-items:center; justify-content:space-between; padding: 8px 0 24px;'>
-    <div>
-        <div style='font-family:JetBrains Mono; font-size:11px; letter-spacing:3px; color:#5a6585; text-transform:uppercase; margin-bottom:6px;'>Apex AI · Neural Scalp Engine</div>
-        <h1 style='font-size:38px; font-weight:700; color:#fff; margin:0;'>Intraday Precision <span style='color:#00e5c9;'>◆</span></h1>
-    </div>
-    <div style='display:flex; gap:10px; align-items:center;'>
-        <span class='tag-teal'>Scalping Mode</span>
-        <span class='tag-blue'>Real-Time Feed</span>
-    </div>
-</div>
-<div style='height:1px; background:linear-gradient(90deg, rgba(0,229,201,0.4), rgba(79,140,255,0.2), transparent); margin-bottom:28px;'></div>
-""", unsafe_allow_html=True)
+# The global CSS is now handled in app.py
+# Pages can add specific overrides if needed.
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -285,28 +205,30 @@ if ticker:
         else:
             reason += f"Confidence: {dir_prob[0][0]*100:.1f}%. Expected Return: {mean_ret[0]*100:.2f}%."
         
-        gauge_val = dir_prob[0][0] * 100
+        # ── Terminal Header ────────────────────────────────────────────────────────
+        if ticker:
+            try:
+                # Calculate daily change for the header
+                if len(df) > 1:
+                    prev_p = df['Close'].iloc[-2]
+                    d_change = (current_price / prev_p - 1) * 100
+                else: d_change = 0.0
+                st.markdown(terminal_header(ticker, current_price, d_change, signal), unsafe_allow_html=True)
+            except Exception:
+                st.markdown(f"<h1>{ticker} // SCALP TERMINAL</h1>", unsafe_allow_html=True)
 
         # ── HERO METRICS ──
-        m1, m2, m3, m4, m5 = st.columns(5)
-        with m1:
-            st.markdown(f'<div class="m-card"><div class="m-label">Market Quote</div><div class="m-val">${current_price:.2f}</div></div>', unsafe_allow_html=True)
-        with m2:
-            st.markdown(f'<div class="m-card"><div class="m-label">AI Target ({interval})</div><div class="m-val" style="color:#00e5c9">${predicted:.2f}</div></div>', unsafe_allow_html=True)
-        with m3:
-            sig_col = "#00e676" if signal=="BUY" else ("#ff5370" if signal=="SELL" else "#4f8cff")
-            st.markdown(f'<div class="m-card"><div class="m-label">Signal Engine</div><div class="m-val" style="color:{sig_col}">{signal}</div></div>', unsafe_allow_html=True)
-        with m4:
-            conf_score = calculate_multi_timeframe_confluence(ticker)
-            st.markdown(f'<div class="m-card"><div class="m-label">AI Confluence</div><div class="m-val" style="color:#00e5c9">{conf_score}%</div></div>', unsafe_allow_html=True)
-        with m5:
-            vix_col = 'VIX' if 'VIX' in df.columns else None
-            if vix_col:
-                vix_val = df[vix_col].iloc[-1]
-                vix_color = '#ff5370' if vix_val > 30 else ('#f7b731' if vix_val > 20 else '#00e5c9')
-                st.markdown(f'<div class="m-card"><div class="m-label">Market Fear (VIX)</div><div class="m-val" style="color:{vix_color}">{vix_val:.1f}</div></div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="m-card"><div class="m-label">Market Fear (VIX)</div><div class="m-val" style="color:#2a3050">N/A</div></div>', unsafe_allow_html=True)
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.markdown(metric_card("AI TARGET", f"₹{predicted:,.2f}", "#00e5ff"), unsafe_allow_html=True)
+        with c2:
+            st.markdown(metric_card("CONFLUENCE", f"{conf_score}%", "#00e676"), unsafe_allow_html=True)
+        with c3:
+            vix_val = df['VIX'].iloc[-1] if 'VIX' in df.columns else 15.0
+            vix_color = "#ff1744" if vix_val > 25 else ("#ffc107" if vix_val > 20 else "#00e676")
+            st.markdown(metric_card("VIX LEVEL", f"{vix_val:.1f}", vix_color), unsafe_allow_html=True)
+        with c4:
+            st.markdown(metric_card("WIN RATE", f"{win_rate*100:.1f}%", "#00e5ff"), unsafe_allow_html=True)
 
         st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
 
@@ -395,30 +317,16 @@ if ticker:
                 line=dict(color='#00ffcc', width=2, dash='dash')
             ))
             
-            fig.update_layout(
-                template="plotly_dark", 
-                height=550, 
-                paper_bgcolor='rgba(0,0,0,0)', 
-                plot_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=0, r=0, t=0, b=0),
-                xaxis_rangeslider_visible=False
-            )
-            st.plotly_chart(fig, width='stretch')
+            fig = apply_chart_style(fig)
+            st.plotly_chart(fig, use_container_width=True)
         
         with tab2:
             fig_loss = go.Figure()
             fig_loss.add_trace(go.Scatter(y=history_data['loss'], name='Training Loss', line=dict(color='#00ffcc')))
             if 'val_loss' in history_data:
                 fig_loss.add_trace(go.Scatter(y=history_data['val_loss'], name='Validation Loss', line=dict(color='#ff3333', dash='dash')))
-            fig_loss.update_layout(
-                template="plotly_dark", 
-                height=500, 
-                title="Neural Convergence: Training vs Validation Loss", 
-                paper_bgcolor='rgba(0,0,0,0)', 
-                plot_bgcolor='rgba(0,0,0,0)',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-            st.plotly_chart(fig_loss, width='stretch')
+            fig_loss = apply_chart_style(fig_loss)
+            st.plotly_chart(fig_loss, use_container_width=True)
             
             # Diagnostic message
             if 'val_loss' in history_data:

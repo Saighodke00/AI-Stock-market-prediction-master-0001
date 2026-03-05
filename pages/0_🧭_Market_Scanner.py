@@ -31,16 +31,43 @@ def filter_signals(df: pd.DataFrame, query: str) -> pd.DataFrame:
 
 def main() -> None:
     """
-    Lightweight Market Scanner page.
-
-    The full visual experience is handled elsewhere in the app; this page exists
-    primarily so that `filter_signals` can be imported and used safely in tests
-    and other modules without raising regex-related search bugs.
+    Institutional Market Scanner with Bloomberg Terminal aesthetic.
     """
     st.set_page_config(page_title="Market Scanner · Apex AI", page_icon="🧭", layout="wide")
-    st.title("Market Scanner")
-    st.caption("Literal search is enabled for all queries (no unintended regex behaviour).")
+    
+    # Header
+    st.markdown("""
+    <div style="margin-bottom: 25px;">
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 14px; color: #5a75a0; letter-spacing: 3px;">
+            SCANNER V2 // REAL-TIME CROSS-ASSET
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 20px; margin-top: 5px;">
+            <div style="font-family: 'Orbitron', sans-serif; font-size: 42px; font-weight: 700; color: #fff;">
+                MARKET SCANNER
+            </div>
+            <div style="flex-grow: 1;"></div>
+            <div style="text-align: right;">
+                <div class="glow-cyan" style="font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 700;">
+                    LIVE PULSE
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="height: 1px; background: #0e2040; margin-bottom: 30px;"></div>
+    """, unsafe_allow_html=True)
 
+    query = st.text_input("ENTER TICKER OR SECTOR KEYWORD", placeholder="e.g. RELIANCE.NS, TECHNOLOGY, BLUE CHIP")
+    
+    st.markdown(f"""
+    <div style="background: #060b14; border: 1px solid #0e2040; border-radius: 4px; padding: 20px; margin-top: 20px;">
+        <div style="font-family: 'Share Tech Mono', monospace; font-size: 12px; color: #5a75a0; margin-bottom: 10px;">
+            SYSTEM STATUS: SEARCHING {query if query else 'ALL'}
+        </div>
+        <div style="font-family: 'Rajdhani', sans-serif; color: #c8d8f0;">
+            Literal search is enabled for all queries (no unintended regex behaviour).
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
