@@ -8,16 +8,8 @@ import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import textwrap
 
-# Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from utils.data_loader import fetch_data, clean_data, normalize_data, create_sequences, add_noise
-from utils.indicators import add_technical_indicators
-from utils.model import create_model, predict_next_day
-from utils.sentiment import get_market_sentiment
-from utils.data_pipeline import validate_data
-from utils.india_market import IndiaMarketIntelligence
 from utils.technical_analysis import detect_support_resistance, calculate_position_size, calculate_multi_timeframe_confluence
+from utils.ui import metric_card, terminal_header, apply_chart_style
 
 intel = IndiaMarketIntelligence()
 
@@ -85,96 +77,8 @@ def _suggest_ticker_fix(ticker: str):
 
 st.set_page_config(page_title="Swing Intelligence · Apex AI", page_icon="📈", layout="wide")
 
-# ── Design System CSS ────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
-
-*, *::before, *::after { box-sizing: border-box; }
-:root {
-    --bg: #03050c; --panel: rgba(12,17,35,0.9); --border: rgba(255,255,255,0.06);
-    --amber: #f7b731; --teal: #00e5c9; --red: #ff5370; --green: #00e676; --blue: #4f8cff;
-    --txt: #d0d8ef; --txt2: #5a6585;
-}
-.stApp { background: var(--bg); color: var(--txt); font-family: 'Space Grotesk', sans-serif; }
-#MainMenu, header, footer { visibility: hidden; }
-.block-container { padding: 1.5rem 2.5rem !important; max-width: 100% !important; }
-section[data-testid="stSidebar"] { background: #060c1a; border-right: 1px solid var(--border); }
-section[data-testid="stSidebar"] * { color: var(--txt) !important; }
-
-/* ── Metric Cards ── */
-.m-card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 16px; padding: 22px 20px;
-    transition: border-color 0.3s, transform 0.3s;
-}
-.m-card:hover { border-color: rgba(247,183,49,0.4); transform: translateY(-3px); }
-.m-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-    color: var(--txt2); margin-bottom: 10px;
-}
-.m-val { font-size: 28px; font-weight: 700; color: #fff; font-family: 'JetBrains Mono', monospace; }
-
-/* ── Analysis Panel ── */
-.analysis-panel {
-    background: var(--panel); border: 1px solid var(--border);
-    border-left: 3px solid var(--amber);
-    border-radius: 0 14px 14px 0;
-    padding: 24px;
-}
-
-/* ── Tags ── */
-.tag-green { background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.25); color: var(--green); padding: 3px 10px; border-radius: 50px; font-size: 11px; font-family: 'JetBrains Mono'; }
-.tag-amber { background: rgba(247,183,49,0.08); border: 1px solid rgba(247,183,49,0.25); color: var(--amber); padding: 3px 10px; border-radius: 50px; font-size: 11px; font-family: 'JetBrains Mono'; }
-.tag-red { background: rgba(255,83,112,0.08); border: 1px solid rgba(255,83,112,0.25); color: var(--red); padding: 3px 10px; border-radius: 50px; font-size: 11px; font-family: 'JetBrains Mono'; }
-.tag-blue { background: rgba(79,140,255,0.08); border: 1px solid rgba(79,140,255,0.25); color: var(--blue); padding: 3px 10px; border-radius: 50px; font-size: 11px; font-family: 'JetBrains Mono'; }
-
-/* ── India Sidebar Card ── */
-.ind-card {
-    background: rgba(247,183,49,0.04); border: 1px solid rgba(247,183,49,0.15);
-    border-radius: 12px; padding: 14px;
-}
-
-/* ── Risk Box ── */
-.risk-box {
-    background: rgba(247,183,49,0.06); border: 1px solid rgba(247,183,49,0.2);
-    border-radius: 12px; padding: 16px;
-}
-
-/* ── Streamlit overrides ── */
-div[data-testid="stMetric"] { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
-div.stButton > button { background: linear-gradient(135deg,var(--amber),#e6920f); color:#000; font-weight:700; border:none; border-radius:10px; padding:10px 24px; transition:0.3s; }
-div.stButton > button:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(247,183,49,0.3); }
-.stTabs [data-baseweb="tab-list"] { background: var(--panel); border-radius: 12px; padding: 4px; }
-.stTabs [data-baseweb="tab"] { border-radius: 9px; color: var(--txt2); font-family: 'Space Grotesk'; }
-.stTabs [aria-selected="true"] { background: rgba(247,183,49,0.12); color: var(--amber) !important; }
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--amber); }
-</style>
-""", unsafe_allow_html=True)
-
-# ── Page Header ──────────────────────────────────────────────────────────────
-fii_data = intel.get_fii_dii_flow()
-fn = fii_data['fii_net'] if fii_data else 0
-flow_tag = f"<span class='tag-green'>FII {fn:+,} Cr</span>" if fn > 0 else f"<span class='tag-red'>FII {fn:+,} Cr</span>"
-
-st.markdown(f"""
-<div style='display:flex; align-items:center; justify-content:space-between; padding: 8px 0 24px;'>
-    <div>
-        <div style='font-family:JetBrains Mono; font-size:11px; letter-spacing:3px; color:#5a6585; text-transform:uppercase; margin-bottom:6px;'>Apex AI · Institutional Terminal</div>
-        <h1 style='font-size:38px; font-weight:700; color:#fff; margin:0;'>Swing Intelligence <span style='color:var(--amber,#f7b731);'>●</span></h1>
-    </div>
-    <div style='display:flex; gap:10px; align-items:center;'>
-        {flow_tag}
-        <span class='tag-blue'>Multi-Day Forecast</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-st.markdown("<div style='height:1px; background:linear-gradient(90deg, rgba(247,183,49,0.4), rgba(0,229,201,0.2), transparent); margin-bottom:28px;'></div>", unsafe_allow_html=True)
+# The global CSS is now handled in app.py
+# Pages can add specific overrides if needed.
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -358,18 +262,28 @@ if ticker:
         
         gauge_val = dir_prob[0][0] * 100
 
+        if signal:
+            try:
+                # Calculate daily change for the header
+                if len(df) > 1:
+                    prev_p = df['Close'].iloc[-2]
+                    d_change = (current_price / prev_p - 1) * 100
+                else: d_change = 0.0
+                st.markdown(terminal_header(ticker, current_price, d_change, signal), unsafe_allow_html=True)
+            except Exception:
+                st.markdown(f"<h1>{ticker} // TERMINAL</h1>", unsafe_allow_html=True)
+
         # ── HERO METRICS ──
-        m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            st.markdown(f'<div class="m-card"><div class="m-label">Market Quote</div><div class="m-val">${current_price:.2f}</div></div>', unsafe_allow_html=True)
-        with m2:
-            st.markdown(f'<div class="m-card"><div class="m-label">Neural Target (·50)</div><div class="m-val" style="color:#00e5c9">${q50_p:.2f}</div></div>', unsafe_allow_html=True)
-        with m3:
-            sig_col = "#00e676" if signal=="BUY" else ("#ff5370" if signal=="SELL" else "#4f8cff")
-            st.markdown(f'<div class="m-card"><div class="m-label">Action Signal</div><div class="m-val" style="color:{sig_col}">{signal}</div></div>', unsafe_allow_html=True)
-        with m4:
+        c_p10, c_p50, c_p90, c_conf = st.columns(4)
+        with c_p10:
+            st.markdown(metric_card("P10 LOW", f"₹{q10_p:,.0f}", "#ff1744"), unsafe_allow_html=True)
+        with c_p50:
+            st.markdown(metric_card("P50 MEDIAN", f"₹{q50_p:,.0f}", "#00e5ff"), unsafe_allow_html=True)
+        with c_p90:
+            st.markdown(metric_card("P90 HIGH", f"₹{q90_p:,.0f}", "#00e676"), unsafe_allow_html=True)
+        with c_conf:
             conf_score = calculate_multi_timeframe_confluence(ticker)
-            st.markdown(f'<div class="m-card"><div class="m-label">AI Confluence</div><div class="m-val" style="color:#f7b731">{conf_score}%</div></div>', unsafe_allow_html=True)
+            st.markdown(metric_card("CONFIDENCE", f"{conf_score}%", "#ffc107"), unsafe_allow_html=True)
 
         st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
 
@@ -489,30 +403,16 @@ if ticker:
             fig.add_trace(go.Scatter(x=[next_date], y=[q90_p], mode='markers', name='Upper Bound (Q90)', marker=dict(color='#00ff88', size=8)))
             fig.add_trace(go.Scatter(x=[next_date], y=[q10_p], mode='markers', name='Lower Bound (Q10)', marker=dict(color='#ff4b4b', size=8)))
             
-            fig.update_layout(
-                template="plotly_dark", 
-                height=500, 
-                paper_bgcolor='rgba(0,0,0,0)', 
-                plot_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=0, r=0, t=0, b=0),
-                xaxis_rangeslider_visible=False
-            )
-            st.plotly_chart(fig, width='stretch')
+            fig = apply_chart_style(fig)
+            st.plotly_chart(fig, use_container_width=True)
             
         with tab2:
             fig_loss = go.Figure()
             fig_loss.add_trace(go.Scatter(y=history_data['loss'], name='Training Loss', line=dict(color='#00d2aa')))
             if 'val_loss' in history_data:
                 fig_loss.add_trace(go.Scatter(y=history_data['val_loss'], name='Validation Loss', line=dict(color='#ff3366', dash='dash')))
-            fig_loss.update_layout(
-                template="plotly_dark", 
-                height=500, 
-                title="Neural Convergence: Training vs Validation Loss", 
-                paper_bgcolor='rgba(0,0,0,0)', 
-                plot_bgcolor='rgba(0,0,0,0)',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-            st.plotly_chart(fig_loss, width='stretch')
+            fig_loss = apply_chart_style(fig_loss)
+            st.plotly_chart(fig_loss, use_container_width=True)
             
         with tab_heat:
             st.markdown("#### Real-time Sector Rotation (NSE)")
@@ -535,12 +435,8 @@ if ticker:
                     y=[h['change'] for h in heatmap],
                     marker_color=[("#00d4b4" if h['change'] > 0 else "#ff4560") for h in heatmap]
                 ))
-                fig_heat.update_layout(
-                    template="plotly_dark", height=350,
-                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                    margin=dict(l=0, r=0, t=20, b=0),
-                    yaxis_title="Change %"
-                )
+                fig_heat.update_layout(height=350)
+                fig_heat = apply_chart_style(fig_heat)
                 st.plotly_chart(fig_heat, use_container_width=True)
             else:
                 st.warning("NSE Data link temporarily unavailable. Retrying...")
@@ -565,23 +461,15 @@ if ticker:
         with b_tabs[0]:
             fig_eq = go.Figure()
             fig_eq.add_trace(go.Scatter(y=equity_curve, name='Portfolio Equity', line=dict(color='#00d2aa', width=3)))
-            fig_eq.update_layout(
-                template="plotly_dark", height=400, margin=dict(l=0, r=0, t=20, b=0),
-                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                yaxis_title="Equity ($)", xaxis_title="Trading Days"
-            )
-            st.plotly_chart(fig_eq, width='stretch')
+            fig_eq = apply_chart_style(fig_eq)
+            st.plotly_chart(fig_eq, use_container_width=True)
             
         with b_tabs[1]:
             if len(mc_results) > 0:
                 fig_mc = go.Figure()
                 fig_mc.add_trace(go.Histogram(x=mc_results, nbinsx=30, marker_color='#00d2aa', opacity=0.7))
-                fig_mc.update_layout(
-                    template="plotly_dark", height=400, margin=dict(l=0, r=0, t=20, b=0),
-                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                    xaxis_title="Terminal Growth Factor", yaxis_title="Frequency"
-                )
-                st.plotly_chart(fig_mc, width='stretch')
+                fig_mc = apply_chart_style(fig_mc)
+                st.plotly_chart(fig_mc, use_container_width=True)
                 st.info(f"Median Stress-Test Growth: x{np.median(mc_results):.2f} after 20 targeted days.")
             else:
                 st.warning("Insufficient data for Monte Carlo simulation.")
@@ -590,12 +478,8 @@ if ticker:
             fig_bt = go.Figure()
             fig_bt.add_trace(go.Scatter(y=acts, name='Actual Price', line=dict(color='rgba(255,255,255,0.3)', width=1)))
             fig_bt.add_trace(go.Scatter(y=preds, name='AI Forecast (Median)', line=dict(color='#00d2aa', width=2)))
-            fig_bt.update_layout(
-                template="plotly_dark", height=400, margin=dict(l=0, r=0, t=20, b=0),
-                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-            st.plotly_chart(fig_bt, width='stretch')
+            fig_bt = apply_chart_style(fig_bt)
+            st.plotly_chart(fig_bt, use_container_width=True)
         
         c1, c2, c3, c4, c5 = st.columns(5)
         c1.metric("Sharpe Ratio", f"{sharpe_bt:.2f}")

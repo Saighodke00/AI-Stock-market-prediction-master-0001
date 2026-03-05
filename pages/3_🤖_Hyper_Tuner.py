@@ -7,38 +7,34 @@ import os
 import plotly.graph_objects as go
 import textwrap
 
-# Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from utils.data_loader import fetch_data, clean_data, create_sequences
-from utils.indicators import add_technical_indicators
 from utils.model import create_model
+from utils.ui import metric_card, apply_chart_style
 
 st.set_page_config(page_title="Apex AI - HyperDrive Tuner", layout="wide")
 
-# --- PREMIUM TUNER CSS ---
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
-    
-    /* Aero Terminal CSS - Tuner */
-    .stApp { background-color: #060810; color: #c8d0e0; font-family: 'Outfit', sans-serif; }
-    
-    .tuner-card, .stStatus {
-        background: rgba(15, 18, 32, 0.6);
-        border: 1px solid rgba(0, 210, 170, 0.3);
-        border-radius: 12px;
-        padding: 25px;
-        backdrop-filter: blur(16px);
-        box-shadow: 0 4px 20px rgba(0,210,170,0.1);
-    }
-    .best-param { color: #00ffcc; font-weight: 800; font-family: 'Share Tech Mono', monospace; }
-</style>
-""", unsafe_allow_html=True)
+# The global CSS is now handled in app.py
+# Pages can add specific overrides if needed.
 
-st.title("⚙️ HyperDrive Tuner")
-st.caption("Optuna-Powered Neural Architecture Search // Auto-Tuning for Maximum Alpha")
-st.markdown("---")
+# Header
+st.markdown("""
+<div style="margin-bottom: 25px;">
+    <div style="font-family: 'Orbitron', sans-serif; font-size: 14px; color: #5a75a0; letter-spacing: 3px;">
+        HYPERDRIVE V4 // BAYESIAN OPTIMIZATION ENGINE
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 20px; margin-top: 5px;">
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 42px; font-weight: 700; color: #fff;">
+            HYPER TUNER
+        </div>
+        <div style="flex-grow: 1;"></div>
+        <div style="text-align: right;">
+            <div class="glow-cyan" style="font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 700;">
+                CORE OPTIMIZER
+            </div>
+        </div>
+    </div>
+</div>
+<div style="height: 1px; background: #0e2040; margin-bottom: 30px;"></div>
+""", unsafe_allow_html=True)
 
 c1, c2 = st.columns([1, 2])
 
@@ -109,33 +105,18 @@ if run_opt:
     best = study.best_params
     
     with r1:
-        st.markdown(textwrap.dedent(f"""
-            <div class="tuner-card">
-                <div style="font-size:12px; color:#888;">OPTIMAL LOOKBACK</div>
-                <div class="best-param" style="font-size:32px;">{best['lookback']} Days</div>
-            </div>
-        """), unsafe_allow_html=True)
+        st.markdown(metric_card("OPTIMAL LOOKBACK", f"{best['lookback']} DAYS", "#00e5ff"), unsafe_allow_html=True)
     with r2:
-        st.markdown(textwrap.dedent(f"""
-            <div class="tuner-card">
-                <div style="font-size:12px; color:#888;">OPTIMAL EPOCHS</div>
-                <div class="best-param" style="font-size:32px;">{best['epochs']}</div>
-            </div>
-        """), unsafe_allow_html=True)
+        st.markdown(metric_card("OPTIMAL EPOCHS", f"{best['epochs']}", "#00e676"), unsafe_allow_html=True)
     with r3:
-        st.markdown(textwrap.dedent(f"""
-            <div class="tuner-card">
-                <div style="font-size:12px; color:#888;">MIN VAL LOSS</div>
-                <div class="best-param" style="font-size:32px;">{study.best_value:.6f}</div>
-            </div>
-        """), unsafe_allow_html=True)
+        st.markdown(metric_card("MIN VAL LOSS", f"{study.best_value:.6f}", "#ffc107"), unsafe_allow_html=True)
 
     # Study Visualization
     st.subheader("Optimization History")
     trials_df = study.trials_dataframe()
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=trials_df.index, y=trials_df.value, mode='lines+markers', line=dict(color='#00d2aa')))
-    fig.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+    fig = apply_chart_style(fig)
     st.plotly_chart(fig, use_container_width=True)
 
 else:
