@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
     LayoutDashboard, TrendingUp, History, MessageCircle, Settings,
     X, Zap, Brain, ChevronLeft, ChevronRight, BarChart2, Users,
-    Search
+    Search, Briefcase
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -19,6 +19,7 @@ const navItems = [
     { name: 'Dashboard', id: 'dashboard', icon: LayoutDashboard, label: 'Signal Overview' },
     { name: 'Screener', id: 'screener', icon: TrendingUp, label: 'Market Scanner' },
     { name: 'Backtest', id: 'backtest', icon: History, label: 'Strategy Validator' },
+    { name: 'Portfolio', id: 'portfolio', icon: Briefcase, label: 'Paper Trading' },
     { name: 'Sentiment', id: 'sentiment', icon: MessageCircle, label: 'FinBERT Engine' },
     { name: 'About', id: 'about', icon: Users, label: 'Neural Architects' },
 ];
@@ -89,8 +90,8 @@ export default function Sidebar({
                             <button
                                 key={m}
                                 className={`flex-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all tracking-wide ${i === 0
-                                        ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40'
-                                        : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/60'
+                                    ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40'
+                                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/60'
                                     }`}
                             >
                                 {m}
