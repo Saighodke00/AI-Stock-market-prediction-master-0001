@@ -122,6 +122,7 @@ with st.sidebar:
     # ── India Pulse ──────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("<div style='font-family:JetBrains Mono; font-size:10px; letter-spacing:2px; color:#5a6585; text-transform:uppercase; margin-bottom:8px;'>🇮🇳 Institutional Flow</div>", unsafe_allow_html=True)
+    fii_data = intel.get_fii_dii_flow()
     if fii_data:
         fn_color = "#00e676" if fii_data['total_flow'] > 0 else "#ff5370"
         st.markdown(f"""
