@@ -39,6 +39,9 @@ export interface APIResponse {
         score: number; // 0 to 100
         headlines: SentimentHeadline[];
     };
+    insider_analysis?: any; // Add insider_analysis
+    accuracy: number;       // Add accuracy
+    sharpe_ratio: number;  // Add sharpe_ratio
     last_updated: string;
 }
 

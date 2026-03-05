@@ -411,25 +411,21 @@ if ticker:
         q90_p *= (1 + drift)
 
         with c2:
+            # Fix Bug 03: Use clean markdown for better rendering reliability
             st.markdown("### 🤖 Neural Intelligence Report")
-            
-            xai_html = "".join([f"<li>{x['feature']}: <span style='color:#00d2aa'>+{x['importance']*100:.1f}%</span></li>" for x in xai_report])
-            
-            st.markdown(textwrap.dedent(f"""
-                <div class="analysis-block">
-                    <b>Execution Rationale:</b><br>
-                    {reason}
-                    <hr style='opacity:0.1; margin: 10px 0;'>
-                    <b>Strategic Vitals:</b><br>
-                    Sentiment Flux: <span style="color:{color}">{sentiment_val:+.2f}</span> | 
-                    RSI: <span style="color:#00d4b4">{rsi_val:.1f}</span>
-                    <hr style='opacity:0.1; margin: 10px 0;'>
-                    <b>XAI Driver Analysis:</b><br>
-                    <ul style='font-size:11px; margin: 5px 0;'>
-                        {xai_html}
-                    </ul>
-                </div>
-            """), unsafe_allow_html=True)
+            with st.container(border=True):
+                st.write("**Execution Rationale:**")
+                st.info(reason)
+                
+                c_a, c_b = st.columns(2)
+                with c_a:
+                    st.write("**Strategic Vitals**")
+                    st.write(f"Sentiment Flux: {sentiment_val:+.2f}")
+                    st.write(f"RSI: {rsi_val:.1f}")
+                with c_b:
+                    st.write("**XAI Driver Analysis**")
+                    for x in xai_report:
+                        st.write(f"- {x['feature']}: {x['importance']*100:+.1f}%")
             
             # --- RISK MANAGEMENT TERMINAL ---
             st.markdown("### 🛡️ Risk Management")

@@ -1,11 +1,31 @@
 @echo off
-title Apex AI - Streamlit Terminal
+title Apex AI - Intelligence Hub
 echo ================================================
-echo   APEX AI v4.0 - Aero Terminal
+echo   APEX AI v4.0 - Intelligence Hub (Streamlit)
 echo ================================================
-echo [*] Using virtual environment...
-echo [*] Starting Streamlit on http://localhost:8501
+echo [*] Initializing services...
 echo.
+
 cd /d %~dp0
-call venv\Scripts\activate.bat
-venv\Scripts\streamlit.exe run app.py
+
+REM --- Service 1: FastAPI Backend (Engine) ---
+echo [*] Starting FastAPI Backend on http://localhost:8000
+start "Apex AI - Backend" cmd /k "call venv\Scripts\activate.bat && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+REM --- Service 2: Streamlit Frontend (UI) ---
+echo [*] Starting Streamlit UI on http://localhost:8501
+start "Apex AI - Intelligence Hub" cmd /k "call venv\Scripts\activate.bat && streamlit run app.py"
+
+echo.
+echo [*] Waiting for services to initialize...
+timeout /t 5 /nobreak > nul
+
+echo [*] Launching dashboard in browser...
+start http://localhost:8501
+
+echo.
+echo ================================================
+echo   All services launched. 
+echo   Check separate windows for logs.
+echo ================================================
+pause

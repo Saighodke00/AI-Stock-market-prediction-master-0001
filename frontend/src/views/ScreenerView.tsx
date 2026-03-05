@@ -1,50 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
     Search, TrendingUp, TrendingDown, Filter, RefreshCw,
-    ChevronUp, ChevronDown, BarChart2, Clock, AlertCircle
+    ChevronUp, ChevronDown, BarChart2, Clock, AlertCircle,
+    Loader2
 } from 'lucide-react';
-
-const MOCK_RESULTS = [
-    { ticker: 'RELIANCE.NS', action: 'BUY', confidence: 0.84, p50: 2847.50, expected_return_pct: 3.2, sector: 'Energy', sentiment: 0.42, cone: 0.08 },
-    { ticker: 'INFY.NS', action: 'BUY', confidence: 0.79, p50: 1712.80, expected_return_pct: 2.8, sector: 'Technology', sentiment: 0.61, cone: 0.07 },
-    { ticker: 'HDFCBANK.NS', action: 'HOLD', confidence: 0.62, p50: 1645.20, expected_return_pct: 0.4, sector: 'Financials', sentiment: 0.11, cone: 0.12 },
-    { ticker: 'AAPL', action: 'BUY', confidence: 0.91, p50: 193.40, expected_return_pct: 4.1, sector: 'Technology', sentiment: 0.68, cone: 0.06 },
-    { ticker: 'MSFT', action: 'BUY', confidence: 0.88, p50: 412.70, expected_return_pct: 3.7, sector: 'Technology', sentiment: 0.55, cone: 0.07 },
-    { ticker: 'TSLA', action: 'SELL', confidence: 0.73, p50: 178.30, expected_return_pct: -5.2, sector: 'Automotive', sentiment: -0.38, cone: 0.14 },
-    { ticker: 'NVDA', action: 'BUY', confidence: 0.86, p50: 824.90, expected_return_pct: 5.8, sector: 'Technology', sentiment: 0.74, cone: 0.09 },
-    { ticker: 'GOOGL', action: 'HOLD', confidence: 0.59, p50: 165.80, expected_return_pct: 0.9, sector: 'Technology', sentiment: 0.18, cone: 0.11 },
-    { ticker: 'AMZN', action: 'BUY', confidence: 0.77, p50: 188.40, expected_return_pct: 2.9, sector: 'Consumer', sentiment: 0.44, cone: 0.10 },
-    { ticker: 'JPM', action: 'SELL', confidence: 0.71, p50: 186.20, expected_return_pct: -3.1, sector: 'Financials', sentiment: -0.29, cone: 0.13 },
-];
+import { APIResponse } from '../types';
 
 const fmt2 = (v: number) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
 export default function ScreenerView() {
+    const [results, setResults] = useState<APIResponse[]>([]);
     const [filter, setFilter] = useState<'ALL' | 'BUY' | 'SELL' | 'HOLD'>('ALL');
     const [search, setSearch] = useState('');
-    const [sortKey, setSortKey] = useState<'confidence' | 'expected_return_pct'>('confidence');
+    const [sortKey, setSortKey] = useState<'confidence' | 'pct_change'>('confidence');
     const [sortDir, setSortDir] = useState<1 | -1>(-1);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const filtered = MOCK_RESULTS
-        .filter(r => filter === 'ALL' || r.action === filter)
-        .filter(r => r.ticker.toLowerCase().includes(search.toLowerCase()) || r.sector.toLowerCase().includes(search.toLowerCase()))
-        .sort((a, b) => sortDir * (b[sortKey] - a[sortKey]));
+    const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await axios.get<{ results: APIResponse[] }>('/api/screener');
+            setResults(response.data.results);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch screener data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const filtered = results
+        .filter(r => filter === 'ALL' || r.signal === filter)
+        .filter(r => r.ticker.toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => {
+            const valA = a[sortKey as keyof APIResponse] as number;
+            const valB = b[sortKey as keyof APIResponse] as number;
+            return sortDir * (valB - valA);
+        });
 
     const handleSort = (key: typeof sortKey) => {
         if (sortKey === key) setSortDir(d => d === 1 ? -1 : 1);
         else { setSortKey(key); setSortDir(-1); }
     };
 
-    const simulateScan = () => {
-        setLoading(true);
-        setTimeout(() => setLoading(false), 2000);
-    };
-
     const stats = {
-        buy: MOCK_RESULTS.filter(r => r.action === 'BUY').length,
-        sell: MOCK_RESULTS.filter(r => r.action === 'SELL').length,
-        hold: MOCK_RESULTS.filter(r => r.action === 'HOLD').length,
+        buy: results.filter(r => r.signal === 'BUY').length,
+        sell: results.filter(r => r.signal === 'SELL').length,
+        hold: results.filter(r => r.signal === 'HOLD').length,
     };
 
     return (
@@ -61,7 +69,7 @@ export default function ScreenerView() {
                         <span>Updated 14 min ago</span>
                     </div>
                     <button
-                        onClick={simulateScan}
+                        onClick={fetchData}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-400 text-xs font-semibold transition-all ${loading ? 'opacity-70 cursor-wait' : ''}`}
                     >
                         <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -125,12 +133,12 @@ export default function ScreenerView() {
             <div className="glass rounded-2xl border border-slate-800/60 overflow-hidden">
                 {/* Table Header */}
                 <div className="grid grid-cols-12 gap-0 px-4 py-3 border-b border-slate-800/60 bg-slate-900/40">
-                    {['Ticker', 'Action', 'Confidence ↕', 'P50 Forecast', 'Exp. Return ↕', 'Sector', 'Sentiment', 'Cone Width'].map((h, i) => {
-                        const isSort = (h.includes('Confidence') && sortKey === 'confidence') || (h.includes('Return') && sortKey === 'expected_return_pct');
+                    {['Ticker', 'Action', 'Confidence ↕', 'Regime', 'Daily % ↕', 'Last Updated', 'Sentiment', 'Accuracy'].map((h, i) => {
+                        const isSort = (h.includes('Confidence') && sortKey === 'confidence') || (h.includes('%') && sortKey === 'pct_change');
                         return (
                             <button
                                 key={h}
-                                onClick={() => h.includes('Confidence') ? handleSort('confidence') : h.includes('Return') ? handleSort('expected_return_pct') : undefined}
+                                onClick={() => h.includes('Confidence') ? handleSort('confidence') : h.includes('%') ? handleSort('pct_change') : undefined}
                                 className={`col-span-${[2, 2, 2, 2, 2, 2, 1, 1][i]} text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 transition-colors text-left ${isSort ? 'text-indigo-400' : 'text-slate-600 hover:text-slate-400'}`}
                             >
                                 {h.replace(' ↕', '')}
@@ -142,11 +150,11 @@ export default function ScreenerView() {
 
                 {/* Rows */}
                 {filtered.map((r, i) => {
-                    const acColor = r.action === 'BUY' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
-                        : r.action === 'SELL' ? 'text-rose-400 bg-rose-500/10 border-rose-500/30'
+                    const acColor = r.signal === 'BUY' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                        : r.signal === 'SELL' ? 'text-rose-400 bg-rose-500/10 border-rose-500/30'
                             : 'text-amber-400 bg-amber-500/10 border-amber-500/30';
-                    const retColor = r.expected_return_pct >= 0 ? 'text-emerald-400' : 'text-rose-400';
-                    const sentColor = r.sentiment > 0.2 ? 'text-emerald-400' : r.sentiment < -0.2 ? 'text-rose-400' : 'text-amber-400';
+                    const retColor = r.pct_change >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                    const sentColor = r.sentiment.score > 70 ? 'text-emerald-400' : r.sentiment.score < 30 ? 'text-rose-400' : 'text-amber-400';
                     return (
                         <div key={r.ticker} className={`grid grid-cols-12 gap-0 px-4 py-3.5 items-center border-b border-slate-800/30 hover:bg-slate-800/30 transition-colors cursor-pointer group ${i % 2 === 0 ? 'bg-slate-950/20' : ''}`}>
                             <div className="col-span-2 flex items-center gap-2">
@@ -156,7 +164,7 @@ export default function ScreenerView() {
                                 <span className="text-xs font-bold text-slate-200">{r.ticker}</span>
                             </div>
                             <div className="col-span-2">
-                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${acColor}`}>{r.action}</span>
+                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${acColor}`}>{r.signal}</span>
                             </div>
                             <div className="col-span-2">
                                 <div className="flex items-center gap-2">
@@ -166,15 +174,15 @@ export default function ScreenerView() {
                                     <span className="text-[10px] font-mono text-slate-300">{(r.confidence * 100).toFixed(0)}%</span>
                                 </div>
                             </div>
-                            <div className="col-span-2 text-xs font-mono text-slate-200">${fmt2(r.p50)}</div>
+                            <div className="col-span-2 text-xs font-mono text-slate-200">{r.regime}</div>
                             <div className={`col-span-2 text-xs font-mono font-bold ${retColor}`}>
-                                {r.expected_return_pct >= 0 ? '+' : ''}{r.expected_return_pct.toFixed(1)}%
+                                {r.pct_change >= 0 ? '+' : ''}{r.pct_change.toFixed(2)}%
                             </div>
-                            <div className="col-span-2 text-[10px] text-slate-500 truncate">{r.sector}</div>
+                            <div className="col-span-2 text-[10px] text-slate-500 truncate">{new Date(r.last_updated).toLocaleTimeString()}</div>
                             <div className={`col-span-1 text-[10px] font-mono font-bold ${sentColor}`}>
-                                {r.sentiment > 0 ? '+' : ''}{r.sentiment.toFixed(2)}
+                                {r.sentiment.score}
                             </div>
-                            <div className="col-span-1 text-[10px] font-mono text-slate-400">{(r.cone * 100).toFixed(0)}%</div>
+                            <div className="col-span-1 text-[10px] font-mono text-slate-400">{r.accuracy.toFixed(1)}%</div>
                         </div>
                     );
                 })}

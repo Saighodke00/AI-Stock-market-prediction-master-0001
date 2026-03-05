@@ -146,7 +146,13 @@ class CausalTradingEngine:
         h3 = self.mag_model.fit(X, y_mag, epochs=epochs, batch_size=128, verbose=0, validation_split=0.1)
         
         # Combine losses for UI history
+        # Fix Bug 04: Ensure all losses are captured
         self.history['loss'] = h1.history['loss']
+        if 'loss' in h2.history:
+            self.history['tcn_loss'] = h2.history['loss']
+        if 'loss' in h3.history:
+            self.history['mag_loss'] = h3.history['loss']
+            
         if 'val_loss' in h1.history:
             self.history['val_loss'] = h1.history['val_loss']
         return self.history
@@ -164,11 +170,21 @@ class CausalTradingEngine:
         else:
             dir_prob = 0.5 * p_gru + 0.5 * p_tcn
         
-        # Magnitude prediction: Returns [Q10, Q50, Q90]
+        # Magnitude prediction: Returns [Q10, Q50, Q90] or [Q0.02, Q0.1, Q0.25, Q0.5, Q0.75, Q0.9, Q0.98]
         q_out = self.mag_model.predict(X, verbose=0)
-        q10 = q_out[:, 0]
-        q50 = q_out[:, 1]
-        q90 = q_out[:, 2]
+        
+        # Fix Bug 01: Handle multi-dimensional (TFT) or flat (Keras) outputs
+        if q_out.ndim == 3: # (batch, horizon, quantiles)
+            # Index 13 = 14th day, index 3 = P50 (median)
+            # Index 1 = P10, index 5 = P90
+            h_idx = min(13, q_out.shape[1] - 1)
+            q10 = q_out[:, h_idx, 1]
+            q50 = q_out[:, h_idx, 3]
+            q90 = q_out[:, h_idx, 5]
+        else: # (batch, quantiles)
+            q10 = q_out[:, 0]
+            q50 = q_out[:, 1]
+            q90 = q_out[:, 2]
         
         return dir_prob, q10, q50, q90
 
@@ -276,16 +292,10 @@ class CausalTradingEngine:
 def create_model(input_shape):
     return CausalTradingEngine(input_shape)
 
-def train_model(engine, X, y, epochs=30, batch_size=128):
-    """
-    Adapts UI training call. 
-    Note: y here should ideally be the dataframe or a tuple of targets.
-    Since UI passes y_dir or y_mag, we need to handle it.
-    Actually, we'll redefine how data is passed in the pages.
-    """
-    # For now, we assume y is a combined target or we handle it inside the page.
-    # To maintain minimal UI change, we'll rely on global state or better preparation.
-    return engine, engine.history
+    # Fix Bug 04: Actually call training logic instead of returning stub
+    y_dir, y_mag = y
+    history = engine.train_ensemble(X, y_dir, y_mag, epochs=epochs)
+    return engine, history
 
 def predict_next_day(engine, last_sequence, scaler, fallback_model=None):
     """

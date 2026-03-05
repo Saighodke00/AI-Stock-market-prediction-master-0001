@@ -223,14 +223,19 @@ def calculate_metrics(equity_curve: pd.Series, trades: List[Trade]) -> Dict[str,
     ann_vol = daily_returns.std() * np.sqrt(252)
 
     # Sharpe Ratio (assuming 0% risk free rate for simplicity)
-    sharpe = (cagr / ann_vol) if ann_vol > 0.0001 else 0.0
-    sharpe = np.clip(sharpe, -100, 100) # Cap extreme values
+    # Fix Bug 02: Safety check for zero variance and cap display
+    if len(daily_returns) < 30 or daily_returns.std() < 1e-8:
+        sharpe = 0.0
+    else:
+        sharpe = (cagr / ann_vol) if ann_vol > 0.0001 else 0.0
+    
+    sharpe = np.clip(sharpe, -10.0, 10.0) 
 
     # Sortino Ratio (downside deviation only)
     downside_returns = daily_returns[daily_returns < 0]
     downside_vol = downside_returns.std() * np.sqrt(252)
     sortino = (cagr / downside_vol) if downside_vol > 0.0001 else 0.0
-    sortino = np.clip(sortino, -100, 100)
+    sortino = np.clip(sortino, -10.0, 10.0)
 
     # Maximum Drawdown
     running_max = equity_curve.cummax()
@@ -396,10 +401,20 @@ def run_backtest(engine=None,
                 actuals_price = actuals_arr
 
             # Convert predicted returns to prices for visualization
+            # Fix Bug 05: Ensure predictions are inverse-transformed if scaled
+            try:
+                # If the returns were scaled, we need to unscale them first
+                dummy_pred = np.zeros((len(preds_arr), n_features))
+                dummy_pred[:, 0] = preds_arr
+                unscaled_preds = scaler.inverse_transform(dummy_pred)[:, 0]
+            except Exception:
+                unscaled_preds = preds_arr
+
             preds_price = []
             if len(actuals_price) > 0:
                 current_p = actuals_price[0]
-                for r in preds_arr:
+                for r in unscaled_preds:
+                    # Compound at predicted rate
                     current_p = current_p * np.exp(np.clip(r, -0.1, 0.1))
                     preds_price.append(current_p)
             preds_price = np.array(preds_price)
@@ -426,11 +441,16 @@ def run_backtest(engine=None,
             returns_arr = np.array(returns_list)
             ann_ret     = np.mean(returns_arr) * 252
             ann_vol     = np.std(returns_arr)  * np.sqrt(252) + 0.0001
-            sharpe      = float(np.clip(ann_ret / ann_vol, -100, 100))
+            
+            # Fix Bug 02: Sharpe clipping and safety check
+            if len(returns_arr) < 30 or np.std(returns_arr) < 1e-8:
+                sharpe = 0.0
+            else:
+                sharpe = float(np.clip(ann_ret / ann_vol, -10.0, 10.0))
 
             downside        = returns_arr[returns_arr < 0]
             downside_vol    = (np.std(downside) * np.sqrt(252) + 0.0001) if len(downside) > 0 else ann_vol
-            sortino         = float(np.clip(ann_ret / downside_vol, -100, 100))
+            sortino         = float(np.clip(ann_ret / downside_vol, -10.0, 10.0))
 
             logger.info(
                 "run_backtest (legacy): accuracy=%.1f%%  sharpe=%.2f  sortino=%.2f  trades=%d",
@@ -683,9 +703,12 @@ def walk_forward_validation(
             equity_arr  = np.array(equity)
             daily_rets  = np.diff(equity_arr) / equity_arr[:-1]
             ann_ret     = np.mean(daily_rets) * 252
-            ann_vol     = np.std(daily_rets)  * np.sqrt(252) + 1e-9
-            sharpe      = float(ann_ret / ann_vol)
-
+            # Fix Bug 02: Safety check and clipping
+            if total_trades < 30 or np.std(daily_rets) < 1e-8:
+                sharpe = 0.0
+            else:
+                sharpe = float(np.clip(ann_ret / ann_vol, -10.0, 10.0))
+            
             days  = max(len(equity_arr) / 252, 0.01)
             cagr  = float((equity_arr[-1] / equity_arr[0]) ** (1 / days) - 1)
 
@@ -693,7 +716,6 @@ def walk_forward_validation(
             drawdowns    = (equity_arr - running_max) / (running_max + 1e-9)
             max_dd       = float(drawdowns.min())
 
-            total_trades = wins + losses
             win_rate     = wins / total_trades if total_trades > 0 else 0.5
             pf           = (gross_p / gross_l) if gross_l > 0 else float('inf')
 
@@ -778,8 +800,17 @@ def run_monte_carlo(
     # Cap extreme returns to avoid inf compounding
     returns_arr = np.clip(returns_arr, -0.20, 0.20)
 
+    # Fix Bug 06: Simulation variance
+    # Sampling from empirical distribution can lead to zero variance if history is sparse.
+    # Use normal distribution sampling as suggested.
+    mu = np.mean(returns_arr)
+    sigma = np.std(returns_arr)
+    
+    # Add a floor to sigma to ensure variance in simulations
+    sigma = max(sigma, 0.01) 
+    
     np.random.seed(None)   # fresh seed each call
-    sampled = np.random.choice(returns_arr, size=(n_simulations, n_days), replace=True)
+    sampled = np.random.normal(mu, sigma, size=(n_simulations, n_days))
     terminal_values = initial_value * np.prod(1 + sampled, axis=1)
 
     results = terminal_values.tolist()

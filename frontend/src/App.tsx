@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import DashboardView from './views/DashboardView';
 import ScreenerView from './views/ScreenerView';
 import BacktestView from './views/BacktestView';
+import PortfolioView from './views/PortfolioView';
 import AboutView from './views/AboutView';
 import { APIResponse } from './types';
 
@@ -57,6 +58,7 @@ export default function App() {
     const tabLabels: Record<string, string> = {
         screener: 'Market Scanner',
         backtest: 'Strategy Validator',
+        portfolio: 'Paper Trading',
         sentiment: 'FinBERT Engine',
         about: 'Neural Architects',
         settings: 'System Settings',
@@ -165,6 +167,7 @@ export default function App() {
                     )}
                     {activeTab === 'screener' && <ScreenerView />}
                     {activeTab === 'backtest' && <BacktestView />}
+                    {activeTab === 'portfolio' && <PortfolioView />}
                     {activeTab === 'about' && <AboutView />}
                     {activeTab === 'sentiment' && (
                         <div className="flex flex-col items-center justify-center h-full text-center p-12">
