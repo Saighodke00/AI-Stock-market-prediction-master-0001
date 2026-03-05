@@ -22,6 +22,22 @@ except ImportError:
     HAS_LGBM = False
 from sklearn.preprocessing import RobustScaler
 
+
+# ---------------------------------------------------------------------------
+# REGISTERED CUSTOM LOSS — must be module-level so Keras can locate it
+# when loading a saved .keras file. The decorator writes the function into
+# Keras's global serialization registry under the name 'quantile_loss'.
+# ---------------------------------------------------------------------------
+@keras.saving.register_keras_serializable(package='ApexAI', name='quantile_loss')
+def quantile_loss(y_true, y_pred):
+    """Pinball / quantile loss for simultaneous Q10, Q50, Q90 regression."""
+    quantiles = [0.1, 0.5, 0.9]
+    losses = []
+    for i, q in enumerate(quantiles):
+        error = y_true - y_pred[:, i:i + 1]
+        losses.append(K.mean(K.maximum(q * error, (q - 1) * error)))
+    return K.sum(losses)
+
 # --- CAUSAL TCN LAYER ---
 def create_tcn_block(n_filters, kernel_size, dilation_rate):
     def wrapper(x):
@@ -95,18 +111,10 @@ def create_magnitude_model(input_shape):
     x = Dropout(0.3)(x)
     
     # Quantile outputs: [Q10, Q50 (Median), Q90]
-    outputs = Dense(3)(x) 
+    outputs = Dense(3)(x)
     model = tf.keras.Model(inputs, outputs)
-    
-    def quantile_loss(y_true, y_pred):
-        quantiles = [0.1, 0.5, 0.9]
-        losses = []
-        for i, q in enumerate(quantiles):
-            error = y_true - y_pred[:, i:i+1]
-            loss = K.mean(K.maximum(q * error, (q - 1) * error))
-            losses.append(loss)
-        return K.sum(losses)
-
+    # Use the module-level registered quantile_loss (not a local lambda)
+    # so that model.save() / load_model() can resolve it by name.
     model.compile(optimizer='adam', loss=quantile_loss)
     return model
 
@@ -246,12 +254,15 @@ class CausalTradingEngine:
         mag_path = os.path.join(directory, "mag_model.keras")
         gbm_path = os.path.join(directory, "gbm_dir.txt")
         hist_path = os.path.join(directory, "history.json")
+        # custom_objects is a belt-and-suspenders fallback for .keras files
+        # saved before the @register_keras_serializable decorator was added.
+        _custom = {'quantile_loss': quantile_loss}
         if os.path.exists(gru_path):
-            engine.gru_dir = tf.keras.models.load_model(gru_path)
+            engine.gru_dir = tf.keras.models.load_model(gru_path, custom_objects=_custom)
         if os.path.exists(tcn_path):
-            engine.tcn_dir = tf.keras.models.load_model(tcn_path)
+            engine.tcn_dir = tf.keras.models.load_model(tcn_path, custom_objects=_custom)
         if os.path.exists(mag_path):
-            engine.mag_model = tf.keras.models.load_model(mag_path)
+            engine.mag_model = tf.keras.models.load_model(mag_path, custom_objects=_custom)
         if HAS_LGBM and os.path.exists(gbm_path):
             booster = lgb.Booster(model_file=gbm_path)
             engine.gbm_dir = booster
