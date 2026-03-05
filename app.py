@@ -100,8 +100,29 @@ def inject_global_css():
         border-bottom: 1px solid var(--border);
         padding: 8px 0;
         font-family: 'Share Tech Mono', monospace;
-        font-size: 12px;
+        font-size: 13px;
+        overflow: hidden;
+        white-space: nowrap;
     }
+    .ticker-inner {
+        display: inline-block;
+        animation: tickerAnim 40s linear infinite;
+        padding-left: 100%;
+    }
+    @keyframes tickerAnim {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-100%); }
+    }
+    .tick-item {
+        display: inline-block;
+        margin-right: 40px;
+    }
+    .tick-name {
+        color: #8892b0;
+        margin-right: 10px;
+    }
+    .tick-up { color: var(--green); text-shadow: 0 0 8px rgba(0,230,118,0.3); }
+    .tick-dn { color: var(--red);   text-shadow: 0 0 8px rgba(255,23,68,0.3); }
 
     /* ── Hide Streamlit Elements ─────────────────────────────────────────── */
     #MainMenu, header, footer { visibility: hidden; }
