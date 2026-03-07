@@ -176,15 +176,28 @@ class CausalTradingEngine:
         # Fix Bug 01: Handle multi-dimensional (TFT) or flat (Keras) outputs
         if q_out.ndim == 3: # (batch, horizon, quantiles)
             # Index 13 = 14th day, index 3 = P50 (median)
-            # Index 1 = P10, index 5 = P90
+            # If the model has 7 quantiles [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
             h_idx = min(13, q_out.shape[1] - 1)
-            q10 = q_out[:, h_idx, 1]
-            q50 = q_out[:, h_idx, 3]
-            q90 = q_out[:, h_idx, 5]
+            q_dim = q_out.shape[2]
+            if q_dim == 7:
+                q10 = q_out[:, h_idx, 1]
+                q50 = q_out[:, h_idx, 3]
+                q90 = q_out[:, h_idx, 5]
+            else:
+                # Fallback for standard 3 quantiles
+                q10 = q_out[:, h_idx, 0]
+                q50 = q_out[:, h_idx, 1]
+                q90 = q_out[:, h_idx, 2]
         else: # (batch, quantiles)
-            q10 = q_out[:, 0]
-            q50 = q_out[:, 1]
-            q90 = q_out[:, 2]
+            q_dim = q_out.shape[1]
+            if q_dim == 7:
+                q10 = q_out[:, 1]
+                q50 = q_out[:, 3]
+                q90 = q_out[:, 5]
+            else:
+                q10 = q_out[:, 0]
+                q50 = q_out[:, 1]
+                q90 = q_out[:, 2]
         
         return dir_prob, q10, q50, q90
 
@@ -289,10 +302,13 @@ class CausalTradingEngine:
 
 # --- UI COMPATIBILITY LAYER ---
 
-def create_model(input_shape):
-    return CausalTradingEngine(input_shape)
-
-    # Fix Bug 04: Actually call training logic instead of returning stub
+def train_model(X, y, epochs=30):
+    """
+    UI Compatibility function.
+    Fix Bug 04: Actually call training logic instead of returning stub.
+    """
+    input_shape = (X.shape[1], X.shape[2])
+    engine = CausalTradingEngine(input_shape)
     y_dir, y_mag = y
     history = engine.train_ensemble(X, y_dir, y_mag, epochs=epochs)
     return engine, history

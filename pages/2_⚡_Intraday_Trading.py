@@ -17,6 +17,12 @@ from utils.data_pipeline import validate_data
 from utils.india_market import IndiaMarketIntelligence
 from utils.technical_analysis import detect_support_resistance, calculate_position_size, calculate_multi_timeframe_confluence
 from utils.ui import metric_card, terminal_header, apply_chart_style
+from utils.pattern_recognition import (
+    detect_all_patterns,
+    draw_patterns_on_chart,
+    get_confluence_message,
+    render_pattern_panel_streamlit,
+)
 
 intel = IndiaMarketIntelligence()
 

@@ -87,7 +87,7 @@ export default function PortfolioView() {
 
     const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
 
-    const chartData = data?.positions.map(p => ({
+    const chartData = data?.positions?.map(p => ({
         name: p.ticker,
         value: p.shares * p.current
     })) || [];
@@ -133,7 +133,7 @@ export default function PortfolioView() {
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform"><Wallet className="w-8 h-8" /></div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-2">Total Value</p>
                     <p className="text-xl font-black text-white">{fmt(data?.total_value || 0)}</p>
-                    <p className={`text-[10px] font-bold mt-1 ${data?.total_return_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <p className={`text-[10px] font-bold mt-1 ${(data?.total_return_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {fmtPct(data?.total_return_pct || 0)} All-time
                     </p>
                 </div>
@@ -147,13 +147,13 @@ export default function PortfolioView() {
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform"><TrendingUp className="w-8 h-8" /></div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-2">Market Value</p>
                     <p className="text-xl font-black text-white">{fmt(data?.market_value || 0)}</p>
-                    <p className="text-[10px] font-bold text-slate-500 mt-1">{data?.positions.length} Positions</p>
+                    <p className="text-[10px] font-bold text-slate-500 mt-1">{data?.positions?.length || 0} Positions</p>
                 </div>
                 <div className="glass rounded-3xl p-5 border border-slate-800/60 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform"><BarChart3 className="w-8 h-8" /></div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-2">Win Rate</p>
-                    <p className="text-xl font-black text-indigo-400">{data?.win_rate.toFixed(1)}%</p>
-                    <p className="text-[10px] font-bold text-slate-500 mt-1">{data?.num_trades} Closed Trades</p>
+                    <p className="text-xl font-black text-indigo-400">{(data?.win_rate || 0).toFixed(1)}%</p>
+                    <p className="text-[10px] font-bold text-slate-500 mt-1">{data?.num_trades || 0} Closed Trades</p>
                 </div>
             </div>
 
@@ -178,7 +178,7 @@ export default function PortfolioView() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {data?.positions.map((p, i) => (
+                                {data?.positions?.map((p, i) => (
                                     <tr key={i} className="border-b border-slate-800/30 hover:bg-slate-900/40 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -201,7 +201,7 @@ export default function PortfolioView() {
                                         </td>
                                     </tr>
                                 ))}
-                                {(!data || data.positions.length === 0) && (
+                                {(!data || (data.positions?.length || 0) === 0) && (
                                     <tr>
                                         <td colSpan={5} className="px-6 py-20 text-center">
                                             <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center mx-auto mb-4 border border-slate-800">

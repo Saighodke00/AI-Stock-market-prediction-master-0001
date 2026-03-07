@@ -20,6 +20,31 @@ def metric_card(label: str, value: str, color: str = "#00e5ff", glow: bool = Tru
     </div>
     """
 
+def signal_card(action: str, confidence: float, expected_return: float):
+    """
+    Renders a high-impact signal card with dynamic coloring.
+    """
+    color = "#00e676" if action == "BUY" else ("#ff1744" if action == "SELL" else "#ffc107")
+    glow = "glow-green" if action == "BUY" else ("glow-red" if action == "SELL" else "glow-gold")
+    
+    return f"""
+    <div style="background: rgba(6, 11, 20, 0.8); border: 1px solid {color}44; border-left: 4px solid {color}; 
+                border-radius: 8px; padding: 20px; text-align: left; margin-bottom: 20px;">
+        <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px; color: #5a75a0; letter-spacing: 2px;">NEURAL SIGNAL</div>
+        <div class="{glow}" style="font-family: 'Orbitron', sans-serif; font-size: 32px; font-weight: 900; margin: 10px 0;">{action}</div>
+        <div style="display: flex; gap: 20px;">
+            <div>
+                <div style="font-size: 10px; color: #5a75a0;">CONFIDENCE</div>
+                <div style="font-family: 'Share Tech Mono', monospace; color: #fff;">{confidence*100:.1f}%</div>
+            </div>
+            <div>
+                <div style="font-size: 10px; color: #5a75a0;">EXPECTED RETURN</div>
+                <div style="font-family: 'Share Tech Mono', monospace; color: {color};">{expected_return:+.2f}%</div>
+            </div>
+        </div>
+    </div>
+    """
+
 def terminal_header(ticker: str, price: float, change: float, signal: str):
     """
     Renders the "Neural Terminal v2" high-impact header.
@@ -84,3 +109,39 @@ def apply_chart_style(fig):
         )
     )
     return fig
+
+# Alias for user requirement
+dark_theme = apply_chart_style
+
+def show_loading():
+    """
+    Displays a premium pulsing neural engine animation.
+    """
+    st.markdown("""
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 100px 0;">
+        <div class="neural-pulse"></div>
+        <div style="margin-top: 30px; font-family: 'Share Tech Mono', monospace; color: #00e5ff; letter-spacing: 4px; font-size: 14px; animation: blink 1.5s infinite;">
+            CALIBRATING NEURAL ARCHITECTURE // SYNCING MARKET DATA
+        </div>
+    </div>
+    <style>
+    @keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(0, 229, 255, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); }
+    }
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+    .neural-pulse {
+        width: 80px; height: 80px; background: #00e5ff; border-radius: 50%;
+        animation: pulse 2s infinite; box-shadow: 0 0 20px #00e5ff;
+        position: relative;
+    }
+    .neural-pulse::after {
+        content: ''; position: absolute; top: -10px; left: -10px; right: -10px; bottom: -10px;
+        border: 2px solid #00e5ff; border-radius: 50%; opacity: 0.5;
+    }
+    </style>
+    """, unsafe_allow_html=True)

@@ -28,10 +28,13 @@ import yfinance as yf
 # ---------------------------------------------------------------------------
 # Logging setup
 # ---------------------------------------------------------------------------
+from rich.logging import RichHandler
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
 )
 logger = logging.getLogger("apex_ai.data_pipeline")
 

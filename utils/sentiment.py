@@ -30,11 +30,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # ── SILENCE TENSORFLOW ────────────────────────────────────────────────────────
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"      # 0=all, 1=no INFO, 2=no INFO/WARN, 3=no INFO/WARN/ERROR
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"     # Disable oneDNN custom operations warnings
-try:
-    import tensorflow as tf
-    tf.get_logger().setLevel("ERROR")            # Suppress Python-level deprecation warnings
-except Exception:
-    pass
+# tensorflow import removed to save memory since pipeline uses torch/cpu
 # ──────────────────────────────────────────────────────────────────────────────
 
 import redis
@@ -47,10 +43,13 @@ from transformers import pipeline
 # ---------------------------------------------------------------------------
 # Logging setup
 # ---------------------------------------------------------------------------
+from rich.logging import RichHandler
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
 )
 logger = logging.getLogger("apex_ai.sentiment")
 

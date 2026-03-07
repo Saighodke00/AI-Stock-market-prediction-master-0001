@@ -11,8 +11,7 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"     # Disable oneDNN custom operations
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 # ──────────────────────────────────────────────────────────────────────────────
-import tensorflow as tf
-
+# ──────────────────────────────────────────────────────────────────────────────
 import redis
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse, FileResponse
@@ -41,24 +40,42 @@ from correlation import calculate_correlation_matrix, analyze_portfolio_risk
 from paper_trading import follow_signal, get_portfolio_summary, reset_portfolio, get_current_price
 from models import SessionLocal, init_db
 
-# ── TFLite Engine ─────────────────────────────────────────────────────────────
-class TFLiteModel:
+# ── Inference Engine ──────────────────────────────────────────────────────────
+class InferenceModel:
+    """Unified wrapper for TFLite and Keras models."""
     def __init__(self, model_path: str):
-        self.interpreter = tf.lite.Interpreter(model_path=model_path)
-        self.interpreter.allocate_tensors()
-        self.input_details = self.interpreter.get_input_details()
-        self.output_details = self.interpreter.get_output_details()
+        self.model_path = model_path
         self.name = os.path.basename(model_path)
+        self.is_tflite = model_path.endswith(".tflite")
+        self.interpreter = None
+        self.keras_model = None
+
+        if self.is_tflite:
+            from ai_edge_litert.interpreter import Interpreter
+            self.interpreter = Interpreter(model_path=model_path)
+            self.interpreter.allocate_tensors()
+            self.input_details = self.interpreter.get_input_details()
+            self.output_details = self.interpreter.get_output_details()
+        else:
+            import tf_keras
+            from utils.model import quantile_loss
+            # registering quantile_loss is handled in utils.model but we pass it for safety
+            self.keras_model = tf_keras.models.load_model(
+                model_path, 
+                custom_objects={'quantile_loss': quantile_loss}
+            )
 
     def predict(self, input_data: np.ndarray) -> Dict[str, float]:
-        """Simple TFLite inference mapping logic."""
-        # This is a simplified wrapper. Real implementation would handle scaling/reshaping.
-        self.interpreter.set_tensor(self.input_details[0]['index'], input_data.astype(np.float32))
-        self.interpreter.invoke()
-        output = self.interpreter.get_tensor(self.output_details[0]['index'])[0]
-        # Fix Bug 01: Extract specific indices for quantiles (P10, P50, P90)
-        # Assuming TFT default output: [Q0.02, Q0.1, Q0.25, Q0.5, Q0.75, Q0.9, Q0.98]
-        # Index 1=Q0.1, 3=Q0.5, 5=Q0.9.  Horizon index 13=14th day.
+        """Unified inference logic."""
+        if self.is_tflite:
+            self.interpreter.set_tensor(self.input_details[0]['index'], input_data.astype(np.float32))
+            self.interpreter.invoke()
+            output = self.interpreter.get_tensor(self.output_details[0]['index'])[0]
+        else:
+            # Keras prediction
+            output = self.keras_model.predict(input_data, verbose=0)[0]
+
+        # Handle output mapping (assuming TFT-like structure: [Q0.1, Q0.5, Q0.9])
         if output.ndim == 2: # (horizon, quantiles)
             h_idx = min(13, output.shape[0] - 1)
             return {
@@ -67,12 +84,24 @@ class TFLiteModel:
                 "q0.9": float(output[h_idx, 5])
             }
         else: # (quantiles,) fallback
-            return {"q0.1": float(output[1]), "q0.5": float(output[3]), "q0.9": float(output[5])}
+            # Ensure we have at least 3 values for q0.1, q0.5, q0.9
+            if len(output) >= 3:
+                return {"q0.1": float(output[0]), "q0.5": float(output[1]), "q0.9": float(output[2])}
+            else:
+                return {"q0.5": float(output[0])}
 
 # ──────────────────────────────────────────────────────────────────────────────
 
+from rich.logging import RichHandler
+
 logger = logging.getLogger("apex_ai.api")
-logging.basicConfig(level=logging.INFO)
+# More informative rich logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
+)
 
 # ==============================================================================
 # CONFIG & STATE
@@ -104,7 +133,7 @@ redis_client = RedisWrapper(REDIS_URL)
 
 class AppState:
     model: Any = None
-    tflite_models: Dict[str, TFLiteModel] = {}
+    tflite_models: Dict[str, InferenceModel] = {}
     dataset: Any = None
     model_loaded: bool = False
     start_time: datetime = datetime.now()
@@ -161,24 +190,53 @@ async def lifespan(app: FastAPI):
             # 2. Discover TFLite Models as fallback
             model_dir = "models"
             if os.path.exists(model_dir):
+                # We'll also scan subdirectories for Keras fallbacks
+                keras_fallbacks = {}
+                for root, dirs, files in os.walk(model_dir):
+                    for f in files:
+                        if f == "mag_model.keras":
+                            # Use directory name as ticker identifier if possible
+                            parent = os.path.basename(root)
+                            # e.g. intraday_41b101a7f4 -> INTRADAY (or map it better)
+                            keras_fallbacks[parent] = os.path.join(root, f)
+
                 for f in os.listdir(model_dir):
                     if f.endswith(".tflite"):
-                        # Improved mapping: swing_NVDA.tflite -> NVDA, swing_RELIANCE_NS.tflite -> RELIANCE
-                        # We take everything between 'swing_' and '.tflite' or handle common patterns
                         ticker_part = f.replace(".tflite", "").split("_")
                         if len(ticker_part) > 1:
-                            # If it has a suffix like _NS, join it back or take the middle part
-                            # Example: swing_RELIANCE_NS -> RELIANCE (if we want to strip _NS)
-                            # Or just keep it as RELIANCE_NS for exact matching
                             ticker = "_".join(ticker_part[1:]).upper()
                         else:
                             ticker = ticker_part[0].upper()
                         
-                        logger.info(f"Mapping TFLite model to {ticker} from file {f}")
+                        logger.info(f"Attempting to map TFLite model to {ticker} from file {f}")
                         try:
-                            state.tflite_models[ticker] = TFLiteModel(os.path.join(model_dir, f))
+                            # Try loading TFLite
+                            model = InferenceModel(os.path.join(model_dir, f))
+                            state.tflite_models[ticker] = model
+                            logger.info(f"Successfully mapped {ticker} to {f}")
                         except Exception as e:
-                            logger.error(f"Failed to load {f}: {e}")
+                            logger.warning(f"Failed to load TFLite for {ticker} ({f}). Searching for Keras fallback...")
+                            # Search for a Keras fallback that might match this ticker
+                            # This is heuristic: if ticker is NVDA, we look for something containing NVDA or a generic intraday/swing
+                            fallback_path = None
+                            
+                            # Heuristic 1: Match by start of filename/folder (e.g. intraday matches intraday_*)
+                            type_prefix = ticker_part[0].lower() # 'swing' or 'intraday'
+                            for k_id, k_path in keras_fallbacks.items():
+                                if k_id.lower().startswith(type_prefix):
+                                    fallback_path = k_path
+                                    break
+                            
+                            if fallback_path:
+                                try:
+                                    logger.info(f"Loading fallback Keras model from {fallback_path} for {ticker}")
+                                    model = InferenceModel(fallback_path)
+                                    state.tflite_models[ticker] = model
+                                    logger.info(f"Successfully loaded Keras fallback for {ticker}")
+                                except Exception as ke:
+                                    logger.error(f"Fallback loading also failed for {ticker}: {ke}")
+                            else:
+                                logger.error(f"No fallback found for {ticker}. Error: {e}")
             
             if state.tflite_models:
                 logger.info(f"Successfully loaded {len(state.tflite_models)} TFLite models.")
