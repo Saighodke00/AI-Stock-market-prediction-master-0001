@@ -4,15 +4,16 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from models import PaperPortfolio, PaperPosition, PaperTrade, SessionLocal, init_db
+from rich.logging import RichHandler
 
 # ── LOGGING ──────────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
+)
 logger = logging.getLogger("apex_ai.paper_trading")
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s — %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
 
 # ── CORE FUNCTIONS ──────────────────────────────────────────────────────────
 

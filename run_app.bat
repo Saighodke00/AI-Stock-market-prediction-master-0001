@@ -13,15 +13,15 @@ echo [*] Starting FastAPI Backend on http://localhost:8000
 start "Apex AI - Backend" cmd /k "call venv\Scripts\activate.bat && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 
 REM --- Service 2: Streamlit Frontend (UI) ---
-echo [*] Starting Streamlit UI on http://localhost:8501
-start "Apex AI - Intelligence Hub" cmd /k "call venv\Scripts\activate.bat && streamlit run app.py"
+REM echo [*] Starting Streamlit UI on http://localhost:8501
+REM start "Apex AI - Intelligence Hub" cmd /k "call venv\Scripts\activate.bat && streamlit run app.py"
 
 echo.
 echo [*] Waiting for services to initialize...
 timeout /t 5 /nobreak > nul
 
 echo [*] Launching dashboard in browser...
-start http://localhost:8501
+start http://localhost:8000
 
 echo.
 echo ================================================

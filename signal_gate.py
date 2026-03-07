@@ -32,10 +32,13 @@ from typing import Any, Dict, Optional
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
+from rich.logging import RichHandler
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
 )
 logger = logging.getLogger("apex_ai.signal_gate")
 
@@ -104,6 +107,8 @@ class SignalOutput:
     p90: float                               # 90th-percentile price forecast
     current_price: float
     expected_return_pct: float               # (p50 - current) / current * 100
+    pattern_summary: str = "None"
+    pattern_best: Any = None
     gate_results: Dict[str, Any] = field(default_factory=dict)
 
     def __repr__(self) -> str:
@@ -396,6 +401,19 @@ def gate_signal(
             gate_results=gate_results,
         )
 
+    # ── Gate 4 (NEW): PATTERN CONFLUENCE ──
+    # Note: For efficiency in full pipeline, we might pass pre-detected patterns.
+    # If not passed, we skip or detect here.
+    from utils.pattern_recognition import detect_all_patterns, get_confluence_message
+    
+    # We need a DataFrame here. For now, we assume we want to integrate it into the evaluate logic.
+    # Since gate_signal doesn't have the DF, we might need a wrapper or handle it in run_inference.
+    pattern_summary = "No pattern data provided to gate"
+    pattern_best = None
+    
+    # Check if df is available in context (it's not here, so we update the signature or handle in run_inference)
+    gate_results["gate4_passed"] = "NEUTRAL — background check only"
+
     # ── All gates passed ─────────────────────────────────────────────────────
     reason = (
         f"All gates passed — direction={direction}, "
@@ -515,13 +533,25 @@ def run_inference(
     # ── Step 6: Determine current price ─────────────────────────────────────
     current_price = float(df["Close"].dropna().iloc[-1])
 
-    # ── Step 7: Gate the signal ──────────────────────────────────────────────
+    # ── Step 7: Pattern Confluence ──
+    from utils.pattern_recognition import detect_all_patterns, get_confluence_message
+    pattern_result = detect_all_patterns(df, lookback_bars=120)
+    
+    # ── Step 8: Gate the signal ──────────────────────────────────────────────
     signal = gate_signal(
         prediction_dict=prediction_dict,
         attention_score=attention_score,
         sentiment_score=sentiment_score,
         current_price=current_price,
     )
+    
+    # Apply confluence to the signal object
+    confluence = get_confluence_message(signal.action, signal.confidence, pattern_result)
+    signal.action = confluence["final_action"]
+    signal.confidence = confluence["confluence_score"]
+    signal.reason += f" | Pattern: {pattern_result['summary']}"
+    signal.pattern_summary = pattern_result["summary"]
+    signal.pattern_best = pattern_result["best"]
 
     logger.info(
         "run_inference [%s]: %s | confidence=%.2f | return=%.2f%%",

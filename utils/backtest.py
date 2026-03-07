@@ -402,18 +402,10 @@ def run_backtest(engine=None,
 
             # Convert predicted returns to prices for visualization
             # Fix Bug 05: Ensure predictions are inverse-transformed if scaled
-            try:
-                # If the returns were scaled, we need to unscale them first
-                dummy_pred = np.zeros((len(preds_arr), n_features))
-                dummy_pred[:, 0] = preds_arr
-                unscaled_preds = scaler.inverse_transform(dummy_pred)[:, 0]
-            except Exception:
-                unscaled_preds = preds_arr
-
             preds_price = []
             if len(actuals_price) > 0:
                 current_p = actuals_price[0]
-                for r in unscaled_preds:
+                for r in preds_arr: # Models predict returns directly (unscaled by the model logic)
                     # Compound at predicted rate
                     current_p = current_p * np.exp(np.clip(r, -0.1, 0.1))
                     preds_price.append(current_p)
@@ -702,9 +694,11 @@ def walk_forward_validation(
 
             equity_arr  = np.array(equity)
             daily_rets  = np.diff(equity_arr) / equity_arr[:-1]
-            ann_ret     = np.mean(daily_rets) * 252
+            ann_vol     = np.std(daily_rets) * np.sqrt(252) + 1e-9
+            total_trades = wins + losses
+            
             # Fix Bug 02: Safety check and clipping
-            if total_trades < 30 or np.std(daily_rets) < 1e-8:
+            if total_trades < 10 or ann_vol < 1e-8:
                 sharpe = 0.0
             else:
                 sharpe = float(np.clip(ann_ret / ann_vol, -10.0, 10.0))
@@ -716,6 +710,7 @@ def walk_forward_validation(
             drawdowns    = (equity_arr - running_max) / (running_max + 1e-9)
             max_dd       = float(drawdowns.min())
 
+            total_trades = wins + losses
             win_rate     = wins / total_trades if total_trades > 0 else 0.5
             pf           = (gross_p / gross_l) if gross_l > 0 else float('inf')
 
@@ -802,13 +797,11 @@ def run_monte_carlo(
 
     # Fix Bug 06: Simulation variance
     # Sampling from empirical distribution can lead to zero variance if history is sparse.
-    # Use normal distribution sampling as suggested.
+    # Use normal distribution sampling with a floor on sigma to ensure realistic variance.
     mu = np.mean(returns_arr)
     sigma = np.std(returns_arr)
-    
-    # Add a floor to sigma to ensure variance in simulations
-    sigma = max(sigma, 0.01) 
-    
+    sigma = max(sigma, 0.015) # Increased floor for better stress testing
+
     np.random.seed(None)   # fresh seed each call
     sampled = np.random.normal(mu, sigma, size=(n_simulations, n_days))
     terminal_values = initial_value * np.prod(1 + sampled, axis=1)

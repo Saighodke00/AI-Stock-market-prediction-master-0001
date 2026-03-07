@@ -59,7 +59,14 @@ def inject_global_css():
         color: var(--cyan) !important;
         text-transform: uppercase;
         letter-spacing: 2px;
+        font-weight: 700 !important;
     }
+
+    /* ── Premium Scrollbar ────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #1a2b4d; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
 
     /* ── Glow Effects ─────────────────────────────────────────────────────── */
     .glow-cyan  { color: var(--cyan);  text-shadow: 0 0 15px rgba(0,229,255,0.4); }

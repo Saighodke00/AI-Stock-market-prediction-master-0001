@@ -26,13 +26,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import redis
 
-# ---------------------------------------------------------------------------
-# Logging & Config
-# ---------------------------------------------------------------------------
+from rich.logging import RichHandler
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
 )
 logger = logging.getLogger("apex_ai.reasoning")
 
@@ -90,11 +90,11 @@ def build_prompt(
     """Construct the LLM prompt for the trading signal explanation."""
     
     # Extract data from SignalOutput (handling both dataclass and dict)
-    action = getattr(signal_output, 'action', signal_output.get('action', 'HOLD'))
-    confidence = getattr(signal_output, 'confidence', signal_output.get('confidence', 0.5))
-    expected_return = getattr(signal_output, 'expected_return_pct', signal_output.get('expected_return_pct', 0.0))
-    current_price = getattr(signal_output, 'current_price', signal_output.get('current_price', 0.0))
-    p50 = getattr(signal_output, 'p50', signal_output.get('p50', 0.0))
+    action = getattr(signal_output, 'action', getattr(signal_output, 'action', 'HOLD') if not isinstance(signal_output, dict) else signal_output.get('action', 'HOLD'))
+    confidence = getattr(signal_output, 'confidence', getattr(signal_output, 'confidence', 0.5) if not isinstance(signal_output, dict) else signal_output.get('confidence', 0.5))
+    expected_return = getattr(signal_output, 'expected_return_pct', getattr(signal_output, 'expected_return_pct', 0.0) if not isinstance(signal_output, dict) else signal_output.get('expected_return_pct', 0.0))
+    current_price = getattr(signal_output, 'current_price', getattr(signal_output, 'current_price', 0.0) if not isinstance(signal_output, dict) else signal_output.get('current_price', 0.0))
+    p50 = getattr(signal_output, 'p50', getattr(signal_output, 'p50', 0.0) if not isinstance(signal_output, dict) else signal_output.get('p50', 0.0))
     
     sentiment_label = "BULLISH" if sentiment_score > 0.2 else ("BEARISH" if sentiment_score < -0.2 else "NEUTRAL")
     
@@ -180,8 +180,8 @@ def generate_template_fallback(
 ) -> str:
     """Pure Python fallback for signal explanation."""
     
-    action = getattr(signal_output, 'action', signal_output.get('action', 'HOLD'))
-    expected_return = getattr(signal_output, 'expected_return_pct', signal_output.get('expected_return_pct', 0.0))
+    action = getattr(signal_output, 'action', getattr(signal_output, 'action', 'HOLD') if not isinstance(signal_output, dict) else signal_output.get('action', 'HOLD'))
+    expected_return = getattr(signal_output, 'expected_return_pct', getattr(signal_output, 'expected_return_pct', 0.0) if not isinstance(signal_output, dict) else signal_output.get('expected_return_pct', 0.0))
     
     sorted_feats = sorted(top_features.items(), key=lambda x: x[1], reverse=True)
     f1 = sorted_feats[0][0] if len(sorted_feats) > 0 else "technical indicators"

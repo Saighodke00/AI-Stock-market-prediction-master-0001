@@ -17,6 +17,12 @@ from utils.india_market import IndiaMarketIntelligence
 from utils.technical_analysis import detect_support_resistance, calculate_position_size, calculate_multi_timeframe_confluence
 from utils.ui import metric_card, terminal_header, apply_chart_style
 from utils.backtest import run_backtest
+from utils.pattern_recognition import (
+    detect_all_patterns,
+    draw_patterns_on_chart,
+    get_confluence_message,
+    render_pattern_panel_streamlit,
+)
 
 intel = IndiaMarketIntelligence()
 
@@ -261,14 +267,34 @@ if ticker:
             equity_curve = [10000]
             mc_results = []
 
-        # Recommendation Logic
-        reason = f"Causal Engine Signal: {signal}. "
-        if signal == "NEUTRAL":
-            reason += "Gating criteria not met (Low confidence, weak trend, or high variance)."
-        else:
-            reason += f"Confidence: {dir_prob[0][0]*100:.1f}%. Expected Return: {q50[0]*100:.2f}%."
+        # ── PATTERN RECOGNITION CONFLUENCE ──
+        # 1. Detect patterns
+        pattern_result = detect_all_patterns(
+            df,
+            price_col="Close",
+            lookback_bars=120,
+            order=5,
+            prominence=0.01,
+        )
+
+        # 2. Get confluence with TFT signal
+        # We use dir_prob[0][0] as confidence and signal as action
+        confluence = get_confluence_message(
+            tft_action=signal,
+            tft_confidence=float(dir_prob[0][0]),
+            pattern_result=pattern_result,
+        )
+
+        # 3. Override signal with confluence
+        final_signal = confluence["final_action"]
+        final_confidence = confluence["confluence_score"]
         
-        gauge_val = dir_prob[0][0] * 100
+        # Recommendation Logic
+        reason = confluence["message"]
+        if final_signal == "HOLD" and confluence["conflict"]:
+             reason += " (Pattern Conflict)"
+        
+        gauge_val = final_confidence * 100
 
         if signal:
             try:
@@ -336,16 +362,16 @@ if ticker:
             # Fix Bug 03: Use clean markdown for better rendering reliability
             st.markdown("### 🤖 Neural Intelligence Report")
             with st.container(border=True):
-                st.write("**Execution Rationale:**")
+                st.markdown("**Execution Rationale:**")
                 st.info(reason)
                 
-                c_a, c_b = st.columns(2)
-                with c_a:
-                    st.write("**Strategic Vitals**")
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.markdown("**Strategic Vitals**")
                     st.write(f"Sentiment Flux: {sentiment_val:+.2f}")
                     st.write(f"RSI: {rsi_val:.1f}")
-                with c_b:
-                    st.write("**XAI Driver Analysis**")
+                with col_b:
+                    st.markdown("**XAI Driver Analysis**")
                     for x in xai_report:
                         st.write(f"- {x['feature']}: {x['importance']*100:+.1f}%")
             
@@ -411,8 +437,23 @@ if ticker:
             fig.add_trace(go.Scatter(x=[next_date], y=[q90_p], mode='markers', name='Upper Bound (Q90)', marker=dict(color='#00ff88', size=8)))
             fig.add_trace(go.Scatter(x=[next_date], y=[q10_p], mode='markers', name='Lower Bound (Q10)', marker=dict(color='#ff4b4b', size=8)))
             
+            # ── DRAW PATTERNS OVERLAY ──
+            fig = draw_patterns_on_chart(
+                fig=fig,
+                pattern_result=pattern_result,
+                df=plot_df,
+                price_col="Close",
+                max_patterns=3,
+                show_levels=True,
+                show_labels=True,
+            )
+            
             fig = apply_chart_style(fig)
             st.plotly_chart(fig, use_container_width=True)
+
+            # ── PATTERN INTELLIGENCE PANEL ──
+            st.markdown("---")
+            render_pattern_panel_streamlit(pattern_result, confluence)
             
         with tab2:
             fig_loss = go.Figure()
