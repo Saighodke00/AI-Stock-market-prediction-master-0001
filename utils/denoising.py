@@ -1,16 +1,16 @@
 """
 denoising.py
 ============
-Apex AI — Phase 2: Signal Denoising & Stationarity Engine
+Apex AI - Phase 2: Signal Denoising & Stationarity Engine
 ----------------------------------------------------------
 Provides four functions for transforming raw closing prices into a
 clean, stationary target series suitable for Temporal Fusion Transformer
 training:
 
-    1. wavelet_denoise          — DWT-based trend extraction (remove noise)
-    2. run_adf_test             — Augmented Dickey-Fuller stationarity gate
-    3. plot_denoising_comparison — Visual sanity-check (raw vs denoised)
-    4. apply_denoising_to_dataframe — Pipeline-friendly wrapper
+    1. wavelet_denoise          - DWT-based trend extraction (remove noise)
+    2. run_adf_test             - Augmented Dickey-Fuller stationarity gate
+    3. plot_denoising_comparison - Visual sanity-check (raw vs denoised)
+    4. apply_denoising_to_dataframe - Pipeline-friendly wrapper
 
 Packages required:
     pip install PyWavelets statsmodels matplotlib
@@ -35,7 +35,7 @@ from statsmodels.tsa.stattools import adfuller
 # ---------------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("apex_ai.denoising")
@@ -73,7 +73,7 @@ def wavelet_denoise(
     -------
     pd.Series
         Reconstructed (denoised) series with the **same index and name** as
-        the input.  Length is identical to the input — assertion guaranteed.
+        the input.  Length is identical to the input - assertion guaranteed.
 
     Raises
     ------
@@ -99,7 +99,7 @@ def wavelet_denoise(
 
     coeffs = pywt.wavedec(values, wavelet=wavelet, level=level)
 
-    # ── Zero ALL detail coefficients (indices 1 … level) ──────────────────
+    # ── Zero ALL detail coefficients (indices 1 ... level) ──────────────────
     for i in range(1, len(coeffs)):
         coeffs[i] = np.zeros_like(coeffs[i])
 
@@ -113,7 +113,7 @@ def wavelet_denoise(
     )
 
     result = pd.Series(denoised, index=original_index, name=series.name)
-    logger.info("wavelet_denoise complete — output length matches input (%d).", original_len)
+    logger.info("wavelet_denoise complete - output length matches input (%d).", original_len)
     return result
 
 
@@ -224,16 +224,16 @@ def plot_denoising_comparison(
     ax.plot(
         raw.index, raw.values,
         color="#888888", linewidth=0.8, alpha=0.7,
-        label=f"{ticker} — Raw Close",
+        label=f"{ticker} - Raw Close",
     )
     ax.plot(
         denoised.index, denoised.values,
         color="#00d2aa", linewidth=2.5,
-        label=f"{ticker} — Denoised (DWT Trend)",
+        label=f"{ticker} - Denoised (DWT Trend)",
     )
 
     ax.set_title(
-        f"Wavelet Denoising — {ticker}",
+        f"Wavelet Denoising - {ticker}",
         fontsize=16, fontweight="bold", color="white", pad=15,
     )
     ax.set_xlabel("Date", color="#aaaaaa", fontsize=11)
@@ -251,7 +251,7 @@ def plot_denoising_comparison(
     plt.savefig(save_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
 
-    logger.info("Plot saved → %s", os.path.abspath(save_path))
+    logger.info("Plot saved -> %s", os.path.abspath(save_path))
     return os.path.abspath(save_path)
 
 
@@ -268,7 +268,7 @@ def apply_denoising_to_dataframe(
 
     Convenience wrapper that chains :func:`wavelet_denoise` and optionally
     :func:`run_adf_test` to produce a pipeline-ready DataFrame with a new
-    ``Close_denoised`` column — the target series for TFT training.
+    ``Close_denoised`` column - the target series for TFT training.
 
     Parameters
     ----------
@@ -297,7 +297,7 @@ def apply_denoising_to_dataframe(
 
     df = df.copy()
 
-    logger.info("Applying wavelet denoising to 'Close' column (%d rows)…", len(df))
+    logger.info("Applying wavelet denoising to 'Close' column (%d rows)...", len(df))
     df["Close_denoised"] = wavelet_denoise(df["Close"], wavelet=wavelet, level=level)
 
     # Length assertion
@@ -306,11 +306,11 @@ def apply_denoising_to_dataframe(
     )
 
     if run_stationarity_check:
-        logger.info("Running ADF stationarity test on 'Close_denoised'…")
+        logger.info("Running ADF stationarity test on 'Close_denoised'...")
         run_adf_test(df["Close_denoised"])
 
     logger.info(
-        "apply_denoising_to_dataframe complete — shape=%s, NaN in Close_denoised=%d",
+        "apply_denoising_to_dataframe complete - shape=%s, NaN in Close_denoised=%d",
         df.shape,
         df["Close_denoised"].isna().sum(),
     )
@@ -318,13 +318,13 @@ def apply_denoising_to_dataframe(
 
 
 # ---------------------------------------------------------------------------
-# __main__ — smoke-test with synthetic sine + Gaussian noise
+# __main__ - smoke-test with synthetic sine + Gaussian noise
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import pprint
 
     print(f"\n{'='*62}")
-    print("  Apex AI — denoising.py smoke test (synthetic data)")
+    print("  Apex AI - denoising.py smoke test (synthetic data)")
     print(f"{'='*62}\n")
 
     # ── Generate synthetic data: trend + noise ─────────────────────────────
@@ -342,28 +342,28 @@ if __name__ == "__main__":
     print(f"Synthetic series length : {len(synthetic_close)}")
 
     # ── 1. Wavelet denoise ─────────────────────────────────────────────────
-    print("\n▶ wavelet_denoise …")
+    print("\n▶ wavelet_denoise ...")
     denoised = wavelet_denoise(synthetic_close, wavelet="db4", level=3)
     assert len(denoised) == len(synthetic_close), "❌ Length mismatch!"
     print(f"  ✅ Output length matches input: {len(denoised)} == {len(synthetic_close)}")
     print(f"  Head: {denoised.head(3).values.round(4)}")
 
     # ── 2. ADF test ────────────────────────────────────────────────────────
-    print("\n▶ run_adf_test (on raw — non-stationary expected) …")
+    print("\n▶ run_adf_test (on raw - non-stationary expected) ...")
     report_raw = run_adf_test(synthetic_close)
 
-    print("\n▶ run_adf_test (on denoised — may or may not be stationary) …")
+    print("\n▶ run_adf_test (on denoised - may or may not be stationary) ...")
     report_denoised = run_adf_test(denoised)
     print("\n  ADF report (denoised):")
     pprint.pprint(report_denoised, indent=4)
 
     # ── 3. Plot ────────────────────────────────────────────────────────────
-    print("\n▶ plot_denoising_comparison …")
+    print("\n▶ plot_denoising_comparison ...")
     saved = plot_denoising_comparison(synthetic_close, denoised, ticker="SYNTHETIC")
-    print(f"  Plot saved → {saved}")
+    print(f"  Plot saved -> {saved}")
 
     # ── 4. DataFrame wrapper ───────────────────────────────────────────────
-    print("\n▶ apply_denoising_to_dataframe …")
+    print("\n▶ apply_denoising_to_dataframe ...")
     test_df = pd.DataFrame({"Close": synthetic_close})
     enriched = apply_denoising_to_dataframe(test_df, wavelet="db4", level=3)
     assert "Close_denoised" in enriched.columns, "❌ Column not added!"

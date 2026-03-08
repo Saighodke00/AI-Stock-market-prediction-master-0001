@@ -23,6 +23,7 @@ const fmt = (v: number) => new Intl.NumberFormat('en-US', { minimumFractionDigit
 const fmtK = (v: number) => v > 1000 ? `${(v / 1000).toFixed(1)}K` : v.toFixed(2);
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 const capSharpe = (v: number) => clamp(v, -10, 10).toFixed(2);
+const safeArray = <T,>(val: unknown): T[] => Array.isArray(val) ? (val as T[]) : [];
 
 // ─── Mock data for Recharts chart (historical + forecast) ─────
 function buildChartData() {
@@ -208,24 +209,29 @@ export default function DashboardView({ signalData, loading, error, fetchData, t
     const accuracy = signalData?.accuracy ?? 67.4;
     const sharpe = signalData?.sharpe_ratio != null ? Number(capSharpe(signalData.sharpe_ratio)) : 1.84;
     const sentimentScore = signalData?.sentiment?.score ?? 72;
-    const explanation = signalData?.explanation ?? 'RSI recovery from oversold zone (RSI 42 → 54), VIX declining from 21 to 17, momentum aligns with Q1 seasonal strength. Quantile spread within 8% — high-conviction setup.';
+    const explanation = signalData?.explanation || 'RSI recovery from oversold zone (RSI 42 → 54), VIX declining from 21 to 17, momentum aligns with Q1 seasonal strength. Quantile spread within 8% — high-conviction setup.';
 
     const signalAccent =
         signal === 'BUY' ? 'emerald' :
             signal === 'SELL' ? 'rose' : 'amber';
     const SignalIcon = signal === 'BUY' ? TrendingUp : signal === 'SELL' ? TrendingDown : Activity;
 
-    const headlines = signalData?.sentiment?.headlines ?? [
-        { text: 'Fed signals gradual rate cuts as inflation eases to 2.8%', sentiment: 'Bullish' },
-        { text: 'Q4 earnings beat estimates by 12% on strong domestic demand', sentiment: 'Bullish' },
-        { text: 'Crude oil prices steady ahead of OPEC+ output review meeting', sentiment: 'Neutral' },
-        { text: 'Foreign institutional investors buy ₹4,200 Cr in equities', sentiment: 'Bullish' },
-        { text: 'Global recession risk fears resurface amid banking uncertainty', sentiment: 'Bearish' },
-    ];
+    const headlinesRaw = signalData?.sentiment?.headlines;
+    const headlines = (Array.isArray(headlinesRaw) && headlinesRaw.length > 0)
+        ? headlinesRaw
+        : [
+            { text: 'System standby — awaiting fresh intelligence feed.', sentiment: 'Neutral' },
+            { text: 'Fed signals gradual rate cuts as inflation eases to 2.8%', sentiment: 'Bullish' },
+            { text: 'Q4 earnings beat estimates by 12% on strong domestic demand', sentiment: 'Bullish' },
+            { text: 'Primary data streams stable. Neural cores at target temperature.', sentiment: 'Neutral' },
+        ];
 
-    const shapData = signalData?.shap_features?.map((f: any) => ({
-        feature: f.feature, impact: f.impact, color: f.impact > 0 ? '#34d399' : '#f43f5e'
-    })) ?? [
+    const shapRaw = signalData?.shap_features;
+    const shapData = (Array.isArray(shapRaw) && shapRaw.length > 0)
+        ? shapRaw.map((f: any) => ({
+            feature: f.feature, impact: f.impact, color: f.impact > 0 ? '#34d399' : '#f43f5e'
+        }))
+        : [
             { feature: 'RSI_14', impact: 0.34, color: '#34d399' },
             { feature: 'VIX_Close', impact: -0.28, color: '#f43f5e' },
             { feature: 'MACD_Signal', impact: 0.21, color: '#34d399' },
@@ -277,8 +283,8 @@ export default function DashboardView({ signalData, loading, error, fetchData, t
                     />
                     <KpiCard
                         label="Model Accuracy"
-                        value={`${accuracy.toFixed(1)}%`}
-                        sub={`Sharpe ${sharpe.toFixed(2)} · Sortino 2.31`}
+                        value={`${(accuracy ?? 0).toFixed(1)}%`}
+                        sub={`Sharpe ${(sharpe ?? 0).toFixed(2)} · Sortino 2.31`}
                         accent="violet"
                         icon={ShieldCheck}
                     />
@@ -435,9 +441,11 @@ export default function DashboardView({ signalData, loading, error, fetchData, t
                             </div>
                         </div>
                         <div className="space-y-0.5">
-                            {(headlines as any[]).slice(0, 5).map((h: any, i: number) => (
-                                <NewsItem key={i} headline={h.text || h.title || h} sentiment={h.sentiment || 'Neutral'} source="Yahoo Finance" />
-                            ))}
+                            {(() => {
+                                return safeArray(headlines).slice(0, 5).map((h: any, i: number) => (
+                                    <NewsItem key={i} headline={h?.text || h?.title || h || 'Market update unavailable.'} sentiment={h?.sentiment || 'Neutral'} source="Yahoo Finance" />
+                                ));
+                            })()}
                         </div>
                     </div>
 

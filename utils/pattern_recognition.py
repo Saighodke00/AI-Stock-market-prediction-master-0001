@@ -51,7 +51,7 @@ def find_swing_highs_lows(
                 (higher = fewer but more significant swings)
 
     Returns:
-        (highs_idx, lows_idx) — arrays of bar indices
+        (highs_idx, lows_idx) - arrays of bar indices
     """
     highs_idx = argrelextrema(prices, np.greater, order=order)[0]
     lows_idx  = argrelextrema(prices, np.less,    order=order)[0]
@@ -97,11 +97,11 @@ def detect_head_and_shoulders(
     prices: np.ndarray,
     peak_idx: np.ndarray,
     trough_idx: np.ndarray,
-    tolerance: float = 0.03     # 3% — how close shoulders must be in height
+    tolerance: float = 0.03     # 3% - how close shoulders must be in height
 ) -> list[PatternResult]:
     """
     HEAD & SHOULDERS (bearish reversal)
-    Pattern: Left Shoulder → Head (higher high) → Right Shoulder
+    Pattern: Left Shoulder -> Head (higher high) -> Right Shoulder
     Neckline: line connecting the two troughs between shoulders
 
     INVERSE H&S (bullish reversal) detected on inverted prices.
@@ -126,7 +126,7 @@ def detect_head_and_shoulders(
         if _pct_diff(ls, rs) > tolerance:
             continue
 
-        # Find neckline troughs between LS→H and H→RS
+        # Find neckline troughs between LS->H and H->RS
         t1_candidates = trough_idx[(trough_idx > ls_idx) & (trough_idx < h_idx)]
         t2_candidates = trough_idx[(trough_idx > h_idx)  & (trough_idx < rs_idx)]
 
@@ -137,7 +137,7 @@ def detect_head_and_shoulders(
         t2_idx = t2_candidates[np.argmin(prices[t2_candidates])]
         neckline = (prices[t1_idx] + prices[t2_idx]) / 2
 
-        # Pattern height = head - neckline → measured move target
+        # Pattern height = head - neckline -> measured move target
         height = h - neckline
         target = neckline - height  # bearish target below neckline
 
@@ -161,7 +161,7 @@ def detect_head_and_shoulders(
             ],
             breakout_level=round(neckline, 2),
             target_price=round(target, 2),
-            description=f"LS ₹{ls:.0f} → Head ₹{h:.0f} → RS ₹{rs:.0f} · Neckline ₹{neckline:.0f}",
+            description=f"LS ₹{ls:.0f} -> Head ₹{h:.0f} -> RS ₹{rs:.0f} · Neckline ₹{neckline:.0f}",
             direction="bearish",
             emoji="📉"
         ))
@@ -228,8 +228,8 @@ def detect_double_top_bottom(
     tolerance: float = 0.025    # peaks must be within 2.5% of each other
 ) -> list[PatternResult]:
     """
-    DOUBLE TOP  (bearish) — two roughly equal peaks with valley between
-    DOUBLE BOTTOM (bullish) — two roughly equal troughs with peak between
+    DOUBLE TOP  (bearish) - two roughly equal peaks with valley between
+    DOUBLE BOTTOM (bullish) - two roughly equal troughs with peak between
     """
     results = []
 
@@ -322,12 +322,12 @@ def detect_triangles(
     lookback: int = 60
 ) -> list[PatternResult]:
     """
-    TRIANGLE PATTERNS — Ascending, Descending, Symmetrical
+    TRIANGLE PATTERNS - Ascending, Descending, Symmetrical
     Uses linear regression on recent highs and lows to detect converging trendlines.
 
-    Ascending  → flat resistance + rising support → bullish
-    Descending → flat support + falling resistance → bearish
-    Symmetrical → falling highs + rising lows → continuation
+    Ascending  -> flat resistance + rising support -> bullish
+    Descending -> flat support + falling resistance -> bearish
+    Symmetrical -> falling highs + rising lows -> continuation
     """
     results = []
 
@@ -431,9 +431,9 @@ def detect_flag(
     flag_bars: int = 15           # flag consolidation window
 ) -> list[PatternResult]:
     """
-    BULL FLAG / BEAR FLAG — Sharp move (pole) followed by tight consolidation (flag)
-    Bull Flag: strong upward pole → slight downward channel → breakout up
-    Bear Flag:  strong downward pole → slight upward channel → breakdown
+    BULL FLAG / BEAR FLAG - Sharp move (pole) followed by tight consolidation (flag)
+    Bull Flag: strong upward pole -> slight downward channel -> breakout up
+    Bear Flag:  strong downward pole -> slight upward channel -> breakdown
     """
     results = []
     n = len(prices)
@@ -530,7 +530,7 @@ def detect_cup_and_handle(
     depth_max_pct: float = 0.35    # cup shouldn't be deeper than 35%
 ) -> list[PatternResult]:
     """
-    CUP & HANDLE — Bullish continuation pattern
+    CUP & HANDLE - Bullish continuation pattern
     Shape: round bottom (cup) followed by small consolidation (handle)
     """
     results = []
@@ -916,14 +916,14 @@ def get_confluence_message(
     )
 
     if agrees:
-        # CONFLUENCE — boost confidence
+        # CONFLUENCE - boost confidence
         boosted = min(1.0, tft_confidence + best.confidence * 0.15)
         msg = (
-            f"✅ TFT says {tft_action} + {best.emoji} {best.name} breakout — "
+            f"✅ TFT says {tft_action} + {best.emoji} {best.name} breakout - "
             f"STRONG CONFLUENCE. "
             f"Confidence boosted to {boosted:.0%}. "
             f"Pattern target: ₹{best.target_price:.0f}." if best.target_price else
-            f"✅ TFT says {tft_action} + {best.emoji} {best.name} — STRONG CONFLUENCE. "
+            f"✅ TFT says {tft_action} + {best.emoji} {best.name} - STRONG CONFLUENCE. "
             f"Confidence boosted to {boosted:.0%}."
         )
         return {
@@ -935,10 +935,10 @@ def get_confluence_message(
         }
 
     elif opposes:
-        # CONFLICT — downgrade to HOLD
+        # CONFLICT - downgrade to HOLD
         msg = (
             f"⚠️ TFT says {tft_action} but {best.emoji} {best.name} "
-            f"suggests {pattern_action}. CONFLICTING signals — downgrading to HOLD. "
+            f"suggests {pattern_action}. CONFLICTING signals - downgrading to HOLD. "
             f"Wait for resolution."
         )
         return {
@@ -953,7 +953,7 @@ def get_confluence_message(
         # Pattern is neutral or TFT is HOLD
         msg = (
             f"TFT Signal: {tft_action} (conf {tft_confidence:.0%}). "
-            f"{best.emoji} {best.name} detected ({best.confidence:.0%}) — "
+            f"{best.emoji} {best.name} detected ({best.confidence:.0%}) - "
             f"neutral pattern, no confluence adjustment."
         )
         return {
@@ -982,7 +982,7 @@ def render_pattern_panel_streamlit(pattern_result: dict, confluence: dict):
     try:
         import streamlit as st
     except ImportError:
-        print("Streamlit not installed — skipping render.")
+        print("Streamlit not installed - skipping render.")
         return
 
     patterns = pattern_result["patterns"]

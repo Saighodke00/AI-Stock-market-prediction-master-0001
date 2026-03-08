@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, RefreshCw, BarChart2, Clock, Loader2 } from 'lucide-react';
 
-const fmt = (v: number) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+const fmt = (v: number | undefined | null) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v ?? 0);
 
 export default function BacktestView() {
     const [ticker, setTicker] = useState('AAPL');
@@ -44,9 +44,10 @@ export default function BacktestView() {
         fetchData();
     }, [ticker]);
 
+    const safeArray = <T,>(val: unknown): T[] => Array.isArray(val) ? (val as T[]) : [];
     const metrics = data?.metrics;
-    const equityCurve = data?.equity_curve || [];
-    const trades = data?.trades || [];
+    const equityCurve = safeArray<{ date: string; strategy: number; benchmark: number }>(data?.equity_curve);
+    const trades = safeArray<{ date: string; ticker: string; dir: string; entry: number; exit: number; pnl: number; reason: string }>(data?.trades);
 
     const totalReturn = equityCurve.length > 0
         ? ((equityCurve[equityCurve.length - 1].strategy - 10000) / 10000) * 100
@@ -70,10 +71,10 @@ export default function BacktestView() {
 
     const METRICS = [
         { l: 'Total Return', v: `${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}%`, c: totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400' },
-        { l: 'Sharpe Ratio', v: metrics?.sharpe.toFixed(2) || '0.00', c: 'text-indigo-400' },
-        { l: 'Sortino Ratio', v: metrics?.sortino.toFixed(2) || '0.00', c: 'text-indigo-400' },
-        { l: 'Win Rate', v: `${metrics?.accuracy.toFixed(1) || '0.0'}%`, c: 'text-emerald-400' },
-        { l: 'Total Trades', v: trades.length.toString(), c: 'text-slate-300' },
+        { l: 'Sharpe Ratio', v: (metrics?.sharpe ?? 0).toFixed(2), c: 'text-indigo-400' },
+        { l: 'Sortino Ratio', v: (metrics?.sortino ?? 0).toFixed(2), c: 'text-indigo-400' },
+        { l: 'Win Rate', v: `${(metrics?.accuracy ?? 0).toFixed(1)}%`, c: 'text-emerald-400' },
+        { l: 'Total Trades', v: (trades?.length ?? 0).toString(), c: 'text-slate-300' },
     ];
 
     return (
@@ -180,7 +181,7 @@ export default function BacktestView() {
                             <span className="text-slate-700 shrink-0">→</span>
                             <span className="text-xs font-mono text-slate-400 shrink-0">${fmt(t.exit)}</span>
                             <span className={`ml-auto text-xs font-mono font-black shrink-0 ${t.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {t.pnl >= 0 ? '+' : ''}{t.pnl.toFixed(2)}%
+                                {t.pnl >= 0 ? '+' : ''}{(t.pnl ?? 0).toFixed(2)}%
                             </span>
                             <span className="text-[10px] text-slate-600 w-28 text-right shrink-0">{t.reason}</span>
                         </div>

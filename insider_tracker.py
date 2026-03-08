@@ -23,6 +23,25 @@ SEC_SEARCH_URL = "https://efts.sec.gov/LATEST/search-index"
 SEC_ARCHIVE_URL = "https://www.sec.gov/Archives/edgar/data"
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+# ── INSIDER TRACKER KILL-SWITCH ──
+# Set True only when you have stable internet + Redis caching working.
+# While developing, keep False to prevent SEC.gov from blocking the screener.
+INSIDER_ENABLED = False
+
+# ── CACHING ───────────────────────────────────────────────────────────────────
+_INSIDER_CACHE: dict = {}
+INSIDER_CACHE_TTL = 3600 * 6  # 6 hours
+
+def insider_cache_get(key: str):
+    if key in _INSIDER_CACHE:
+        data, ts = _INSIDER_CACHE[key]
+        if time.time() - ts < INSIDER_CACHE_TTL:
+            return data
+    return None
+
+def insider_cache_set(key: str, data):
+    _INSIDER_CACHE[key] = (data, time.time())
+
 # ── REDIS WRAPPER ────────────────────────────────────────────────────────────
 try:
     import redis
@@ -30,7 +49,7 @@ try:
     redis_client.ping()
     HAS_REDIS = True
 except Exception:
-    logger.warning("Redis not found or connection failed. Insider tracker will not cache results.")
+    logger.debug("Redis not found. Falling back to in-memory caching.")
     HAS_REDIS = False
 
 # ── FUNCTIONS ────────────────────────────────────────────────────────────────
@@ -46,6 +65,9 @@ def fetch_form4_filings(ticker: str, days_back: int = 30) -> List[Dict[str, Any]
     Returns:
         List of transaction dictionaries.
     """
+    if not INSIDER_ENABLED:
+        return []
+        
     ticker = ticker.upper()
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days_back)
@@ -66,8 +88,15 @@ def fetch_form4_filings(ticker: str, days_back: int = 30) -> List[Dict[str, Any]
     transactions = []
     
     try:
-        response = requests.get(SEC_SEARCH_URL, params=params, headers=headers, timeout=15)
-        response.raise_for_status()
+        try:
+            response = requests.get(SEC_SEARCH_URL, params=params, headers=headers, timeout=3)
+            response.raise_for_status()
+        except (requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.HTTPError) as e:
+            logger.debug(f"SEC.gov skipped for {ticker} (timeout/connection): {e}")
+            return []
+            
         data = response.json()
         
         hits = data.get("hits", {}).get("hits", [])
@@ -98,11 +127,13 @@ def fetch_form4_filings(ticker: str, days_back: int = 30) -> List[Dict[str, Any]
             time.sleep(0.1)
             
             try:
-                xml_resp = requests.get(xml_url, headers=headers, timeout=10)
-                if xml_resp.status_code != 200:
+                try:
+                    xml_resp = requests.get(xml_url, headers=headers, timeout=3)
+                    xml_resp.raise_for_status()
+                except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.HTTPError):
                     # Alternative common name if the first guess fails
                     xml_url = f"{SEC_ARCHIVE_URL}/{int(cik)}/{accession_path}/doc1.xml"
-                    xml_resp = requests.get(xml_url, headers=headers, timeout=10)
+                    xml_resp = requests.get(xml_url, headers=headers, timeout=3)
                 
                 if xml_resp.status_code == 200:
                     parsed_txs = parse_form4_xml(xml_resp.text)
@@ -250,13 +281,22 @@ def get_insider_summary(ticker: str) -> Dict[str, Any]:
     ticker = ticker.upper()
     cache_key = f"insider:v1:{ticker}"
     
+    # 1. Try In-Memory Cache
+    cached = insider_cache_get(cache_key)
+    if cached:
+        logger.debug(f"Insider cache hit (memory) for {ticker}")
+        return cached
+
+    # 2. Try Redis Cache
     if HAS_REDIS:
         try:
             cached = redis_client.get(cache_key)
             if cached:
-                return json.loads(cached)
-        except Exception as e:
-            logger.error(f"Redis get failed: {e}")
+                parsed = json.loads(cached)
+                insider_cache_set(cache_key, parsed) # Promo to memory
+                return parsed
+        except Exception:
+            pass
             
     # Fetch and process
     txs = fetch_form4_filings(ticker)
@@ -269,6 +309,9 @@ def get_insider_summary(ticker: str) -> Dict[str, Any]:
         "interpretation": interpretation,
         "last_updated": datetime.now().isoformat()
     }
+    
+    # Cache result
+    insider_cache_set(cache_key, summary)
     
     if HAS_REDIS:
         try:

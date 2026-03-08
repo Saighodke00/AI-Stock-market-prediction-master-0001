@@ -6,8 +6,8 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
-const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
-const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+const fmt = (v: number | undefined | null) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v ?? 0);
+const fmtPct = (v: number | undefined | null) => `${(v ?? 0) >= 0 ? '+' : ''}${(v ?? 0).toFixed(2)}%`;
 
 interface PortfolioData {
     cash_balance: number;
@@ -87,7 +87,7 @@ export default function PortfolioView() {
 
     const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
 
-    const chartData = data?.positions?.map(p => ({
+    const chartData = (Array.isArray(data?.positions) ? data.positions : []).map(p => ({
         name: p.ticker,
         value: p.shares * p.current
     })) || [];
@@ -178,7 +178,7 @@ export default function PortfolioView() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {data?.positions?.map((p, i) => (
+                                {(Array.isArray(data?.positions) ? data.positions : []).map((p, i) => (
                                     <tr key={i} className="border-b border-slate-800/30 hover:bg-slate-900/40 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -188,12 +188,12 @@ export default function PortfolioView() {
                                                 <span className="text-sm font-bold text-white uppercase">{p.ticker}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-xs font-mono text-slate-300">{p.shares.toFixed(2)}</td>
-                                        <td className="px-6 py-4 text-xs font-mono text-slate-400">${p.entry.toFixed(2)}</td>
-                                        <td className="px-6 py-4 text-xs font-mono text-white">${p.current.toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-xs font-mono text-slate-300">{(p.shares ?? 0).toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-xs font-mono text-slate-400">${(p.entry ?? 0).toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-xs font-mono text-white">${(p.current ?? 0).toFixed(2)}</td>
                                         <td className="px-6 py-4 text-right">
-                                            <p className={`text-xs font-black font-mono ${p.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                {p.pnl >= 0 ? '+' : ''}{p.pnl.toFixed(2)}
+                                            <p className={`text-xs font-black font-mono ${(p?.pnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                {(p?.pnl ?? 0) >= 0 ? '+' : ''}{(p?.pnl ?? 0).toFixed(2)}
                                             </p>
                                             <p className={`text-[10px] font-bold ${p.pnl_pct >= 0 ? 'text-emerald-500/60' : 'text-rose-500/60'}`}>
                                                 {fmtPct(p.pnl_pct)}
@@ -201,7 +201,7 @@ export default function PortfolioView() {
                                         </td>
                                     </tr>
                                 ))}
-                                {(!data || (data.positions?.length || 0) === 0) && (
+                                {(!data || !Array.isArray(data.positions) || data.positions.length === 0) && (
                                     <tr>
                                         <td colSpan={5} className="px-6 py-20 text-center">
                                             <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center mx-auto mb-4 border border-slate-800">
@@ -290,17 +290,17 @@ export default function PortfolioView() {
                             </tr>
                         </thead>
                         <tbody>
-                            {trades.slice(0, 50).map((t, i) => (
+                            {(Array.isArray(trades) ? trades : []).slice(0, 50).map((t, i) => (
                                 <tr key={i} className="border-b border-slate-800/30 hover:bg-slate-900/40 transition-colors">
                                     <td className="px-6 py-4 text-[11px] text-slate-500">{new Date(t.opened_at).toLocaleDateString()}</td>
                                     <td className="px-6 py-4 text-xs font-bold text-slate-300 uppercase">{t.ticker}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${t.action === 'BUY' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                                            {t.action}
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${t?.action === 'BUY' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                            {t?.action}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-xs font-mono text-slate-500">{t.shares.toFixed(2)}</td>
-                                    <td className="px-6 py-4 text-xs font-mono text-slate-500">${t.price.toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-xs font-mono text-slate-500">{(t?.shares ?? 0).toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-xs font-mono text-slate-500">${(t?.price ?? 0).toFixed(2)}</td>
                                     <td className="px-6 py-4 text-right">
                                         {t.pnl !== null ? (
                                             <span className={`text-[11px] font-black font-mono ${t.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
