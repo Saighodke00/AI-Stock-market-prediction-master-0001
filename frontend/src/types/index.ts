@@ -39,6 +39,7 @@ export interface APIResponse {
         score: number; // 0 to 100
         headlines: SentimentHeadline[];
     };
+    patterns?: any[];       // Add patterns
     insider_analysis?: any; // Add insider_analysis
     accuracy: number;       // Add accuracy
     sharpe_ratio: number;  // Add sharpe_ratio
@@ -58,5 +59,5 @@ export interface BacktestMetrics {
 export interface BacktestResponse {
     metrics: BacktestMetrics;
     trades: any[];
-    equity_curve: number[];
+    equity_curve: { date: string; strategy: number; benchmark: number }[];
 }

@@ -1,7 +1,7 @@
 """
 frac_diff.py
 ============
-Apex AI — Phase 2: Fractional Differentiation Engine
+Apex AI - Phase 2: Fractional Differentiation Engine
 ------------------------------------------------------
 Implements Lopez de Prado's Fixed-Width Window (FFD) fractional
 differentiation from "Advances in Financial Machine Learning" (Chapter 5).
@@ -9,22 +9,22 @@ differentiation from "Advances in Financial Machine Learning" (Chapter 5).
 MOTIVATION
 ----------
 Standard integer differencing (log-returns, Δp) destroys the long-range
-memory embedded in price series — the very autocorrelation a TFT model
+memory embedded in price series - the very autocorrelation a TFT model
 relies on. Fractional differencing with order d ∈ (0, 1) is a middle
 ground:
-  • d = 0   → raw prices (non-stationary, full memory)
-  • d = 1   → standard returns (stationary, zero memory)
-  • d = 0.4 → stationary, maximum memory preserved  ← we want this
+  • d = 0   -> raw prices (non-stationary, full memory)
+  • d = 1   -> standard returns (stationary, zero memory)
+  • d = 0.4 -> stationary, maximum memory preserved  ← we want this
 
 The key insight: find the minimum d such that the ADF test rejects the
 unit-root null (p < 0.05) while keeping d as small as possible.
 
 API
 ---
-    get_weights_ffd(d, thres)          → np.ndarray  (FFD weight vector)
-    frac_diff_ffd(series_df, d, thres) → pd.DataFrame (differenced series)
-    find_min_d(series, d_range, thres) → float       (optimal d)
-    apply_to_dataframe(df, d)          → pd.DataFrame (adds Close_fracdiff)
+    get_weights_ffd(d, thres)          -> np.ndarray  (FFD weight vector)
+    frac_diff_ffd(series_df, d, thres) -> pd.DataFrame (differenced series)
+    find_min_d(series, d_range, thres) -> float       (optimal d)
+    apply_to_dataframe(df, d)          -> pd.DataFrame (adds Close_fracdiff)
 
 Packages required: numpy, pandas, statsmodels, matplotlib
 Author : Apex AI Team  (based on López de Prado 2018, Chapter 5)
@@ -46,7 +46,7 @@ from statsmodels.tsa.stattools import adfuller
 # ---------------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("apex_ai.frac_diff")
@@ -60,7 +60,7 @@ def get_weights_ffd(d: float, thres: float = 0.01) -> np.ndarray:
 
     The binomial series expansion of the lag operator (1-L)^d gives weights:
 
-        w_k = -w_{k-1} * (d - k + 1) / k      for k = 1, 2, 3, …
+        w_k = -w_{k-1} * (d - k + 1) / k      for k = 1, 2, 3, ...
 
     FFD stops adding weights once |w_k| < *thres*, bounding the window
     length.  This avoids the expanding-window problem of standard FD (which
@@ -77,7 +77,7 @@ def get_weights_ffd(d: float, thres: float = 0.01) -> np.ndarray:
     Returns
     -------
     np.ndarray
-        1-D array of weights ``[w_0, w_1, …, w_k]`` in reverse-lag order
+        1-D array of weights ``[w_0, w_1, ..., w_k]`` in reverse-lag order
         (w_0 = 1 at lag-0, w_k = smallest weight farthest in the past).
         Ready to be dot-product'd with a sliding window of prices.
 
@@ -151,7 +151,7 @@ def frac_diff_ffd(
 
         for i in range(n):
             if i < width:
-                # Not enough history yet — warm-up rows
+                # Not enough history yet - warm-up rows
                 col_vals.append(np.nan)
             else:
                 # Window: lagged values from (i-width) to i inclusive
@@ -195,7 +195,7 @@ def find_min_d(
     series : pd.Series
         Raw or wavelet-denoised closing-price series.
     d_range : list[float], optional
-        Candidate d values to search.  Defaults to ``[0.1, 0.2, …, 1.0]``.
+        Candidate d values to search.  Defaults to ``[0.1, 0.2, ..., 1.0]``.
     thres : float, optional
         FFD weight cutoff forwarded to :func:`get_weights_ffd`.
     plot : bool, optional
@@ -246,11 +246,11 @@ def find_min_d(
                 optimal_d = d
 
         except Exception as exc:
-            logger.warning("find_min_d: error at d=%.1f — %s", d, exc)
+            logger.warning("find_min_d: error at d=%.1f - %s", d, exc)
 
     print(f"{'─'*len(header)}")
     print(f"\n  ➜ Optimal minimum d = {optimal_d:.1f}\n")
-    logger.info("find_min_d complete — optimal_d=%.1f", optimal_d)
+    logger.info("find_min_d complete - optimal_d=%.1f", optimal_d)
 
     # ── Plot d vs p-value ────────────────────────────────────────────────────
     if plot and results:
@@ -280,7 +280,7 @@ def find_min_d(
 
         ax.set_xlabel("Differencing order d", color="#aaaaaa", fontsize=11)
         ax.set_ylabel("ADF p-value", color="#aaaaaa", fontsize=11)
-        ax.set_title("Fractional Differentiation — ADF p-value vs d", 
+        ax.set_title("Fractional Differentiation - ADF p-value vs d", 
                      color="white", fontsize=14, fontweight="bold", pad=12)
         ax.tick_params(colors="#aaaaaa", labelsize=9)
         for spine in ax.spines.values():
@@ -297,8 +297,8 @@ def find_min_d(
             path = os.path.join("plots", "find_min_d.png")
             plt.savefig(path, dpi=150, bbox_inches="tight",
                         facecolor=fig.get_facecolor())
-            logger.info("d vs p-value plot saved → %s", os.path.abspath(path))
-            print(f"  Plot saved → {os.path.abspath(path)}")
+            logger.info("d vs p-value plot saved -> %s", os.path.abspath(path))
+            print(f"  Plot saved -> {os.path.abspath(path)}")
         plt.show()
         plt.close(fig)
 
@@ -321,7 +321,7 @@ def apply_to_dataframe(df: pd.DataFrame, d: float = 0.4) -> pd.DataFrame:
         Must contain a ``'Close_denoised'`` column.  If absent, falls back
         to ``'Close'`` with a warning.
     d : float, optional
-        Fractional differencing order.  Defaults to ``0.4`` — a reasonable
+        Fractional differencing order.  Defaults to ``0.4`` - a reasonable
         starting point for most equity price series per López de Prado.
 
     Returns
@@ -340,7 +340,7 @@ def apply_to_dataframe(df: pd.DataFrame, d: float = 0.4) -> pd.DataFrame:
         source_col = "Close_denoised"
     elif "Close" in df.columns:
         logger.warning(
-            "apply_to_dataframe: 'Close_denoised' not found — falling back to 'Close'. "
+            "apply_to_dataframe: 'Close_denoised' not found - falling back to 'Close'. "
             "Run utils.denoising.apply_denoising_to_dataframe first for best results."
         )
         source_col = "Close"
@@ -368,17 +368,17 @@ def apply_to_dataframe(df: pd.DataFrame, d: float = 0.4) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# __main__ — run find_min_d on synthetic AAPL-like price series
+# __main__ - run find_min_d on synthetic AAPL-like price series
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     print(f"\n{'='*62}")
-    print("  Apex AI — frac_diff.py smoke test")
+    print("  Apex AI - frac_diff.py smoke test")
     print(f"{'='*62}\n")
 
     # Try to load real AAPL data; fall back to synthetic if no network
     try:
         import yfinance as yf
-        print("  Fetching AAPL close prices from Yahoo Finance…")
+        print("  Fetching AAPL close prices from Yahoo Finance...")
         raw = yf.download("AAPL", period="5y", interval="1d",
                           progress=False, auto_adjust=True)
         price_series = raw["Close"].dropna().squeeze()
@@ -388,7 +388,7 @@ if __name__ == "__main__":
         print(f"  yfinance unavailable ({exc}). Using synthetic data.\n")
         np.random.seed(0)
         n = 500
-        # Random walk (non-stationary by construction — perfect test case)
+        # Random walk (non-stationary by construction - perfect test case)
         price_series = pd.Series(
             100 + np.cumsum(np.random.randn(n) * 0.5),
             index=pd.date_range("2020-01-01", periods=n, freq="B"),
@@ -396,13 +396,13 @@ if __name__ == "__main__":
         )
 
     # ── 1. Weight vector quick-check ──────────────────────────────────────
-    print("▶ get_weights_ffd(d=0.4) …")
+    print("▶ get_weights_ffd(d=0.4) ...")
     w = get_weights_ffd(d=0.4, thres=0.01)
     print(f"  Window length : {len(w)}")
     print(f"  Weights (first 5): {w[:5].round(5)}\n")
 
     # ── 2. Single-d FFD check ─────────────────────────────────────────────
-    print("▶ frac_diff_ffd(d=0.4) …")
+    print("▶ frac_diff_ffd(d=0.4) ...")
     df_price = pd.DataFrame({"price": price_series.values}, index=price_series.index)
     diff_result = frac_diff_ffd(df_price, d=0.4)
     n_valid = diff_result["price"].notna().sum()
@@ -411,12 +411,12 @@ if __name__ == "__main__":
     print(f"  Head (5 rows):\n{diff_result.dropna().head()}\n")
 
     # ── 3. find_min_d grid search ─────────────────────────────────────────
-    print("▶ find_min_d(d_range=[0.1 … 1.0]) …")
+    print("▶ find_min_d(d_range=[0.1 ... 1.0]) ...")
     optimal = find_min_d(price_series, plot=True, save_plot=True)
     print(f"  Returned optimal d = {optimal}\n")
 
     # ── 4. apply_to_dataframe ─────────────────────────────────────────────
-    print("▶ apply_to_dataframe(d=optimal) …")
+    print("▶ apply_to_dataframe(d=optimal) ...")
     # Emulate having Close_denoised already in the DataFrame
     test_df = pd.DataFrame({
         "Close":          price_series.values,

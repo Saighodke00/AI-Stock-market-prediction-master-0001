@@ -66,7 +66,7 @@ const PaperPortfolio: React.FC = () => {
                 <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex flex-col justify-center">
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Total Portfolio Value</p>
                     <p className="text-3xl font-black text-white tracking-tighter">
-                        ${portfolio.total_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${(portfolio.total_value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <div className={`flex items-center mt-2 text-xs font-bold ${portfolio.total_return_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {portfolio.total_return_pct >= 0 ? '▲' : '▼'} {Math.abs(portfolio.total_return_pct).toFixed(2)}%
@@ -76,21 +76,21 @@ const PaperPortfolio: React.FC = () => {
                 <div className="p-6 rounded-2xl bg-slate-800/20 border border-slate-800/50">
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Available Cash</p>
                     <p className="text-xl font-bold text-slate-200">
-                        ${portfolio.cash_balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        ${(portfolio.cash_balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </p>
                 </div>
 
                 <div className="p-6 rounded-2xl bg-slate-800/20 border border-slate-800/50">
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Market Value</p>
                     <p className="text-xl font-bold text-slate-200">
-                        ${portfolio.market_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        ${(portfolio.market_value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </p>
                 </div>
 
                 <div className="p-6 rounded-2xl bg-slate-800/20 border border-slate-800/50">
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Signal Win Rate</p>
                     <p className="text-xl font-bold text-emerald-400">
-                        {portfolio.win_rate.toFixed(1)}% <span className="text-[10px] text-slate-500 ml-1">({portfolio.num_trades} trades)</span>
+                        {(portfolio.win_rate ?? 0).toFixed(1)}% <span className="text-[10px] text-slate-500 ml-1">({portfolio.num_trades ?? 0} trades)</span>
                     </p>
                 </div>
             </div>
@@ -119,26 +119,31 @@ const PaperPortfolio: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800/50">
-                                {portfolio.positions.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-4 py-12 text-center text-slate-600 italic">No open positions. Follow a signal to start.</td>
-                                    </tr>
-                                ) : (
-                                    portfolio.positions.map((pos: PaperPositionSchema) => (
+                                {(() => {
+                                    const safeArray = <T,>(val: unknown): T[] => Array.isArray(val) ? (val as T[]) : [];
+                                    const positions = safeArray<PaperPositionSchema>(portfolio.positions);
+                                    if (positions.length === 0) {
+                                        return (
+                                            <tr>
+                                                <td colSpan={5} className="px-4 py-12 text-center text-slate-600 italic">No open positions. Follow a signal to start.</td>
+                                            </tr>
+                                        );
+                                    }
+                                    return positions.map((pos) => (
                                         <tr key={pos.ticker} className="hover:bg-slate-800/30 transition-colors group">
                                             <td className="px-4 py-4 font-bold text-white">{pos.ticker}</td>
-                                            <td className="px-4 py-4 text-slate-400 font-mono text-xs">{pos.shares.toFixed(4)}</td>
-                                            <td className="px-4 py-4 text-right text-slate-300">${pos.entry.toFixed(2)}</td>
-                                            <td className="px-4 py-4 text-right text-white font-semibold">${pos.current.toFixed(2)}</td>
+                                            <td className="px-4 py-4 text-slate-400 font-mono text-xs">{(pos.shares ?? 0).toFixed(4)}</td>
+                                            <td className="px-4 py-4 text-right text-slate-300">${(pos.entry ?? 0).toFixed(2)}</td>
+                                            <td className="px-4 py-4 text-right text-white font-semibold">${(pos.current ?? 0).toFixed(2)}</td>
                                             <td className={`px-4 py-4 text-right font-black ${pos.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                                 <div className="flex flex-col items-end">
-                                                    <span>{pos.pnl >= 0 ? '+' : ''}${Math.abs(pos.pnl).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                                                    <span className="text-[10px] opacity-70">{pos.pnl_pct.toFixed(2)}%</span>
+                                                    <span>{(pos.pnl ?? 0) >= 0 ? '+' : ''}${Math.abs(pos.pnl ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                                                    <span className="text-[10px] opacity-70">{(pos.pnl_pct ?? 0).toFixed(2)}%</span>
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))
-                                )}
+                                    ));
+                                })()}
                             </tbody>
                         </table>
                     </div>
@@ -157,10 +162,13 @@ const PaperPortfolio: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col space-y-3 max-h-[500px] overflow-y-auto pr-2 scrollbar-hide">
-                        {trades.length === 0 ? (
-                            <div className="p-8 text-center text-slate-600 text-xs italic border border-dashed border-slate-800 rounded-xl">History is empty.</div>
-                        ) : (
-                            trades.map((trade, idx) => (
+                        {(() => {
+                            const safeArray = <T,>(val: unknown): T[] => Array.isArray(val) ? (val as T[]) : [];
+                            const safeTrades = safeArray<PaperTradeSchema>(trades);
+                            if (safeTrades.length === 0) {
+                                return <div className="p-8 text-center text-slate-600 text-xs italic border border-dashed border-slate-800 rounded-xl">History is empty.</div>;
+                            }
+                            return safeTrades.map((trade, idx) => (
                                 <div key={idx} className="p-3 rounded-xl bg-slate-800/30 border border-slate-800/50 hover:border-slate-700 transition-all">
                                     <div className="flex justify-between items-start mb-1">
                                         <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${trade.action === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
@@ -173,17 +181,17 @@ const PaperPortfolio: React.FC = () => {
                                     <div className="flex justify-between items-end">
                                         <div>
                                             <p className="text-sm font-bold text-white leading-tight">{trade.ticker}</p>
-                                            <p className="text-[10px] text-slate-500">{trade.shares.toFixed(2)} shares @ ${trade.price.toFixed(2)}</p>
+                                            <p className="text-[10px] text-slate-500">{(trade.shares ?? 0).toFixed(2)} shares @ ${(trade.price ?? 0).toFixed(2)}</p>
                                         </div>
                                         {trade.pnl !== null && (
                                             <div className={`text-xs font-bold ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                {trade.pnl >= 0 ? '+' : '-'}${Math.abs(trade.pnl).toFixed(2)}
+                                                {trade.pnl >= 0 ? '+' : '-'}${Math.abs(trade.pnl ?? 0).toFixed(2)}
                                             </div>
                                         )}
                                     </div>
                                 </div>
-                            ))
-                        )}
+                            ));
+                        })()}
                     </div>
                 </div>
             </div>

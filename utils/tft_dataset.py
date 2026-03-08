@@ -1,7 +1,7 @@
 """
 tft_dataset.py
 ==============
-Apex AI — Phase 2: TFT Dataset & DataLoader Configuration
+Apex AI - Phase 2: TFT Dataset & DataLoader Configuration
 ----------------------------------------------------------
 Configures pytorch-forecasting's TimeSeriesDataSet and PyTorch DataLoaders
 for the Temporal Fusion Transformer. All hyper-parameters are declared as
@@ -23,9 +23,9 @@ COLUMN CONTRACT (must match the DataFrame produced by build_all_features)
 
 API
 ---
-    create_datasets(df, val_cutoff_pct)   → training_dataset, val_dataset
-    create_dataloaders(train_ds, val_ds)  → train_dl, val_dl
-    inspect_dataset(training_dataset)     → prints full diagnostic report
+    create_datasets(df, val_cutoff_pct)   -> training_dataset, val_dataset
+    create_dataloaders(train_ds, val_ds)  -> train_dl, val_dl
+    inspect_dataset(training_dataset)     -> prints full diagnostic report
 
 Packages required: pytorch-forecasting, pytorch-lightning, torch
 Author : Apex AI Team
@@ -65,7 +65,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("apex_ai.tft_dataset")
@@ -85,12 +85,12 @@ BATCH_SIZE: int = 64
 NUM_WORKERS: int = 2
 
 # Train/val split
-DEFAULT_VAL_CUTOFF_PCT: float = 0.15   # last 15 % of rows → validation
+DEFAULT_VAL_CUTOFF_PCT: float = 0.15   # last 15 % of rows -> validation
 
 # Target normalizer
 TARGET_NORMALIZER_TRANSFORMATION: str = "softplus"   # stable for prices > 0
 
-# Column definitions — mirrors features.py FEATURE_TYPES
+# Column definitions - mirrors features.py FEATURE_TYPES
 TARGET: str = "Close_denoised"
 GROUP_IDS: list[str] = ["ticker"]
 TIME_IDX: str = "time_idx"
@@ -128,7 +128,7 @@ UNKNOWN_REALS: list[str] = [
 
 
 # ---------------------------------------------------------------------------
-# Helper — silently drop column lists to only what is in the DataFrame
+# Helper - silently drop column lists to only what is in the DataFrame
 # ---------------------------------------------------------------------------
 def _filter_present(df: pd.DataFrame, columns: list[str], label: str) -> list[str]:
     """Return only the columns from *columns* that exist in *df*.
@@ -152,7 +152,7 @@ def create_datasets(
 ) -> Tuple["TimeSeriesDataSet", "TimeSeriesDataSet"]:
     """Split *df* into train/val and build pytorch-forecasting TimeSeriesDataSets.
 
-    The split is **time-based** (no shuffling) — the last ``val_cutoff_pct``
+    The split is **time-based** (no shuffling) - the last ``val_cutoff_pct``
     fraction of ``time_idx`` values form the validation set.  The validation
     dataset is constructed via ``TimeSeriesDataSet.from_dataset()`` so that
     normalisation statistics computed on training data are reused (no leakage).
@@ -205,7 +205,7 @@ def create_datasets(
     unknown_reals = _filter_present(df_train, UNKNOWN_REALS,      "unknown_reals")
 
     # ── Training TimeSeriesDataSet ────────────────────────────────────────
-    logger.info("Building training TimeSeriesDataSet …")
+    logger.info("Building training TimeSeriesDataSet ...")
     training_dataset = TimeSeriesDataSet(
         df_train,
         # ── Identifiers ──────────────────────────────────────────────────
@@ -238,7 +238,7 @@ def create_datasets(
     )
 
     # ── Validation TimeSeriesDataSet (reuses training normalisation) ──────
-    logger.info("Building validation TimeSeriesDataSet from training dataset …")
+    logger.info("Building validation TimeSeriesDataSet from training dataset ...")
     val_dataset = TimeSeriesDataSet.from_dataset(
         training_dataset,
         df_val,
@@ -247,7 +247,7 @@ def create_datasets(
     )
 
     logger.info(
-        "Datasets ready — train samples=%d | val samples=%d",
+        "Datasets ready - train samples=%d | val samples=%d",
         len(training_dataset), len(val_dataset),
     )
     return training_dataset, val_dataset
@@ -293,7 +293,7 @@ def create_dataloaders(
         train=True,
         batch_size=batch_size,
         num_workers=NUM_WORKERS,
-        shuffle=False,      # DO NOT shuffle — temporal order matters
+        shuffle=False,      # DO NOT shuffle - temporal order matters
         drop_last=True,
     )
 
@@ -305,7 +305,7 @@ def create_dataloaders(
     )
 
     logger.info(
-        "DataLoaders ready — batch_size=%d | num_workers=%d",
+        "DataLoaders ready - batch_size=%d | num_workers=%d",
         batch_size, NUM_WORKERS,
     )
     return train_dl, val_dl
@@ -338,11 +338,11 @@ def inspect_dataset(training_dataset: "TimeSeriesDataSet") -> None:
     sep = "─" * 56
 
     print(f"\n  {sep}")
-    print(f"  Apex AI — TFT Dataset Inspector")
+    print(f"  Apex AI - TFT Dataset Inspector")
     print(f"  {sep}")
     print(f"  Samples (windows)        : {len(ds):,}")
-    print(f"  Encoder length           : {ds.min_encoder_length} … {ds.max_encoder_length} days")
-    print(f"  Prediction length        : {ds.min_prediction_length} … {ds.max_prediction_length} days")
+    print(f"  Encoder length           : {ds.min_encoder_length} ... {ds.max_encoder_length} days")
+    print(f"  Prediction length        : {ds.min_prediction_length} ... {ds.max_prediction_length} days")
     print(f"  Target                   : {ds.target}")
     print(f"  Group IDs                : {ds.group_ids}")
 
@@ -385,7 +385,7 @@ def inspect_dataset(training_dataset: "TimeSeriesDataSet") -> None:
 # 4. create_inference_dataset  (Fix 2: shorter encoder at inference)
 # ---------------------------------------------------------------------------
 
-# Inference-time encoder limits — shorter than training (attention is O(n²))
+# Inference-time encoder limits - shorter than training (attention is O(n²))
 INFER_MIN_ENCODER_LENGTH: int = 30   # half of training MIN_ENCODER_LENGTH
 INFER_MAX_ENCODER_LENGTH: int = 60   # half of training MAX_ENCODER_LENGTH
 
@@ -401,11 +401,11 @@ def create_inference_dataset(
     ---------------
     The TFT attention mechanism scales as **O(n²)** with encoder sequence
     length.  During training we use ``max_encoder_length=120`` for maximum
-    accuracy.  At inference, we only need a recent context window —
+    accuracy.  At inference, we only need a recent context window -
     cutting the encoder to 60 rows gives **~4× faster** forward passes.
 
     This dataset reuses normalisation statistics from *training_dataset*
-    (via ``from_dataset``) so predictions are on the same scale — no
+    (via ``from_dataset``) so predictions are on the same scale - no
     data leakage, no re-fitting.
 
     Parameters
@@ -414,11 +414,11 @@ def create_inference_dataset(
         Feature-enriched DataFrame for the ticker(s) to predict.
         Must contain the same columns as the training DataFrame.
     training_dataset : TimeSeriesDataSet
-        The dataset returned by :func:`create_datasets` — supplies
+        The dataset returned by :func:`create_datasets` - supplies
         normalisation statistics and column config.
     tail_rows : int, optional
         Keep only the last *tail_rows* rows per group before building the
-        dataset.  90 rows ≈ 3 months of trading days — enough context.
+        dataset.  90 rows ≈ 3 months of trading days - enough context.
         Defaults to 90.
 
     Returns
@@ -432,7 +432,7 @@ def create_inference_dataset(
             "Run: pip install pytorch-forecasting pytorch-lightning"
         )
 
-    # Keep only recent history — no need to feed the model years of data
+    # Keep only recent history - no need to feed the model years of data
     if tail_rows and len(df) > tail_rows:
         df = df.groupby("ticker", group_keys=False).tail(tail_rows).copy()
 
@@ -454,17 +454,17 @@ def create_inference_dataset(
 
 
 # ---------------------------------------------------------------------------
-# __main__ — smoke-test with synthetic multi-ticker data
+# __main__ - smoke-test with synthetic multi-ticker data
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     print(f"\n{'='*60}")
-    print("  Apex AI — tft_dataset.py smoke test")
+    print("  Apex AI - tft_dataset.py smoke test")
     print(f"{'='*60}\n")
 
     if not _HAS_PTF:
         print("  ⚠️  pytorch-forecasting not installed.")
         print("  Run: pip install pytorch-forecasting pytorch-lightning")
-        print("\n  Performing config-only validation (no dataset construction)…")
+        print("\n  Performing config-only validation (no dataset construction)...")
 
         # At minimum verify column lists are consistent
         all_cols = (
@@ -531,23 +531,23 @@ if __name__ == "__main__":
         print(f"  Tickers: {df_synth['ticker'].unique().tolist()}\n")
 
         # ── create_datasets ───────────────────────────────────────────
-        print("▶ create_datasets …")
+        print("▶ create_datasets ...")
         train_ds, val_ds = create_datasets(df_synth, val_cutoff_pct=0.15)
 
         # ── inspect_dataset ───────────────────────────────────────────
-        print("▶ inspect_dataset …")
+        print("▶ inspect_dataset ...")
         inspect_dataset(train_ds)
 
         # ── create_dataloaders ────────────────────────────────────────
-        print("▶ create_dataloaders …")
+        print("▶ create_dataloaders ...")
         train_dl, val_dl = create_dataloaders(train_ds, val_ds, batch_size=32)
 
         # Verify one batch loads without error
         batch = next(iter(train_dl))
         x, y = batch
-        print(f"  ✅ First batch loaded — x keys: {list(x.keys())}")
+        print(f"  ✅ First batch loaded - x keys: {list(x.keys())}")
         print(f"  ✅ Target tensor shape: {y[0].shape}")
 
         print(f"\n{'='*60}")
-        print("  Smoke test complete — no errors.")
+        print("  Smoke test complete - no errors.")
         print(f"{'='*60}\n")

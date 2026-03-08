@@ -49,7 +49,7 @@ def _get_llm_client(provider: str) -> Any:
             from anthropic import Anthropic
             api_key = os.getenv("ANTHROPIC_API_KEY")
             if not api_key:
-                logger.warning("ANTHROPIC_API_KEY not found in environment.")
+                logger.debug("ANTHROPIC_API_KEY not found in environment. LLM reasoning disabled.")
                 return None
             return Anthropic(api_key=api_key)
         except ImportError:
@@ -60,11 +60,25 @@ def _get_llm_client(provider: str) -> Any:
             from openai import OpenAI
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
-                logger.warning("OPENAI_API_KEY not found in environment.")
+                logger.debug("OPENAI_API_KEY not found in environment. LLM reasoning disabled.")
                 return None
             return OpenAI(api_key=api_key)
         except ImportError:
             logger.warning("openai library not installed.")
+            return None
+    elif provider == 'ollama':
+        try:
+            # We use requests for the direct Ollama API (no special library needed)
+            import requests
+            base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            try:
+                # Ping Ollama to ensure it's up
+                requests.get(f"{base_url}/api/tags", timeout=2)
+                return "ollama_active"
+            except:
+                logger.debug("Ollama service not found at " + base_url)
+                return None
+        except ImportError:
             return None
     return None
 
@@ -138,7 +152,7 @@ def generate_with_llm(prompt: str, provider: Optional[str] = None) -> str:
         
     client = _get_llm_client(provider)
     if not client:
-        logger.warning(f"LLM Provider '{provider}' not available. Failing over.")
+        logger.info(f"LLM Provider '{provider}' not available. Failing over to template-based reasoning.")
         return ""
 
     try:
@@ -152,7 +166,7 @@ def generate_with_llm(prompt: str, provider: Optional[str] = None) -> str:
             text = response.content[0].text
             # Log est. cost (Haiku: $0.25 / 1M input, $1.25 / 1M output)
             cost = (len(prompt) / 4000 * 0.001) + (len(text) / 4000 * 0.005)
-        else: # OpenAI
+        elif provider == 'openai':
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 max_tokens=150,
@@ -161,7 +175,20 @@ def generate_with_llm(prompt: str, provider: Optional[str] = None) -> str:
             text = response.choices[0].message.content
             # Log est. cost (GPT-4o-mini: $0.15 / 1M input, $0.60 / 1M output)
             cost = (len(prompt) / 4000 * 0.0006) + (len(text) / 4000 * 0.0024)
-
+        elif provider == 'ollama':
+            import requests
+            base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            model = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+            response = requests.post(f"{base_url}/api/generate", json={
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"num_ctx": 1024, "temperature": 0.7}
+            }, timeout=30)
+            response.raise_for_status()
+            text = response.json().get("response", "")
+            cost = 0.0 # Local usage
+        
         latency = time.time() - t0
         logger.info(f"LLM Generation successful ({provider}). Latency: {latency:.2f}s | Est. Cost: ${cost:.6f}")
         return text.strip()

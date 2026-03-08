@@ -24,7 +24,7 @@ from sklearn.preprocessing import RobustScaler
 
 
 # ---------------------------------------------------------------------------
-# REGISTERED CUSTOM LOSS — must be module-level so Keras can locate it
+# REGISTERED CUSTOM LOSS - must be module-level so Keras can locate it
 # when loading a saved .keras file. The decorator writes the function into
 # Keras's global serialization registry under the name 'quantile_loss'.
 # ---------------------------------------------------------------------------
@@ -254,9 +254,9 @@ class CausalTradingEngine:
     def save_to_dir(self, directory: str, history: dict = None):
         """Save all sub-models to a directory using native formats (no pickle).
         
-        Keras models  → <dir>/gru_dir.keras, tcn_dir.keras, mag_model.keras
-        LightGBM      → <dir>/gbm_dir.txt  (text format, always portable)
-        History       → <dir>/history.json
+        Keras models  -> <dir>/gru_dir.keras, tcn_dir.keras, mag_model.keras
+        LightGBM      -> <dir>/gbm_dir.txt  (text format, always portable)
+        History       -> <dir>/history.json
         """
         import json
         os.makedirs(directory, exist_ok=True)
@@ -274,7 +274,7 @@ class CausalTradingEngine:
         """Reconstruct a CausalTradingEngine from a saved directory.
         
         Creates a fresh engine (builds architecture), then loads weights only
-        — avoiding any pickle/class-identity issues caused by hot-reloads.
+        - avoiding any pickle/class-identity issues caused by hot-reloads.
         """
         import json
         engine = cls(input_shape)  # Builds fresh architecture

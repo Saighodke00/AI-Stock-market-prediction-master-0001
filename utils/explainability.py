@@ -1,7 +1,7 @@
 """
 explainability.py
 =================
-Apex AI — Explainability Module (SHAP & Attention)
+Apex AI - Explainability Module (SHAP & Attention)
 --------------------------------------------------
 Provides transparency into model decisions by extracting PyTorch-Forecasting
 built-in interpretation metrics (variable importance and attention weights)
@@ -411,13 +411,13 @@ def get_full_explanation(
 
 
 # ===========================================================================
-# ── __main__ — Smoke Test Mock ─────────────────────────────────────────────
+# ── __main__ - Smoke Test Mock ─────────────────────────────────────────────
 # ===========================================================================
 if __name__ == "__main__":
     plt.style.use('dark_background')
     
     print("\n" + "=" * 60)
-    print("  Apex AI — explainability.py smoke test")
+    print("  Apex AI - explainability.py smoke test")
     print("=" * 60 + "\n")
     
     mock_importance = {

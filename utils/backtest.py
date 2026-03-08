@@ -1,7 +1,7 @@
 """
 backtest.py
 ===========
-Apex AI — Vectorized Backtesting Engine
+Apex AI - Vectorized Backtesting Engine
 ---------------------------------------
 A professional-grade, vectorized backtesting engine designed for evaluating
 the performance of TFT median return forecasts (p50) against historical data.
@@ -460,7 +460,7 @@ def run_backtest(engine=None,
             }
 
         except Exception as exc:
-            logger.error("run_backtest (legacy): failed — %s", exc, exc_info=True)
+            logger.error("run_backtest (legacy): failed - %s", exc, exc_info=True)
             # Return safe defaults so the Streamlit page doesn't crash
             return {
                 "predictions":  np.zeros(10),
@@ -506,7 +506,7 @@ def _run_backtest_tft(
     predictions_series: pd.Series,
     config: BacktestConfig = BacktestConfig(),
 ) -> Tuple[pd.Series, List[Trade]]:
-    """Internal TFT vectorised backtest — same body as original run_backtest."""
+    """Internal TFT vectorised backtest - same body as original run_backtest."""
     if len(df) == 0 or len(predictions_series) == 0:
         return pd.Series(dtype=float), []
 
@@ -618,7 +618,7 @@ def walk_forward_validation(
 
     if n < time_step * 2 + 10:
         logger.warning(
-            "walk_forward_validation: insufficient data (%d rows) — returning defaults", n
+            "walk_forward_validation: insufficient data (%d rows) - returning defaults", n
         )
         return 0.05, 0.80, -0.10, 0.55, 1.20
 
@@ -725,11 +725,11 @@ def walk_forward_validation(
             )
 
         except Exception as exc:
-            logger.warning("walk_forward_validation [fold %d]: skipped — %s", fold_idx, exc)
+            logger.warning("walk_forward_validation [fold %d]: skipped - %s", fold_idx, exc)
 
     # ── Aggregate across folds ─────────────────────────────────────────────
     if not fold_metrics:
-        logger.warning("walk_forward_validation: no valid folds — returning safe defaults")
+        logger.warning("walk_forward_validation: no valid folds - returning safe defaults")
         return 0.05, 0.80, -0.10, 0.55, 1.20
 
     def _mean(key):
@@ -745,7 +745,7 @@ def walk_forward_validation(
     agg_pf     = float(np.median(pf_vals)) if pf_vals else 1.0
 
     logger.info(
-        "walk_forward_validation: DONE — cagr=%.1f%%  sharpe=%.2f  max_dd=%.1f%%  wr=%.1f%%  pf=%.2f",
+        "walk_forward_validation: DONE - cagr=%.1f%%  sharpe=%.2f  max_dd=%.1f%%  wr=%.1f%%  pf=%.2f",
         agg_cagr * 100, agg_sharpe, agg_max_dd * 100, agg_wr * 100, agg_pf,
     )
     return agg_cagr, agg_sharpe, agg_max_dd, agg_wr, agg_pf
@@ -788,7 +788,7 @@ def run_monte_carlo(
     * Uses numpy bootstrap sampling for efficiency.
     """
     if len(returns) < 2:
-        logger.warning("run_monte_carlo: insufficient returns (%d) — returning []", len(returns))
+        logger.warning("run_monte_carlo: insufficient returns (%d) - returning []", len(returns))
         return []
 
     returns_arr = np.array(returns, dtype=np.float64)
@@ -820,11 +820,11 @@ def run_monte_carlo(
 
 
 # ===========================================================================
-# ── __main__ — Demonstration Block ─────────────────────────────────────────
+# ── __main__ - Demonstration Block ─────────────────────────────────────────
 # ===========================================================================
 if __name__ == "__main__":
     print("\n" + "=" * 60)
-    print("  Apex AI — backtest.py demonstration")
+    print("  Apex AI - backtest.py demonstration")
     print("=" * 60 + "\n")
     
     import os

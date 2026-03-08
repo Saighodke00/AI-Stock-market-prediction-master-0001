@@ -422,7 +422,7 @@ def gate_signal(
         f"sentiment={sentiment_score:.2f}"
     )
     logger.info(
-        "gate_signal: ALL GATES PASSED → %s | return=%.2f%% | confidence=%.2f",
+        "gate_signal: ALL GATES PASSED -> %s | return=%.2f%% | confidence=%.2f",
         direction, expected_return_pct, attention_score,
     )
     return SignalOutput(

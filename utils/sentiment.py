@@ -1,7 +1,7 @@
 """
 sentiment.py
 ============
-Apex AI — FinBERT Sentiment Engine
+Apex AI - FinBERT Sentiment Engine
 ----------------------------------
 Financial news sentiment module powered by HuggingFace `ProsusAI/finbert`.
 Fetches the latest news articles for a given ticker via `yfinance`, scores
@@ -10,11 +10,11 @@ using Redis to avoid redundant API/inference calls.
 
 API
 ---
-    get_pipeline()                           → transformers.Pipeline
-    score_text(text)                         → dict
-    score_headlines(headlines_list)          → tuple[list[dict], float]
-    fetch_and_score_ticker(ticker)           → dict
-    sentiment_label(score)                   → tuple[str, str]  # (Label, Emoji)
+    get_pipeline()                           -> transformers.Pipeline
+    score_text(text)                         -> dict
+    score_headlines(headlines_list)          -> tuple[list[dict], float]
+    fetch_and_score_ticker(ticker)           -> dict
+    sentiment_label(score)                   -> tuple[str, str]  # (Label, Emoji)
 
 Author : Apex AI Team
 Requires: transformers, torch, yfinance, redis
@@ -26,6 +26,7 @@ import os
 import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
+import functools
 
 # ── SILENCE TENSORFLOW ────────────────────────────────────────────────────────
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"      # 0=all, 1=no INFO, 2=no INFO/WARN, 3=no INFO/WARN/ERROR
@@ -74,7 +75,7 @@ def _get_redis() -> Optional[redis.Redis]:
             _REDIS_CLIENT = client
             logger.info("Connected to Redis cache at localhost:6379")
         except redis.ConnectionError:
-            logger.debug("Redis unavailable at localhost:6379 — running without cache (expected in local dev).")
+            logger.debug("Redis unavailable at localhost:6379 - running without cache (expected in local dev).")
             _REDIS_CLIENT = False  # Use False to mark as explicitly failed to avoid reconnect loops
         except Exception as e:
             logger.error("Unexpected Redis error: %s. Caching disabled.", e)
@@ -85,22 +86,13 @@ def _get_redis() -> Optional[redis.Redis]:
 # ===========================================================================
 # ── FUNCTION: get_pipeline ──────────────────────────────────────────────────
 # ===========================================================================
+@functools.lru_cache(maxsize=1)
 def get_pipeline() -> Any:
-    """Lazy-load the FinBERT pipeline as a module-level singleton.
-    
-    Determines the best available hardware accelerator (MPS for Apple Silicon,
-    CUDA for NVIDIA, or CPU) and loads `ProsusAI/finbert`.
-
-    Returns
-    -------
-    transformers.Pipeline
-        The loaded sentiment-analysis pipeline.
-    """
-    global _PIPELINE
-    if _PIPELINE is not None:
-        return _PIPELINE
-
+    """Load FinBERT once and cache it for the lifetime of the process."""
+    from transformers import pipeline as hf_pipeline
     import torch
+
+    logging.getLogger("transformers").setLevel(logging.ERROR)
 
     device = -1  # Default to CPU for HuggingFace pipeline
     device_name = "cpu"
@@ -115,20 +107,18 @@ def get_pipeline() -> Any:
     logger.info("Loading ProsusAI/finbert model on device: %s...", device_name)
     
     try:
-        # Load the pipeline. 
-        # top_k=None ensures we get scores for all 3 labels (positive, negative, neutral)
-        _PIPELINE = pipeline(
+        return hf_pipeline(
             "sentiment-analysis", 
             model="ProsusAI/finbert", 
             device=device,
-            top_k=None 
+            top_k=None,
+            truncation=True,
+            max_length=512,
+            batch_size=8
         )
-        logger.info("FinBERT pipeline loaded successfully.")
     except Exception as e:
         logger.error("Error loading FinBERT: %s. Returning None.", e)
         raise RuntimeError(f"Failed to load FinBERT: {e}")
-
-    return _PIPELINE
 
 
 # ===========================================================================
@@ -188,27 +178,36 @@ def score_headlines(headlines_list: List[str]) -> Tuple[List[Dict[str, float]], 
     -------
     tuple
         (individual_scores, aggregate_score)
-        individual_scores is a list of score dictionaries.
-        aggregate_score is the mean 'score' across all strings (-1.0 to 1.0).
-        If the input list is empty, returns ([], 0.0).
     """
     if not headlines_list:
         return [], 0.0
 
+    valid_headlines = [text for text in headlines_list if text.strip()]
+    if not valid_headlines:
+        return [], 0.0
+
+    nlp = get_pipeline()
+    try:
+        # Batch inference natively through HuggingFace pipeline
+        results = nlp(valid_headlines)
+    except Exception as e:
+        logger.warning("Failed to score text batch: %s", e)
+        return [], 0.0
+
     individual_scores = []
     
-    # While the pipeline can accept a list directly, looping allows us to
-    # cleanly extract out the individual dicts and is generally fast enough
-    # for 10 headlines.
-    for text in headlines_list:
-        if not text.strip():
-            continue
-        try:
-            score_data = score_text(text)
-            individual_scores.append(score_data)
-        except Exception as e:
-            logger.warning("Failed to score text chunk: %s", e)
+    # results is a list of lists of dicts (since top_k=None)
+    for res_list in results:
+        labels_list = res_list if isinstance(res_list, list) else [res_list]
+        score_dict = {"positive": 0.0, "negative": 0.0, "neutral": 0.0}
+        
+        for item in labels_list:
+            score_dict[item["label"]] = item["score"]
             
+        agg_score = score_dict["positive"] - score_dict["negative"]
+        score_dict["score"] = agg_score
+        individual_scores.append(score_dict)
+
     if not individual_scores:
         return [], 0.0
         
@@ -289,7 +288,7 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
 
     # ── 2. Fetch News from yfinance ───────────────────────────────────────────
     # ApexAI Sentiment Engine v1.1
-    logger.info("ApexAI Sentiment Engine v1.1 — Processing %s", ticker)
+    logger.info("ApexAI Sentiment Engine v1.1 - Processing %s", ticker)
     _NEUTRAL_FALLBACK = {
         "ticker": ticker,
         "aggregate_score": 0.0,
@@ -305,7 +304,7 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
     except Exception as _net_err:
         # DNS resolution failure, timeout, Yahoo Finance down, etc.
         logger.warning(
-            "fetch_and_score_ticker [%s]: network/DNS error fetching news — %s. "
+            "fetch_and_score_ticker [%s]: network/DNS error fetching news - %s. "
             "Returning neutral sentiment (HOLD).",
             ticker, _net_err,
         )
@@ -397,7 +396,7 @@ def get_market_sentiment(ticker: str) -> Tuple[float, List[Dict[str, Any]]]:
         result = fetch_and_score_ticker(ticker)
     except Exception as exc:
         logger.warning(
-            "get_market_sentiment [%s]: unexpected error — %s. "
+            "get_market_sentiment [%s]: unexpected error - %s. "
             "Returning neutral (0.0, []).",
             ticker, exc,
         )
@@ -417,14 +416,14 @@ def get_market_sentiment(ticker: str) -> Tuple[float, List[Dict[str, Any]]]:
 
 
 # ===========================================================================
-# ── __main__ — Score AAPL as a smoke test ──────────────────────────────────
+# ── __main__ - Score AAPL as a smoke test ──────────────────────────────────
 # ===========================================================================
 if __name__ == "__main__":
     import json
     import time
     
     print("\n" + "=" * 60)
-    print("  Apex AI — sentiment.py smoke test (AAPL)")
+    print("  Apex AI - sentiment.py smoke test (AAPL)")
     print("=" * 60 + "\n")
     
     # 1. Run First Fetch (Likely Cache Miss / Cold Start)
