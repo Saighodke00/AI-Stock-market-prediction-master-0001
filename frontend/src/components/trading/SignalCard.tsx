@@ -87,7 +87,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                     <div className="flex items-center gap-4">
                         <div className={`w-3 h-16 ${isBuy ? 'bg-green' : isSell ? 'bg-red' : 'bg-gold'}`} />
                         <div className="flex-1 flex justify-between items-end">
-                            <span className={`font-display font-black text-[32px] tracking-widest leading-none ${stateColor} ${stateGlow}`}>
+                            <span className={`font-display font-black text-[48px] tracking-[0.2em] leading-none uppercase ${stateColor} ${stateGlow} drop-shadow-[0_0_15px_rgba(var(--state-rgb),0.5)]`}>
                                 {data.action}
                             </span>
 

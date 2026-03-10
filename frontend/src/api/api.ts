@@ -22,12 +22,27 @@ export interface SignalResponse {
     p10: number; // bear case
     p50: number; // base case
     p90: number; // bull case
+    ohlcv: Array<{ time: string | number, open: number, high: number, low: number, close: number, volume: number }>;
+    forecast: Array<{ time: string | number, p10: number, p50: number, p90: number }>;
     gate_results: GateResults;
     sentiment_score: number; // -1.0 to +1.0
     explanation: string;
     patterns: Pattern[];
     current_price: number;
     price_change_pct: number;
+}
+
+export interface Position {
+    id: number;
+    ticker: string;
+    action: string;
+    entry_price: number;
+    current_price: number;
+    quantity: number;
+    pnl_pct: number;
+    stop_loss?: number;
+    target_price?: number;
+    timestamp: string;
 }
 
 export interface ScreenerRow extends SignalResponse {
@@ -68,7 +83,8 @@ export const fetchSignal = async (ticker: string, tf: string = '1D'): Promise<Si
 export const fetchScreener = async (): Promise<ScreenerRow[]> => {
     const res = await fetch(`${API_BASE_URL}/screener`);
     if (!res.ok) throw new Error('Failed to fetch screener data');
-    return res.json();
+    const data = await res.json();
+    return data.results || [];
 };
 
 export const fetchSentiment = async (ticker: string): Promise<SentimentData> => {
@@ -86,5 +102,11 @@ export const fetchBacktest = async (ticker: string, tf: string = '1D'): Promise<
 export const fetchExplainability = async (ticker: string, tf: string = '1D'): Promise<XAIReport[]> => {
     const res = await fetch(`${API_BASE_URL}/explainability/${ticker}?tf=${tf}`);
     if (!res.ok) throw new Error(`Failed to fetch explainability for ${ticker}`);
+    return res.json();
+};
+
+export const fetchPositions = async (): Promise<Position[]> => {
+    const res = await fetch(`${API_BASE_URL}/paper/positions`);
+    if (!res.ok) throw new Error('Failed to fetch paper trading positions');
     return res.json();
 };

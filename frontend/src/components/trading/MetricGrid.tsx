@@ -39,6 +39,8 @@ const AnimatedNumber: React.FC<{ value: number, format?: string }> = ({ value, f
         requestAnimationFrame(animate);
     }, [value]);
 
+    if (isNaN(value)) return <span className="text-muted">——</span>;
+
     let formatted = '';
     if (format === 'percent') formatted = (displayValue ?? 0).toFixed(1) + '%';
     else if (format === 'decimal') formatted = (displayValue ?? 0).toFixed(2);
@@ -62,8 +64,8 @@ export const MetricGrid: React.FC<MetricGridProps> = ({ metrics }) => {
 
                 return (
                     <div key={i} className="bg-surface border border-dim rounded-lg p-3 hover:border-bright hover:-translate-y-0.5 transition-all outline-none">
-                        <div className="font-body text-[9px] text-muted tracking-[0.2em] uppercase mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
-                            {metric.label}
+                        <div className="font-body text-[9px] text-muted tracking-[0.2em] uppercase mb-1 whitespace-pre-wrap leading-tight h-[24px] flex items-end">
+                            {metric.label === 'Accuracy' ? 'Forecast ACU' : metric.label}
                         </div>
 
                         <div className={`font-display font-bold text-xl py-0.5 ${valColor}`}>

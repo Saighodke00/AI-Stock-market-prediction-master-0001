@@ -1,0 +1,81 @@
+﻿[19:01:00] WARNING  Alpaca not initialized (missing API keys or module).       
+venv\Scripts\uvicorn.exe 
+: INFO:     Started 
+server process [15256]
+At line:1 char:1
++ 
+venv\Scripts\uvicorn.exe 
+main:app --port 8002 > 
+server_test.log 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpeci    fied: 
+(INFO:         Started 
+server pr    ocess 
+[15256]:Str    ing) [], 
+RemoteEx    ception
+    + FullyQualifiedE    
+rrorId : NativeCo    
+mmandError
+ 
+INFO:     Waiting for 
+application startup.
+[19:01:02] INFO     Initializing Database...                                   
+           INFO     Initializing Apex AI Backend...                            
+           WARNING  pytorch_forecasting not installed.                         
+           INFO     Attempting to map TFLite model to NSEI15M from file        
+                    intraday_NSEI15m.tflite                                    
+           WARNING  Failed to load TFLite for NSEI15M                          
+                    (intraday_NSEI15m.tflite). Searching for Keras fallback... 
+           INFO     Loading fallback Keras model from                          
+                    models\intraday_41b101a7f4\mag_model.keras for NSEI15M     
+[19:01:04] INFO     Successfully loaded Keras fallback for NSEI15M             
+           INFO     Attempting to map TFLite model to NVDA from file           
+                    swing_NVDA.tflite                                          
+           WARNING  Failed to load TFLite for NVDA (swing_NVDA.tflite).        
+                    Searching for Keras fallback...                            
+           INFO     Loading fallback Keras model from                          
+                    models\swing_e15298e5e9\mag_model.keras for NVDA           
+[19:01:05] INFO     Successfully loaded Keras fallback for NVDA                
+           INFO     Attempting to map TFLite model to RELIANCE_NS from file    
+                    swing_RELIANCE_NS.tflite                                   
+           WARNING  Failed to load TFLite for RELIANCE_NS                      
+                    (swing_RELIANCE_NS.tflite). Searching for Keras fallback...
+           INFO     Loading fallback Keras model from                          
+                    models\swing_e15298e5e9\mag_model.keras for RELIANCE_NS    
+[19:01:06] INFO     Successfully loaded Keras fallback for RELIANCE_NS         
+           INFO     Attempting to map TFLite model to TCS_NS from file         
+                    swing_TCS_NS.tflite                                        
+           WARNING  Failed to load TFLite for TCS_NS (swing_TCS_NS.tflite).    
+                    Searching for Keras fallback...                            
+           INFO     Loading fallback Keras model from                          
+                    models\swing_e15298e5e9\mag_model.keras for TCS_NS         
+[19:01:07] INFO     Successfully loaded Keras fallback for TCS_NS              
+           INFO     Attempting to map TFLite model to TSLA from file           
+                    swing_TSLA.tflite                                          
+           WARNING  Failed to load TFLite for TSLA (swing_TSLA.tflite).        
+                    Searching for Keras fallback...                            
+           INFO     Loading fallback Keras model from                          
+                    models\swing_e15298e5e9\mag_model.keras for TSLA           
+[19:01:08] INFO     Successfully loaded Keras fallback for TSLA                
+           INFO     Successfully loaded 5 models.                              
+
+        Apex AI Hub Status        
++--------------------------------+
+| Service             | Status   |
+|---------------------+----------|
+| Database            | ON       |
+| Redis Caching       | ON       |
+| Primary Model (TFT) | OFF      |
+| Fallback Models     | 5 Loaded |
+| Background Updater  | RUNNING  |
++--------------------------------+
+
+           INFO     Starting background price update for paper positions...    
+INFO:     Application 
+startup complete.
+INFO:     Uvicorn running 
+on http://127.0.0.1:8002 
+(Press CTRL+C to quit)
