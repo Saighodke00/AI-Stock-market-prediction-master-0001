@@ -36,16 +36,16 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
 
     // Prevent infinite shares or div 0
     let shares = 0;
-    if (stopLossDistance > 0) {
+    if (stopLossDistance > 0 && !isNaN(riskAmount) && !isNaN(stopLossDistance)) {
         shares = Math.floor(riskAmount / stopLossDistance);
     }
 
     // Kelly approx
-    const kellyCapPct = 8.4; // Static approx for design as per spec, normally returned from API metrics
+    const kellyCapPct = 8.4; // Static approx for design as per spec
     const maxLoss = shares * stopLossDistance;
     const estGain = shares * Math.abs(p50 - currentPrice);
     const totalPositionSize = shares * currentPrice;
-    const posPctOfPortfolio = (totalPositionSize / portfolioValue) * 100;
+    const posPctOfPortfolio = isNaN(totalPositionSize) || isNaN(portfolioValue) ? 0 : (totalPositionSize / portfolioValue) * 100;
     const isOversized = posPctOfPortfolio > 20;
     const borderColor = data.action === 'BUY' ? 'border-green' : data.action === 'SELL' ? 'border-red' : 'border-gold';
     const actionColor = data.action === 'BUY' ? 'text-green' : data.action === 'SELL' ? 'text-red' : 'text-gold';
@@ -129,7 +129,7 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
 
                             <div className="flex justify-between items-baseline border-b border-dim/50 pb-1">
                                 <span className="text-secondary text-xs flex flex-col text-left">Kelly: <span className="text-[9px] text-muted">Cap</span></span>
-                                <span className="font-data text-primary">{kellyCapPct.toFixed(1)}%</span>
+                                <span className="font-data text-primary">{isNaN(kellyCapPct) ? '—' : kellyCapPct.toFixed(1) + '%'}</span>
                             </div>
                         </div>
 

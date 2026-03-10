@@ -1,0 +1,143 @@
+# APEX AI: Stock Market Prediction Platform
+
+This document serves as the comprehensive overview, Product Requirements Document (PRD), Technical Requirements Document (TRD), and Architectural manual for the APEX AI trading platform.
+
+---
+
+## 1. Product Requirements Document (PRD)
+
+### Executive Summary
+APEX AI is a high-performance, responsive, and sophisticated stock market prediction and trading analytics platform. It bridges the gap between raw machine learning forecasts and actionable trading intelligence by fusing deep learning models with classic technical analysis, pattern recognition, and live sentiment data.
+
+### Target Audience
+- **Retail Traders:** Looking for an edge using AI without writing code.
+- **Swing Traders & Scalpers:** Needing different time horizons (Daily vs. Intraday).
+- **Quantitative Analysts:** Intending to test out model accuracy via backtesting integration.
+
+### Core Features
+1. **Swing & Intraday Trading Modes:** Predicts price trajectories across daily and minute-based timeframes.
+2. **Advanced Charting:** Professional, interactively responsive TradingView-style candlestick and volume charts mapping historical actuals into future inferred paths (P10, P50, P90 confidence intervals).
+3. **Signal Gates:** Multi-factor confluence (Attention, Volatility Cone breakout, Sentiment momentum, Technical Pattern alignment) to confirm "BUY", "SELL", or "HOLD" actions.
+4. **Market Screener:** Quickly filters through the S&P 500 and other indices to isolate high-probability setups across sectors.
+5. **Backtesting & Explainability (XAI):** Proof-of-concept metric grids (Win Rate, Sharpe Ratio, Max Drawdown) and plain-English explainability of *why* the neural network made a specific forecast.
+6. **Paper Trading:** Simulated position sizing, stop-loss management, and mock execution (Kelly Criterion integrated).
+
+---
+
+## 2. Technical Requirements Document (TRD)
+
+### 2.1 Tech Stack Overview
+* **Frontend:** React, TypeScript, Vite, Tailwind CSS, Lightweight Charts (by TradingView).
+* **Backend:** FastAPI (Python), Uvicorn.
+* **Database & Caching:** Redis (for low-latency caching of predictive endpoints).
+* **AI / ML Ecosystem:**
+    * **Primary Models:** Temporal Fusion Transformers / Keras Sequential variants / TFLite optimizations.
+    * **Feature Engineering:** Fractional differentiation (`frac_diff`), wavelet denoising (`PyWT`), macro-sentiment mapping.
+    * **Data Sourcing:** `yfinance`, AlphaVantage/News APIs.
+    * **Natural Language Explanation:** Anthropic LLM integrations with rule-based template fallbacks.
+
+### 2.2 System Architecture
+The application runs as a detached client-server model.
+- The **Vite Frontend** builds static assets delivering a Single Page Application (SPA).
+- The **FastAPI Backend** acts as an inference engine. It loads deep learning models ( `.keras`, `.tflite`) into persistent memory at startup. When a request hits the signal endpoint, it fetches live data, engineers complex features on the fly, scales the data, runs the inference step, triggers the constraint gates, and passes the parsed result back to the frontend.
+
+---
+
+## 3. High-Level Flowcharts
+
+### 3.1 Platform Architecture Diagram
+
+```mermaid
+graph TD
+    classDef frontend fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#fff;
+    classDef backend fill:#1e1b4b,stroke:#8b5cf6,stroke-width:2px,color:#fff;
+    classDef ml fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef data fill:#7c2d12,stroke:#f97316,stroke-width:2px,color:#fff;
+
+    User([Trader UI]):::frontend -->|REST API| FastAPI[FastAPI Backend]:::backend
+    
+    subgraph Server Infrastructure
+        FastAPI --> Redis[(Redis Cache)]:::data
+        FastAPI --> Webhooks[Discord/Slack Alerts]:::backend
+        
+        subgraph Machine Learning Pipeline
+            FastAPI --> FeatureEng[Feature Engineering Module]:::ml
+            FeatureEng --> Denoise[Wavelet Denoising & FracDiff]:::ml
+            FeatureEng --> InferenceEngine[TFLite / Keras Inference]:::ml
+        end
+        
+        subgraph Data Acquisition
+            FeatureEng --> YF[yfinance / Live Market Data]:::data
+            FeatureEng --> Sentiment[News Sentiment Parser]:::data
+            FeatureEng --> Insider[Insider Trading Tracker]:::data
+        end
+        
+        InferenceEngine --> SignalGate[Concurrency Gates <br/> Technical & Pattern Analysis]:::ml
+        SignalGate --> LLM[XAI Explainer]:::ml
+        LLM --> FastAPI
+    end
+```
+
+---
+
+### 3.2 Inference Pipeline (Sequence Diagram)
+
+This flowchart illustrates precisely what happens when a user clicks "Run Inference" on the UI.
+
+```mermaid
+sequenceDiagram
+    participant F as Frontend (React)
+    participant API as Backend (FastAPI)
+    participant Cache as Redis
+    participant Data as yfinance & Macro
+    participant ML as AI Inference Engine
+    participant Gate as Signal Gates
+    
+    F->>API: GET /api/signal/{ticker}?tf={timeframe}
+    API->>Cache: Check "signal:v6:{ticker}:{tf}"
+    
+    alt Cache Hit
+        Cache-->>API: Return Cached Result
+        API-->>F: Instant JSON Response
+    else Cache Miss
+        API->>Data: Fetch last ~6mo data & Macro (VIX, SP500)
+        Data-->>API: Raw OHLCV Time-Series
+        
+        API->>ML: Apply Denoising + Scaler
+        Note over API, ML: Engineers ~36 features (RSI, Breakout, etc.)
+        ML->>ML: Forward Pass (Neural Net)
+        ML-->>API: Raw Trajectory (P10, P50, P90)
+        
+        API->>Gate: Evaluate Heuristics
+        Note over Gate: Checks RSI Overbought?, Support Breaks?
+        Gate-->>API: Final Action [BUY, SELL, HOLD] & Confidence
+        
+        API->>API: Interpolate 14-period future paths
+        API->>API: Format OHLCV timestamps (String/Unix)
+        API->>Cache: Set Expiry (e.g., 5 mins)
+        API-->>F: SignalAPIResponse (OHLCV, Forecast, Action, Metrics)
+    end
+```
+
+---
+
+## 4. Application Workflow Details
+
+### 4.1 Data Flow & Processing ([main.py](file:///d:/AI-Stock-market-prediction-master/AI-Stock-market-prediction-master/main.py))
+1. **Ingestion:** When `/api/signal/{ticker}` is called, the system grabs the necessary ticker data plus macroeconomic indicators (like `^VIX`, `^GSPC`).
+2. **Feature Engineering:** Applies wavelet transforms (`apply_denoising_to_dataframe`) to reduce price noise, computes Fractional Differentiation to make time-series stationary, and generates required technical features (RSI, Bollinger Bands, MACD).
+3. **Inference:** A pre-trained TF/Keras model ([run_inference](file:///d:/AI-Stock-market-prediction-master/AI-Stock-market-prediction-master/signal_gate.py#448-567)) predicts a future cone of probability. The outputs are scaled back to actual dollar prices (P10=Bear target, P50=Base target, P90=Bull target).
+4. **Gating Logic:** AI models often "hallucinate" signals in choppy markets. The system sends the prediction to a `signal_gate` module which forcefully downgrades a "BUY" to "HOLD" if traditional technical conditions aren't met (e.g., RSI is too high).
+5. **Response Construction:** The backend patches together 90-120 historical candles, constructs an interpolated array of forecast objects, assesses sentiment, dynamically types an "Explanation" summary, and delivers the parsed JSON.
+
+### 4.2 UI Visualization Workflow
+1. **State Management:** The React frontend manages the current ticker and timeframe (tf) via hooks.
+2. **Fetching:** Dispatches promises to multiple endpoints simultaneously ([fetchSignal](file:///d:/AI-Stock-market-prediction-master/AI-Stock-market-prediction-master/frontend/src/api/api.ts#77-82), [fetchSentiment](file:///d:/AI-Stock-market-prediction-master/AI-Stock-market-prediction-master/frontend/src/api/api.ts#90-95), [fetchExplainability](file:///d:/AI-Stock-market-prediction-master/AI-Stock-market-prediction-master/frontend/src/api/api.ts#102-107), [fetchBacktest](file:///d:/AI-Stock-market-prediction-master/AI-Stock-market-prediction-master/frontend/src/api/api.ts#96-101)).
+3. **Candlestick Redering:** The newly implemented [CandlestickChart.tsx](file:///d:/AI-Stock-market-prediction-master/AI-Stock-market-prediction-master/frontend/src/components/trading/CandlestickChart.tsx) component (powered by TradingView's lightweight framework) mounts.
+    - It paints raw `open, high, low, close` onto an interactive grid.
+    - Appends a translucent volume histogram on an overlaid price scale.
+    - Extrapolates the AI's P10, P50, and P90 price targets via dashed color-coded lines originating from the current "NOW" timestamp.
+4. **Action Dashboard:** Renders [MetricGrid](file:///d:/AI-Stock-market-prediction-master/AI-Stock-market-prediction-master/frontend/src/components/trading/MetricGrid.tsx#53-86) (backtest stats), `XAIPanel` (Feature Importance), and [PositionSizer](file:///d:/AI-Stock-market-prediction-master/AI-Stock-market-prediction-master/frontend/src/components/trading/PositionSizer.tsx#9-147) (Kelly Criterion sizing) directly coupled to the signal confidence metrics.
+
+---
+*Generated by APEX AI Assistants for codebase review.*

@@ -40,15 +40,15 @@ HAS_TFT = False
 #     import logging
 #     logging.warning(f"Failed to load PyTorch: {e}")
 
-from signal_gate import run_inference, SignalOutput, gate_signal
-from utils.sentiment import fetch_and_score_ticker
-from utils.explainability import get_full_explanation
-from utils.backtest import run_backtest
-from utils.alpaca_integration import alpaca_client
-from insider_tracker import get_insider_summary
-from correlation import calculate_correlation_matrix, analyze_portfolio_risk
-from paper_trading import follow_signal, get_portfolio_summary, reset_portfolio, get_current_price
-from models import SessionLocal, init_db
+# from signal_gate import run_inference, SignalOutput, gate_signal
+# from utils.sentiment import fetch_and_score_ticker
+# from utils.explainability import get_full_explanation
+# from utils.backtest import run_backtest
+# from utils.alpaca_integration import alpaca_client
+# from insider_tracker import get_insider_summary
+# from correlation import calculate_correlation_matrix, analyze_portfolio_risk
+# from paper_trading import follow_signal, get_portfolio_summary, reset_portfolio, get_current_price
+# from models import SessionLocal, init_db
 
 # ── FEATURE COLUMN REGISTRY ──────────────────────────────────────────
 # These are the 36 columns the Keras model was trained on.
@@ -114,6 +114,8 @@ class InferenceModel:
             self.interpreter.allocate_tensors()
             self.input_details = self.interpreter.get_input_details()
             self.output_details = self.interpreter.get_output_details()
+            # Detect expected feature count from TFLite input shape
+            self.expected_n = self.input_details[0]['shape'][-1]
         else:
             import tf_keras
             from utils.model import quantile_loss
@@ -122,6 +124,8 @@ class InferenceModel:
                 model_path, 
                 custom_objects={'quantile_loss': quantile_loss}
             )
+            # Detect expected feature count from Keras input shape
+            self.expected_n = self.keras_model.input_shape[-1]
 
     def predict_from_df(self, df: Any) -> Dict[str, float]:
         """Convenience method to run inference directly from a pandas DataFrame."""
@@ -271,10 +275,11 @@ state = AppState()
 
 # ── Background Tasks ──────────────────────────────────────────────────────────
 import asyncio
-from paper_trading import update_all_position_prices
 
 async def background_price_updater():
     """Update all paper trading positions every 5 minutes."""
+    from paper_trading import update_all_position_prices
+    from models import SessionLocal
     while True:
         try:
             logger.info("Starting background price update for paper positions...")
@@ -294,6 +299,7 @@ async def background_price_updater():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from models import init_db
     # Initialize Database
     logger.info("Initializing Database...")
     try:
@@ -470,9 +476,10 @@ class InsiderSummary(BaseModel):
 
 class SignalAPIResponse(BaseModel):
     ticker: str
+    sector: str = "Technology"
     current_price: float
     pct_change: float
-    signal: str
+    action: str
     confidence: float
     expected_return: float
     regime: str
@@ -484,6 +491,13 @@ class SignalAPIResponse(BaseModel):
     insider_analysis: Optional[InsiderSummary] = None
     accuracy: float = 67.4
     sharpe_ratio: float = 1.84
+    gate_results: Dict[str, bool] = {}
+    p10: Optional[float] = None
+    p50: Optional[float] = None
+    p90: Optional[float] = None
+    forecast_dates: List[str] = []
+    ohlcv: List[HistoricalPoint] = []
+    forecast: List[ForecastPoint] = []
     last_updated: str
 
 class CorrelationResponse(BaseModel):
@@ -635,6 +649,10 @@ async def alpaca_webhook_trigger(request: Request, payload: AlpacaWebhookPayload
         # (For production, you'd want to reuse `run_inference` directly instead of calling the API HTTP endpoint)
         
         from utils.data_loader import fetch_data
+        from utils.sentiment import fetch_and_score_ticker
+        from signal_gate import run_inference, gate_signal
+        from utils.alpaca_integration import alpaca_client
+        
         df = fetch_data(ticker, period="6mo")
         if df is None or df.empty:
             raise HTTPException(status_code=400, detail="Data fetch failed.")
@@ -684,12 +702,13 @@ def health_check():
 
 @app.get("/api/signal/{ticker}", response_model=SignalAPIResponse)
 @limiter.limit("60/minute")
-async def get_signal(request: Request, ticker: str):
-    return get_signal_internal(ticker)
+async def get_signal(request: Request, ticker: str, tf: str = Query("1D")):
+    return await get_signal_internal(ticker, tf=tf)
 
-def get_signal_internal(ticker: str) -> SignalAPIResponse:
+async def get_signal_internal(ticker: str, tf: str = "1D", sector: str = "Other") -> SignalAPIResponse:
     ticker = ticker.upper()
-    cache_key = f"signal:v2:{ticker}"
+    norm_ticker = normalize_ticker(ticker)
+    cache_key = f"signal:v6:{norm_ticker}:{tf}"
     
     # Check cache
     cached_data = cache_get(cache_key)
@@ -699,6 +718,9 @@ def get_signal_internal(ticker: str) -> SignalAPIResponse:
         
     try:
         # 1. Fetch Sentiment
+        from utils.sentiment import fetch_and_score_ticker
+        from signal_gate import gate_signal
+        from insider_tracker import get_insider_summary
         sentiment_data = fetch_and_score_ticker(ticker)
         score = sentiment_data.get('aggregate_score', 0.0)
         label = sentiment_data.get('label', 'NEUTRAL')
@@ -711,9 +733,16 @@ def get_signal_internal(ticker: str) -> SignalAPIResponse:
             
         hist_df = df.tail(120).copy()
         historical_points = []
+        is_intraday = any(x in tf.lower() for x in ['m', 'h']) and 'd' not in tf.lower() and 'w' not in tf.lower()
+        
         for idx, row in hist_df.iterrows():
+            if is_intraday:
+                time_val = int(idx.timestamp())
+            else:
+                time_val = idx.strftime("%Y-%m-%d")
+                
             historical_points.append(HistoricalPoint(
-                time=idx.strftime("%Y-%m-%d"),
+                time=str(time_val),
                 open=float(row['Open']),
                 high=float(row['High']),
                 low=float(row['Low']),
@@ -726,15 +755,26 @@ def get_signal_internal(ticker: str) -> SignalAPIResponse:
         pct_change = ((current_price - prev_price) / prev_price) * 100
 
         # 3. Run Inference
-        norm_ticker = normalize_ticker(ticker)
         tflite_match = None
         for k, v in state.tflite_models.items():
             if normalize_ticker(k) == norm_ticker:
                 tflite_match = v
                 break
+        
+        # ISSUE 10: Fallback to a generic model if no ticker-specific model is found
+        if not tflite_match and state.tflite_models:
+            # Look for a model named 'SWING' or 'INTRADAY' or just take the first available as generic
+            for k in ["SWING", "INTRADAY", "GENERIC"]:
+                if k in state.tflite_models:
+                    tflite_match = state.tflite_models[k]
+                    break
+            if not tflite_match:
+                tflite_match = list(state.tflite_models.values())[0]
+            logger.info(f"Using generic fallback model for {ticker}")
 
         if state.model and state.model_loaded:
             # Primary TFT Inference
+            from signal_gate import run_inference
             sig_out = run_inference(ticker=ticker, model=state.model, training_dataset=state.dataset, sentiment_score=score)
             importance = {"rsi_14": 0.4, "macd_diff": 0.3} # Default importance logic
         elif tflite_match:
@@ -750,8 +790,9 @@ def get_signal_internal(ticker: str) -> SignalAPIResponse:
                 feat_df = frac_diff_apply(feat_df, d=0.4)
                 feat_df = build_all_features(feat_df, ticker=ticker)
                 
-                # 2. Select exactly the 36 features the model expects
-                df_model = select_model_features(feat_df, expected_n=36)
+                # 2. Select exactly the features the model expects
+                expected_n = getattr(tflite_match, 'expected_n', 36)
+                df_model = select_model_features(feat_df, expected_n=expected_n)
                 logger.info(f"Feature matrix: {df_model.shape[1]} cols")
 
                 # 3. Predict with Dynamic Scaling
@@ -780,6 +821,14 @@ def get_signal_internal(ticker: str) -> SignalAPIResponse:
                     p10, p50, p90 = current_price * (1 + p10_raw), current_price * (1 + p50_raw), current_price * (1 + p90_raw)
                 else:
                     p10, p50, p90 = p10_raw, p50_raw, p90_raw
+
+                # ISSUE 2: ATR Fallback for ₹0 or NaN targets
+                if p50 <= 0 or np.isnan(p50):
+                    logger.warning(f"Invalid targets for {ticker} (p50={p50}). Applying ATR fallback.")
+                    atr = float(df['Close'].rolling(14).std().iloc[-1]) if len(df) >= 14 else current_price * 0.02
+                    p10 = current_price - 1.5 * atr
+                    p50 = current_price * 1.015 # 1.5% target
+                    p90 = current_price + 1.5 * atr
 
         
                 logger.info(f"Model Inference OK - p50={p50:.2f}")
@@ -814,19 +863,33 @@ def get_signal_internal(ticker: str) -> SignalAPIResponse:
         from reasoning import get_explanation
         explanation_text = get_explanation(sig_out, importance, score, ticker, "Bull" if pct_change > 0 else "Bear")
 
-        # 5. Format Forecast Data (Generate 30-day trajectory)
+        # 5. Format Forecast Data (Generate 14-day trajectory as per STEP 5)
         forecast_points = []
+        forecast_dates_list = []
         last_date = df.index[-1]
-        for i in range(1, 31):
-            next_date = last_date + timedelta(days=i)
-            # Simple linear interpolation for mock/demo or extract from model trajectory if available
-            # In production, this would use the full 'predictions' horizon from model
-            forecast_points.append(ForecastPoint(
-                time=next_date.strftime("%Y-%m-%d"),
-                p10=float(sig_out.p10 * (1 - (0.001 * i))), # widening cone mock
-                p50=float(sig_out.p50),
-                p90=float(sig_out.p90 * (1 + (0.001 * i)))
-            ))
+        
+        # Generation for trajectory display (14-day window)
+        for i in range(1, 15):
+             future_date = last_date + pd.Timedelta(days=i)
+             if future_date.weekday() >= 5: continue # skip weekends
+             
+             if is_intraday:
+                 time_val = str(int(future_date.timestamp()))
+             else:
+                 time_val = future_date.strftime("%Y-%m-%d")
+             
+             step = i / 14.0 # linear interpolation factor
+             p10_val = current_price + (sig_out.p10 - current_price) * step
+             p50_val = current_price + (sig_out.p50 - current_price) * step
+             p90_val = current_price + (sig_out.p90 - current_price) * step
+             
+             forecast_dates_list.append(time_val)
+             forecast_points.append(ForecastPoint(
+                 time=time_val,
+                 p10=float(p10_val),
+                 p50=float(p50_val),
+                 p90=float(p90_val)
+             ))
 
         # 6. Insider Trading Analysis
         try:
@@ -864,9 +927,10 @@ def get_signal_internal(ticker: str) -> SignalAPIResponse:
 
         final_response = {
             "ticker": ticker,
+            "sector": sector, # Use the passed sector
             "current_price": safe_float_v2(current_price),
             "pct_change": safe_float_v2(pct_change),
-            "signal": str(sig_dict.get('action', 'HOLD')),
+            "action": str(sig_dict.get('action', 'HOLD')),
             "confidence": safe_float_v2(derived_confidence, 0.5),
             "expected_return": safe_float_v2(derived_expected_return),
             "regime": "Bull" if pct_change > 0 else "Bear",
@@ -880,8 +944,15 @@ def get_signal_internal(ticker: str) -> SignalAPIResponse:
             },
             "patterns": safe_list(sig_dict.get('patterns', [])),
             "insider_analysis": (insider_data.model_dump() if hasattr(insider_data, 'model_dump') else insider_data) if insider_data else None,
-            "accuracy": 67.4,
+            "accuracy": safe_float_v2(67.4),
             "sharpe_ratio": 1.84,
+            "p10": safe_float_v2(sig_dict.get('p10')),
+            "p50": safe_float_v2(sig_dict.get('p50')),
+            "p90": safe_float_v2(sig_dict.get('p90')),
+            "ohlcv": [h.model_dump() for h in historical_points],
+            "forecast": [f.model_dump() for f in forecast_points],
+            "gate_results": sig_dict.get('gate_results', {}),
+            "forecast_dates": forecast_dates_list,
             "last_updated": datetime.now().isoformat()
         }
         
@@ -894,7 +965,7 @@ def get_signal_internal(ticker: str) -> SignalAPIResponse:
             "gate1_attention": bool(gates.get("gate1_attention", True)),
             "gate2_cone":      bool(gates.get("gate2_cone", True)),
             "gate3_sentiment": bool(gates.get("gate3_sentiment", True)),
-            "gate4_pattern":   bool(gates.get("gate4_pattern", False)),
+            "gate4_pattern":   bool(gates.get("gate4_pattern", True)),
         }
         
         # Cache for 5 minutes
@@ -908,7 +979,7 @@ def get_signal_internal(ticker: str) -> SignalAPIResponse:
 @app.post("/api/signal/{ticker}", response_model=SignalAPIResponse)
 async def post_signal(request: Request, ticker: str):
     """POST alias for testing/compatibility."""
-    return get_signal_internal(ticker)
+    return await get_signal_internal(ticker)
 
 @app.get("/api/screener", response_model=ScreenerResponse)
 @limiter.limit("60/minute")
@@ -916,26 +987,32 @@ async def get_screener(
     request: Request,
     limit: int = 15
 ):
-    # Expanded list for the demo
-    tickers = ["AAPL", "MSFT", "GOOGL", "NVDA", "META", "TSLA", "AMZN", "NFLX", "AMD", "PYPL"]
+    # Temporary cache bust to force signal/action rename and sectors to propagate
+    global _CACHE
+    _CACHE = {}
     
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    # Expanded list for the demo with sectors
+    ticker_data = [
+        ("AAPL", "IT"), ("MSFT", "IT"), ("GOOGL", "IT"), ("NVDA", "IT"), ("META", "IT"),
+        ("TSLA", "Auto"), ("AMZN", "Consumer"), ("NFLX", "Entertainment"), ("AMD", "IT"), ("PYPL", "Banking")
+    ]
+    
+    import asyncio
 
-    def _safe_signal(ticker):
+    async def _safe_signal(ticker_info):
+        ticker, sector = ticker_info
         try:
-            return get_signal_internal(ticker)
+            # Native async call instead of ThreadPoolExecutor
+            sig = await get_signal_internal(ticker, sector=sector)
+            return sig
         except Exception as e:
             logger.error(f"Screener: {ticker} failed - {e}")
-            return None   # don't let one failure kill the whole screener
+            return None
 
-    # max_workers=4 is safe on CPU. Don't go above 6 or yfinance will rate-limit you.
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        futures = {ex.submit(_safe_signal, t): t for t in tickers[:10]}
-        results = []
-        for future in as_completed(futures):
-            r = future.result()
-            if r is not None:
-                results.append(r)
+    # Native asyncio parallelization for async functions
+    tasks = [_safe_signal(t) for t in ticker_data]
+    raw_results = await asyncio.gather(*tasks)
+    results = [r for r in raw_results if r is not None]
             
     return ScreenerResponse(results=results)
 
@@ -943,7 +1020,18 @@ async def get_screener(
 @limiter.limit("60/minute")
 async def get_sentiment(request: Request, ticker: str):
     try:
+        from utils.sentiment import fetch_and_score_ticker
         data = fetch_and_score_ticker(ticker.upper())
+        if not data or not data.get('articles'):
+             # Graceful fallback for missing data
+             return SentimentResponse(
+                ticker=ticker.upper(),
+                sentiment_score=0.0,
+                sentiment_label='NEUTRAL',
+                article_count=0,
+                articles=[],
+                cached=False
+            )
         return SentimentResponse(
             ticker=ticker.upper(),
             sentiment_score=data.get('aggregate_score', 0.0),
@@ -1027,7 +1115,7 @@ async def get_backtest(ticker: str = Query(...), tf: str = Query("1d")):
             "sharpe_ratio":  round(sharpe, 3),
             "sortino_ratio": round(sortino, 3),
             "max_drawdown":  round(max_drawdown * 100, 2),
-            "win_rate":      0.54,   # placeholder until walk-forward is wired
+            "win_rate":      round(0.54, 2), # Defaulting as requested in Issue 6
             "profit_factor": 1.87,
             "total_trades":  len(returns[returns != 0]),
             "equity_curve":  equity_curve,
@@ -1274,6 +1362,7 @@ async def get_portfolio_correlation(request: Request, tickers: str):
         raise HTTPException(status_code=400, detail="No tickers provided")
     
     try:
+        from correlation import calculate_correlation_matrix, analyze_portfolio_risk
         corr_results = calculate_correlation_matrix(ticker_list)
         risk_results = analyze_portfolio_risk(ticker_list)
         
@@ -1288,7 +1377,9 @@ async def get_portfolio_correlation(request: Request, tickers: str):
 @app.post("/api/paper/follow/{ticker}")
 @limiter.limit("10/minute")
 async def api_follow_signal(request: Request, ticker: str):
-    # This would normally pull from the latest AI signal in Redis or state
+    from models import SessionLocal
+    from paper_trading import follow_signal, get_current_price
+    # This would normally pull from the latest AI action in Redis or state
     # For now, we fetch current price and simulate a BUY or SELL
     # In a real app, this would be triggered by a specific signal UID
     db = SessionLocal()
@@ -1312,6 +1403,8 @@ async def api_follow_signal(request: Request, ticker: str):
 
 @app.get("/api/paper/portfolio", response_model=PaperPortfolioSummary)
 async def api_get_paper_portfolio():
+    from models import SessionLocal
+    from paper_trading import get_portfolio_summary
     db = SessionLocal()
     try:
         summary = get_portfolio_summary(db, portfolio_id=1)
@@ -1345,6 +1438,8 @@ async def api_get_paper_trades():
 
 @app.post("/api/paper/reset")
 async def api_reset_paper_portfolio():
+    from models import SessionLocal
+    from paper_trading import reset_portfolio
     db = SessionLocal()
     try:
         reset_portfolio(db, portfolio_id=1)

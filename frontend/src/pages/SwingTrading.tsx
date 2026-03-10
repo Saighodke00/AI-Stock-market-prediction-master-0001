@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSignal, fetchSentiment, fetchBacktest, fetchExplainability, SignalResponse, SentimentData, BacktestMetrics, XAIReport } from '../api/api';
 import { SignalCard } from '../components/trading/SignalCard';
-import { ForecastChart } from '../components/trading/ForecastChart';
+import { CandlestickChart } from '../components/trading/CandlestickChart';
 import { MetricGrid } from '../components/trading/MetricGrid';
 import { XAIPanel } from '../components/trading/XAIPanel';
 import { SentimentPanel } from '../components/trading/SentimentPanel';
@@ -22,7 +22,6 @@ export const SwingTradingPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [signal, setSignal] = useState<SignalResponse | null>(null);
-    const [chartData, setChartData] = useState<any[]>([]);
     const [sentiment, setSentiment] = useState<SentimentData | null>(null);
     const [backtest, setBacktest] = useState<BacktestMetrics | null>(null);
     const [xai, setXai] = useState<XAIReport[]>([]);
@@ -46,9 +45,6 @@ export const SwingTradingPage: React.FC = () => {
                 if (senRes) setSentiment(senRes);
                 if (btRes) setBacktest(btRes);
                 if (xaiRes) setXai(xaiRes);
-
-                // Generate mock chart data bridging historical to P10/P50/P90
-                if (sigRes) generateMockChartData(sigRes);
             } catch (err: any) {
                 console.error(err);
                 if (active) setError(err.message || 'Failed to fetch signal data');
@@ -59,45 +55,6 @@ export const SwingTradingPage: React.FC = () => {
         loadData();
         return () => { active = false; };
     }, [ticker, tf]);
-
-    const generateMockChartData = (sig: SignalResponse) => {
-        const historical = Array.from({ length: 40 }, (_, i) => {
-            const base = sig.current_price * 0.9 + (i * (sig.current_price * 0.1 / 40));
-            return {
-                date: new Date(Date.now() - (40 - i) * 86400000).toISOString().split('T')[0],
-                open: base - Math.random() * 10,
-                high: base + Math.random() * 15,
-                low: base - Math.random() * 15,
-                close: base + (Math.random() - 0.5) * 10,
-                volume: 1000000 + Math.random() * 500000,
-                sma20: base - 5,
-                sma50: base - 12
-            };
-        });
-
-        // Connect current to forecast
-        const lastHistorical = historical[historical.length - 1];
-        const forecastStart = {
-            date: new Date(Date.now()).toISOString().split('T')[0],
-            isForecast: true,
-            p10: lastHistorical.close,
-            p50: lastHistorical.close,
-            p90: lastHistorical.close
-        };
-
-        const forecast = Array.from({ length: 10 }, (_, i) => {
-            const step = (i + 1) / 10;
-            return {
-                date: new Date(Date.now() + (i + 1) * 86400000).toISOString().split('T')[0],
-                isForecast: true,
-                p10: lastHistorical.close + ((sig.p10 - lastHistorical.close) * step),
-                p50: lastHistorical.close + ((sig.p50 - lastHistorical.close) * step),
-                p90: lastHistorical.close + ((sig.p90 - lastHistorical.close) * step),
-            };
-        });
-
-        setChartData([...historical, forecastStart, ...forecast]);
-    };
 
     const metrics = backtest ? [
         { label: 'Win Rate', value: backtest.win_rate * 100, format: 'percent' as const },
@@ -163,14 +120,14 @@ export const SwingTradingPage: React.FC = () => {
             ) : (
                 <div className="flex flex-col xl:flex-row gap-6">
                     {/* Main Column */}
-                    <div className="flex-1 flex flex-col gap-6 max-w-full xl:max-w-[70%]">
+                    <div className="flex-1 flex flex-col gap-6 max-w-full text-primary">
                         <SignalCard data={signal} isLoading={false} timeframe={`${tf} SWING`} />
+                        <CandlestickChart ohlcv={signal.ohlcv || []} forecast={signal.forecast || []} action={signal.action} />
                         <PositionSizer data={signal} />
-                        <ForecastChart data={chartData} isLoading={false} />
                     </div>
 
                     {/* Right Data Column */}
-                    <div className="w-full xl:w-[30%] flex flex-col gap-8 bg-surface border border-dim rounded-xl p-5 shadow-lg">
+                    <div className="w-full xl:w-[300px] flex-shrink-0 flex flex-col gap-8 bg-surface border border-dim rounded-xl p-5 shadow-lg">
 
                         <div className="flex flex-col gap-3">
                             <h3 className="font-data text-[9px] text-cyan tracking-[0.3em] uppercase">// MODEL METRICS (OUT-OF-SAMPLE)</h3>

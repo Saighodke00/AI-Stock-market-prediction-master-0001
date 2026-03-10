@@ -326,16 +326,17 @@ def gate_signal(
         "attention_score": round(attention_score, 4),
         "cone_width": round(cone_width, 6),
         "sentiment_score": round(sentiment_score, 4),
-        "gate1_passed": None,
-        "gate2_passed": None,
-        "gate3_passed": None,
+        "gate1_attention": True, # Will be set False if failed
+        "gate2_cone":      True,
+        "gate3_sentiment": True,
+        "gate4_pattern":   True,
     }
 
     # ── Gate 1: Attention / model confidence ────────────────────────────────
     if attention_score < min_confidence:
-        gate_results["gate1_passed"] = False
-        gate_results["gate2_passed"] = "skipped"
-        gate_results["gate3_passed"] = "skipped"
+        gate_results["gate1_attention"] = False
+        gate_results["gate2_cone"]      = False
+        gate_results["gate3_sentiment"] = False
         reason = f"Low model confidence ({attention_score:.2f})"
         logger.info(
             "gate_signal [%s]: GATE 1 FAILED — %s < min_confidence=%.2f → HOLD",
@@ -351,12 +352,12 @@ def gate_signal(
             gate_results=gate_results,
         )
 
-    gate_results["gate1_passed"] = True
+    gate_results["gate1_attention"] = True
 
     # ── Gate 2: Forecast cone width (uncertainty) ────────────────────────────
     if cone_width > max_cone_width:
-        gate_results["gate2_passed"] = False
-        gate_results["gate3_passed"] = "skipped"
+        gate_results["gate2_cone"]      = False
+        gate_results["gate3_sentiment"] = False
         reason = f"High uncertainty cone ({cone_width:.1%})"
         logger.info(
             "gate_signal [%s]: GATE 2 FAILED — cone=%.4f > max_cone_width=%.4f → HOLD",
@@ -372,19 +373,19 @@ def gate_signal(
             gate_results=gate_results,
         )
 
-    gate_results["gate2_passed"] = True
+    gate_results["gate2_cone"] = True
 
     # ── Gate 3: Sentiment alignment ─────────────────────────────────────────
     gate3_reason: Optional[str] = None
 
     if direction == "BUY" and sentiment_score < min_sentiment:
-        gate_results["gate3_passed"] = False
+        gate_results["gate3_sentiment"] = False
         gate3_reason = f"Bearish sentiment override ({sentiment_score:.2f})"
     elif direction == "SELL" and sentiment_score > max_sentiment:
-        gate_results["gate3_passed"] = False
+        gate_results["gate3_sentiment"] = False
         gate3_reason = f"Bullish sentiment override ({sentiment_score:.2f})"
     else:
-        gate_results["gate3_passed"] = True
+        gate_results["gate3_sentiment"] = True
 
     if gate3_reason is not None:
         logger.info(
@@ -412,7 +413,12 @@ def gate_signal(
     pattern_best = None
     
     # Check if df is available in context (it's not here, so we update the signature or handle in run_inference)
-    gate_results["gate4_passed"] = "NEUTRAL — background check only"
+    # since gate_signal doesn't have the DF, we check p50 vs current_price as a simple pattern proxy
+    is_pattern_ok = True
+    if direction == "BUY" and p50 < current_price: is_pattern_ok = False
+    if direction == "SELL" and p50 > current_price: is_pattern_ok = False
+    
+    gate_results["gate4_pattern"] = is_pattern_ok
 
     # ── All gates passed ─────────────────────────────────────────────────────
     reason = (

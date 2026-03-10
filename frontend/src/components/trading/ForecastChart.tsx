@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
+import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 
 interface ChartDataPoint {
     date: string;
@@ -78,7 +78,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({ data, patterns, is
     };
 
     return (
-        <div className="w-full bg-surface rounded-xl border border-dim flex flex-col h-[400px] md:h-[500px]">
+        <div className="w-full bg-surface rounded-xl border border-dim flex flex-col min-h-[420px] h-[500px]">
             {/* Chart Header */}
             <div className="flex items-center justify-between p-4 border-b border-dim shrink-0">
                 <h3 className="font-display font-medium text-primary text-sm tracking-wider flex items-center gap-2">
@@ -130,12 +130,19 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({ data, patterns, is
                         <Line type="monotone" dataKey="sma50" stroke="var(--violet)" strokeWidth={1} strokeDasharray="4 4" dot={false} opacity={0.7} />
 
                         {/* Forecast Cone */}
-                        <Area type="monotone" dataKey="p90" stroke="none" fill="var(--green)" fillOpacity={0.06} />
-                        <Area type="monotone" dataKey="p10" stroke="none" fill="var(--bg-surface)" fillOpacity={1} /> {/* Mask out bottom */}
+                        <Area type="monotone" dataKey="p90" stroke="none" fill="var(--green)" fillOpacity={0.06} connectNulls />
+                        <Area type="monotone" dataKey="p10" stroke="none" fill="var(--bg-surface)" fillOpacity={1} connectNulls /> {/* Mask out bottom */}
 
-                        <Line type="monotone" dataKey="p50" stroke="var(--green)" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="p90" stroke="var(--cyan)" strokeWidth={1} strokeDasharray="3 3" dot={false} opacity={0.5} />
-                        <Line type="monotone" dataKey="p10" stroke="var(--red)" strokeWidth={1} strokeDasharray="3 3" dot={false} opacity={0.5} />
+                        <ReferenceLine
+                            x={data.find(d => d.isForecast)?.date}
+                            stroke="var(--cyan)"
+                            strokeDasharray="5 5"
+                            label={{ value: 'TODAY', position: 'top', fill: 'var(--cyan)', fontSize: 10, fontFamily: 'Share Tech Mono' }}
+                        />
+
+                        <Line type="monotone" dataKey="p50" stroke="var(--green)" strokeWidth={2} dot={false} strokeDasharray="5 5" connectNulls />
+                        <Line type="monotone" dataKey="p90" stroke="var(--cyan)" strokeWidth={1} strokeDasharray="3 3" dot={false} opacity={0.5} connectNulls />
+                        <Line type="monotone" dataKey="p10" stroke="var(--red)" strokeWidth={1} strokeDasharray="3 3" dot={false} opacity={0.5} connectNulls />
                     </ComposedChart>
                 </ResponsiveContainer>
             </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSignal, fetchSentiment, fetchBacktest, fetchExplainability, SignalResponse, SentimentData, BacktestMetrics, XAIReport } from '../api/api';
 import { SignalCard } from '../components/trading/SignalCard';
-import { ForecastChart } from '../components/trading/ForecastChart';
+import { CandlestickChart } from '../components/trading/CandlestickChart';
 import { MetricGrid } from '../components/trading/MetricGrid';
 import { XAIPanel } from '../components/trading/XAIPanel';
 import { SentimentPanel } from '../components/trading/SentimentPanel';
@@ -22,7 +22,6 @@ export const IntradayTradingPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [signal, setSignal] = useState<SignalResponse | null>(null);
-    const [chartData, setChartData] = useState<any[]>([]);
     const [sentiment, setSentiment] = useState<SentimentData | null>(null);
     const [backtest, setBacktest] = useState<BacktestMetrics | null>(null);
     const [xai, setXai] = useState<XAIReport[]>([]);
@@ -46,8 +45,6 @@ export const IntradayTradingPage: React.FC = () => {
                 if (senRes) setSentiment(senRes);
                 if (btRes) setBacktest(btRes);
                 if (xaiRes) setXai(xaiRes);
-
-                if (sigRes) generateMockChartData(sigRes);
             } catch (err: any) {
                 console.error(err);
                 if (active) setError(err.message || 'Failed to fetch signal data');
@@ -59,44 +56,6 @@ export const IntradayTradingPage: React.FC = () => {
         return () => { active = false; };
     }, [ticker, tf]);
 
-    const generateMockChartData = (sig: SignalResponse) => {
-        const historical = Array.from({ length: 40 }, (_, i) => {
-            const base = sig.current_price * 0.99 + (i * (sig.current_price * 0.01 / 40));
-            return {
-                date: new Date(Date.now() - (40 - i) * 300000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-                open: base - Math.random() * 2,
-                high: base + Math.random() * 3,
-                low: base - Math.random() * 3,
-                close: base + (Math.random() - 0.5) * 2,
-                volume: 10000 + Math.random() * 50000,
-                sma20: base - 1,
-                sma50: base - 2
-            };
-        });
-
-        // Connect current to forecast
-        const lastHistorical = historical[historical.length - 1];
-        const forecastStart = {
-            date: new Date(Date.now()).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-            isForecast: true,
-            p10: lastHistorical.close,
-            p50: lastHistorical.close,
-            p90: lastHistorical.close
-        };
-
-        const forecast = Array.from({ length: 10 }, (_, i) => {
-            const step = (i + 1) / 10;
-            return {
-                date: new Date(Date.now() + (i + 1) * 300000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-                isForecast: true,
-                p10: lastHistorical.close + ((sig.p10 - lastHistorical.close) * step),
-                p50: lastHistorical.close + ((sig.p50 - lastHistorical.close) * step),
-                p90: lastHistorical.close + ((sig.p90 - lastHistorical.close) * step),
-            };
-        });
-
-        setChartData([...historical, forecastStart, ...forecast]);
-    };
 
     const metrics = backtest ? [
         { label: 'Scalp Win Rate', value: backtest.win_rate * 100, format: 'percent' as const },
@@ -162,14 +121,14 @@ export const IntradayTradingPage: React.FC = () => {
             ) : (
                 <div className="flex flex-col xl:flex-row gap-6">
                     {/* Main Column */}
-                    <div className="flex-1 flex flex-col gap-6 max-w-full xl:max-w-[70%] text-primary">
+                    <div className="flex-1 flex flex-col gap-6 max-w-full text-primary">
                         <SignalCard data={signal} isLoading={false} timeframe={`${tf} SCALP`} />
+                        <CandlestickChart ohlcv={signal.ohlcv || []} forecast={signal.forecast || []} action={signal.action} />
                         <PositionSizer data={signal} />
-                        <ForecastChart data={chartData} isLoading={false} />
                     </div>
 
                     {/* Right Data Column */}
-                    <div className="w-full xl:w-[30%] flex flex-col gap-8 bg-surface border border-dim rounded-xl p-5 shadow-lg relative min-w-[300px]">
+                    <div className="w-full xl:w-[300px] flex-shrink-0 flex flex-col gap-8 bg-surface border border-dim rounded-xl p-5 shadow-lg relative">
                         {/* The glowing active tab marker trick */}
                         <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-transparent via-cyan/50 to-transparent opacity-50" />
 
