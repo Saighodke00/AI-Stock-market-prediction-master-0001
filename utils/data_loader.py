@@ -43,20 +43,9 @@ def fetch_data(ticker: str, period: str = "2y", interval: str = "1d") -> pd.Data
         # 2. Static metadata (sector, industry, log_market_cap, beta)
         data = add_static_metadata(data, ticker)
 
-        # 3. Trailing fundamental ratios
-        try:
-            ticker_obj = yf.Ticker(ticker)
-            info = ticker_obj.info or {}
-            data['PE_Ratio'] = info.get('trailingPE', np.nan)
-            data['EPS'] = info.get('trailingEps', np.nan)
-            data['Debt_to_Equity'] = info.get('debtToEquity', np.nan)
-        except Exception as e:
-            print(f"Info Fetch Limited for {ticker}: {e}")
-            data['PE_Ratio'] = np.nan
-            data['EPS'] = np.nan
-            data['Debt_to_Equity'] = np.nan
-
-        # 4. Robust cleaning
+        # 3. Robust cleaning  (fundamental ratios removed — they hit the Yahoo
+        #    crumb endpoint causing HTTP 401 errors and produce all-NaN columns
+        #    that wipe out every row in dropna().  They are not used as features.)
         data = data.ffill().bfill()
         return data
 

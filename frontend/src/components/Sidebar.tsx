@@ -41,29 +41,28 @@ export default function Sidebar({
 
     const SidebarContent = () => (
         <div className="flex flex-col h-full">
-            {/* Logo */}
             <div className={`flex items-center mb-8 px-2 ${collapsed ? 'justify-center' : 'justify-between'}`}>
                 {!collapsed && (
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                            <Brain className="w-4 h-4 text-white" />
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                            <Brain className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-sm font-black text-white tracking-widest uppercase">Apex AI</h1>
-                            <p className="text-[9px] text-slate-500 tracking-widest uppercase">Trading Intelligence</p>
+                            <h1 className="text-base font-bold text-white tracking-tight font-display">Apex AI</h1>
+                            <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase font-body">Neural Engine V3</p>
                         </div>
                     </div>
                 )}
                 {collapsed && (
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                        <Brain className="w-4 h-4 text-white" />
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <Brain className="w-5 h-5 text-white" />
                     </div>
                 )}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
-                    className="hidden md:flex p-1.5 rounded-md text-slate-500 hover:text-slate-300 hover:bg-slate-800/60 transition-all"
+                    className="hidden md:flex p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-all"
                 >
-                    {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+                    {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
                 </button>
             </div>
 
@@ -101,9 +100,7 @@ export default function Sidebar({
                 </div>
             )}
 
-            {/* Navigation */}
-            {!collapsed && <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mb-2 px-1">Navigation</p>}
-            <nav className="space-y-1 flex-1">
+            <nav className="space-y-1.5 flex-1">
                 {navItems.map((item) => {
                     const isActive = activeTab === item.id;
                     return (
@@ -111,21 +108,13 @@ export default function Sidebar({
                             key={item.id}
                             onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
                             title={collapsed ? item.name : undefined}
-                            className={`group w-full flex items-center gap-3 rounded-xl transition-all duration-150 relative overflow-hidden
-                                ${collapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5'}
-                                ${isActive
-                                    ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
-                                }`}
+                            className={`group w-full transition-all duration-200 ${collapsed ? 'flex justify-center py-3' : (isActive ? 'nav-item-active' : 'nav-item')}`}
                         >
-                            {isActive && (
-                                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-indigo-400 rounded-r-full" />
-                            )}
-                            <item.icon className={`shrink-0 transition-colors ${collapsed ? 'w-5 h-5' : 'w-4 h-4'} ${isActive ? 'text-indigo-400' : ''}`} />
+                            <item.icon className={`shrink-0 transition-colors ${collapsed ? 'w-5 h-5' : 'w-4 h-4'} ${isActive ? 'text-white' : 'group-hover:text-white'}`} />
                             {!collapsed && (
                                 <div className="text-left min-w-0">
-                                    <p className="text-xs font-medium leading-none">{item.name}</p>
-                                    <p className="text-[10px] text-slate-600 mt-0.5">{item.label}</p>
+                                    <p className="text-sm font-medium leading-none">{item.name}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1 font-body">{item.label}</p>
                                 </div>
                             )}
                         </button>
@@ -177,11 +166,11 @@ export default function Sidebar({
             )}
 
             <aside className={`
-                fixed inset-y-0 left-0 z-50 bg-slate-950/95 backdrop-blur-xl border-r border-slate-800/60 
+                fixed inset-y-0 left-0 z-50 bg-void border-r border-white/5 
                 transition-all duration-300 ease-in-out flex-shrink-0
                 md:static md:translate-x-0
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-                ${collapsed ? 'w-16' : 'w-60'}
+                ${collapsed ? 'w-18' : 'w-64'}
             `}>
                 {/* Close button mobile */}
                 <button

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSentiment, SentimentData } from '../api/api';
+import { AlertCircle, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 
 export const SentimentPage: React.FC = () => {
     const [ticker, setTicker] = useState('RELIANCE.NS');
@@ -27,76 +28,126 @@ export const SentimentPage: React.FC = () => {
     }, [ticker]);
 
     const getSentimentColor = (score: number) => {
-        if (score > 0.2) return 'text-green shadow-green/20';
-        if (score < -0.2) return 'text-red shadow-red/20';
-        return 'text-gold shadow-gold/20';
+        if (score > 0.1) return 'text-emerald-400';
+        if (score < -0.1) return 'text-rose-400';
+        return 'text-amber-400';
+    };
+
+    const renderContent = () => {
+        if (isLoading) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[400px] gap-6">
+                    <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                    <span className="text-[10px] font-bold text-indigo-500 tracking-[0.3em] animate-pulse uppercase font-body">Analyzing News Streams...</span>
+                </div>
+            );
+        }
+
+        if (error) {
+            return (
+                <div className="p-16 glass-card border-rose-500/20 bg-rose-500/5 text-center flex flex-col items-center gap-6 max-w-2xl mx-auto">
+                    <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500">
+                        <AlertCircle className="w-8 h-8" />
+                    </div>
+                    <div>
+                        <p className="text-white font-bold text-xl mb-2 font-display">Neural Link Failure</p>
+                        <p className="text-slate-500 font-medium font-body text-sm">{error}</p>
+                    </div>
+                    <button onClick={() => window.location.reload()} className="px-8 py-3 bg-rose-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-rose-500/20 hover:scale-[1.02] transition-all">
+                        Retry Connection
+                    </button>
+                </div>
+            );
+        }
+
+        if (!data) return null;
+
+        const score = data.aggregate_score ?? data.score ?? 0;
+        const articles = data.articles ?? [];
+        const normalizedScore = ((score + 1) * 50);
+
+        return (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Score Card */}
+                <div className="lg:col-span-1 glass-card p-10 flex flex-col items-center justify-center text-center gap-8 relative overflow-hidden group border-indigo-500/20 shadow-indigo-500/5 shadow-2xl">
+                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
+                    <span className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Aggregate Sentiment</span>
+                    <div className="relative">
+                        <div className={`text-9xl font-black font-display tracking-tighter transition-all ${getSentimentColor(score)}`}>
+                            {normalizedScore.toFixed(0)}
+                        </div>
+                        <div className="absolute -inset-4 bg-indigo-500/20 blur-3xl opacity-20 -z-10 animate-pulse" />
+                    </div>
+                    <div className="space-y-2">
+                        <p className="text-white font-bold text-lg font-display uppercase tracking-tight">
+                            {normalizedScore > 60 ? 'Strongly Bullish' : normalizedScore < 40 ? 'Strongly Bearish' : 'Neutral Market'}
+                        </p>
+                        <p className="text-slate-500 font-medium font-body text-xs px-4">
+                            Neural analysis processed {articles.length} real-time signals for {ticker}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Headlines List */}
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                    <div className="flex items-center justify-between px-2">
+                        <h3 className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Signal Stream</h3>
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="text-[10px] font-bold text-emerald-400 tracking-wider">LIVE FEED</span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                        {articles.map((n: any, i: number) => (
+                            <div key={i} className="glass-card hover:translate-x-1 hover:border-white/10 p-5 group transition-all duration-300">
+                                <div className="flex justify-between items-start gap-6">
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-slate-200 text-sm leading-relaxed font-body group-hover:text-white transition-colors">{n.title}</p>
+                                        <div className="flex items-center gap-4 mt-3">
+                                            <span className="text-[10px] font-bold text-slate-600 tracking-wider uppercase font-body flex items-center gap-1.5">
+                                                <div className="w-1 h-1 rounded-full bg-slate-700" />
+                                                FinBERT Neural
+                                            </span>
+                                            <span className="text-[10px] font-bold text-slate-600 tracking-wider font-body">
+                                                {n.published ? new Date(n.published).toLocaleDateString('en-GB') : 'Just now'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className={`px-3 py-1.5 rounded-xl border font-bold font-mono text-sm min-w-[50px] text-center ${n.score > 0.1 ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : n.score < -0.1 ? 'text-rose-400 border-rose-500/20 bg-rose-500/5' : 'text-amber-400 border-amber-500/20 bg-amber-500/5'}`}>
+                                        {n.score > 0 ? '+' : ''}{(n.score * 10).toFixed(1)}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
-        <div className="p-8 flex flex-col gap-8 max-w-6xl mx-auto">
-            <div className="flex justify-between items-center">
-                <h1 className="font-display text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan to-white select-none">
-                    SENTIMENT <span className="text-secondary text-2xl font-normal not-italic tracking-normal">DEEP-DIVE</span>
-                </h1>
+        <div className="p-8 md:p-12 max-w-7xl mx-auto h-full overflow-y-auto bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.03),_transparent)]">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+                <div>
+                    <h1 className="text-4xl font-bold text-white tracking-tight font-display mb-2">
+                        Sentiment <span className="text-indigo-500">Analysis</span>
+                    </h1>
+                    <p className="text-slate-500 font-medium font-body tracking-wide uppercase text-[10px]">Neural NLP Market Interpretation</p>
+                </div>
 
-                <div className="flex items-center gap-3">
-                    <span className="font-data text-[10px] text-muted tracking-widest uppercase">Select Asset:</span>
+                <div className="flex items-center gap-4 bg-white/[0.03] border border-white/[0.05] p-2 rounded-2xl">
+                    <span className="text-[10px] font-bold text-slate-500 tracking-widest uppercase font-body px-2">Asset</span>
                     <select
                         value={ticker}
                         onChange={(e) => setTicker(e.target.value)}
-                        className="bg-surface border border-dim rounded px-4 py-2 font-data text-cyan outline-none focus:border-cyan transition-colors"
+                        className="bg-void border border-white/[0.1] rounded-xl px-4 py-2 text-sm font-bold text-white outline-none focus:border-indigo-500/50 transition-all cursor-pointer min-w-[140px]"
                     >
                         {tickers.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                 </div>
             </div>
 
-            {isLoading ? (
-                <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-                    <div className="w-12 h-12 border-2 border-t-cyan border-r-cyan border-b-transparent border-l-transparent rounded-full animate-spin" />
-                    <span className="font-data text-cyan tracking-widest text-sm animate-pulse">ANALYZING NEWS STREAMS...</span>
-                </div>
-            ) : error ? (
-                <div className="p-12 border border-red/30 bg-red-dim/10 rounded-xl text-center">
-                    <p className="text-red font-body">{error}</p>
-                    <button onClick={() => window.location.reload()} className="mt-4 px-6 py-2 bg-red/20 border border-red rounded text-red text-sm">RETRY CONNECTION</button>
-                </div>
-            ) : data && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Score Card */}
-                    <div className="lg:col-span-1 bg-surface border border-dim rounded-xl p-8 flex flex-col items-center justify-center text-center gap-4 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-b from-cyan/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <span className="font-data text-xs text-muted tracking-widest uppercase relative z-10">AGGREGATE SENTIMENT</span>
-                        <div className={`text-8xl font-black font-display relative z-10 drop-shadow-2xl transition-all ${getSentimentColor(data.aggregate_score)}`}>
-                            {((data.aggregate_score + 1) * 50).toFixed(0)}
-                        </div>
-                        <span className="text-secondary font-body italic relative z-10">
-                            Neural analysis based on {data.news.length} recent news signals
-                        </span>
-                    </div>
-
-                    {/* Headlines List */}
-                    <div className="lg:col-span-2 flex flex-col gap-4">
-                        <h3 className="font-data text-[10px] text-cyan tracking-[0.3em] uppercase">// RECENT HEADLINES</h3>
-                        <div className="flex flex-col gap-3">
-                            {data.news.map((n, i) => (
-                                <div key={i} className="bg-surface border border-dim rounded-lg p-4 flex flex-col gap-2 hover:border-mid transition-all">
-                                    <div className="flex justify-between items-start gap-4">
-                                        <p className="font-body text-primary text-sm leading-relaxed">{n.headline}</p>
-                                        <span className={`font-data text-xs whitespace-nowrap px-2 py-0.5 rounded border ${n.score > 0.1 ? 'text-green border-green/30 bg-green/5' : n.score < -0.1 ? 'text-red border-red/30 bg-red/5' : 'text-gold border-gold/30 bg-gold/5'}`}>
-                                            {(n.score * 10).toFixed(1)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[10px] text-muted font-data">
-                                        <span>SOURCE: {n.source.toUpperCase()}</span>
-                                        <span>{n.time}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
+            {renderContent()}
         </div>
     );
 };

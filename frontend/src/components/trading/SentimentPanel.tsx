@@ -1,5 +1,6 @@
 import React from 'react';
 import { SentimentData } from '../../api/api';
+import { Globe, CheckCircle2, XCircle, AlertCircle, Info } from 'lucide-react';
 
 interface SentimentPanelProps {
     data: SentimentData | null;
@@ -10,63 +11,77 @@ interface SentimentPanelProps {
 export const SentimentPanel: React.FC<SentimentPanelProps> = ({ data, gatePassed, isActionBuy }) => {
     if (!data) return null;
 
-    const score = data.aggregate_score;
+    const score = data.aggregate_score ?? data.score ?? 0;
     const isBullish = score > 0.1;
     const isBearish = score < -0.1;
-    const label = isBullish ? 'BULLISH' : isBearish ? 'BEARISH' : 'NEUTRAL';
-    const colorText = isBullish ? 'text-green' : isBearish ? 'text-red' : 'text-gold';
+    const label = isBullish ? 'Bullish' : isBearish ? 'Bearish' : 'Neutral';
+    const colorText = isBullish ? 'text-emerald-400' : isBearish ? 'text-rose-400' : 'text-amber-400';
+    const bgColor = isBullish ? 'bg-emerald-500/10' : isBearish ? 'bg-rose-500/10' : 'bg-amber-500/10';
 
-    // Custom Gate 3 wording Based on provided spec
     const gateText = gatePassed
-        ? `✅ GATE 3 PASSED — sentiment aligned with signal`
-        : `🚫 GATE 3 BLOCKED — sentiment overrides ${isActionBuy ? 'BUY' : 'SELL'} → HOLD`;
-    const gateBg = gatePassed ? 'bg-green-dim border-green/20' : 'bg-red-dim border-red/20';
+        ? `GATE 3 PASSED — sentiment aligned with signal`
+        : `GATE 3 BLOCKED — sentiment overrides ${isActionBuy ? 'BUY' : 'SELL'} → HOLD`;
+    const GateIcon = gatePassed ? CheckCircle2 : XCircle;
+    const gateColor = gatePassed ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-rose-400 border-rose-500/20 bg-rose-500/5';
 
     return (
-        <div className="flex flex-col gap-4 mt-8">
-            <h3 className="font-data text-[9px] text-cyan tracking-[0.3em] uppercase">// MARKET SENTIMENT</h3>
+        <div className="flex flex-col gap-6 mt-4">
+            <div className="flex items-center justify-between">
+                <h3 className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Market Sentiment</h3>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                     <Globe className="w-3 h-3 text-indigo-400" />
+                     <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">GLOBAL NLP</span>
+                </div>
+            </div>
 
             {/* Aggregate Score */}
-            <div className="flex flex-col gap-1 items-start">
-                <span className={`font-display font-bold text-4xl ${colorText}`}>
-                    {(score ?? 0) > 0 ? '+' : ''}{(score ?? 0).toFixed(2)}
+            <div className="flex flex-col gap-1 items-start px-1">
+                <span className={`font-display font-black text-5xl tracking-tighter ${colorText}`}>
+                    {score > 0 ? '+' : ''}{score.toFixed(2)}
                 </span>
-                <span className={`font-display font-semibold text-sm tracking-wider ${colorText}`}>
-                    {label}
+                <span className={`font-body font-bold text-sm tracking-wide ${colorText} uppercase`}>
+                    {label} Analysis
                 </span>
             </div>
 
             {/* Gate Status */}
-            <div className={`mt-2 px-3 py-2 rounded shadow-sm border ${gateBg}`}>
-                <p className="font-body text-[13px] text-primary font-medium tracking-wide">
-                    {gateText}
-                </p>
+            <div className={`p-4 glass-card border transition-all duration-500 ${gateColor}`}>
+                <div className="flex gap-3 items-center">
+                    <GateIcon className="w-5 h-5 flex-shrink-0" />
+                    <p className="font-body text-[11px] font-bold tracking-tight uppercase leading-relaxed">
+                        {gateText}
+                    </p>
+                </div>
             </div>
 
             {/* News Feed */}
-            <div className="flex flex-col gap-3 mt-4">
+            <div className="flex flex-col gap-3 mt-2">
                 {(() => {
                     const safeArray = <T,>(val: unknown): T[] => Array.isArray(val) ? (val as T[]) : [];
-                    return safeArray<{ headline: string; score: number; source: string; time: string; }>(data?.news).slice(0, 4).map((item, i) => {
+                    return safeArray<{ title: string; score: number; published: string; }>(data?.articles).slice(0, 4).map((item, i) => {
                         const itemBullish = (item?.score ?? 0) > 0.1;
                         const itemBearish = (item?.score ?? 0) < -0.1;
-                        const borderColor = itemBullish ? 'border-l-green' : itemBearish ? 'border-l-red' : 'border-l-gold';
-                        const badgeBg = itemBullish ? 'bg-green-dim text-green' : itemBearish ? 'bg-red-dim text-red' : 'bg-gold-dim text-gold';
-                        const displayScore = ((item?.score ?? 0) > 0 ? '+' : '') + (item?.score ?? 0).toFixed(2);
+                        const borderColor = itemBullish ? 'bg-emerald-500/50' : itemBearish ? 'bg-rose-500/50' : 'bg-amber-500/50';
+                        const badgeColor = itemBullish ? 'text-emerald-400 bg-emerald-500/5' : itemBearish ? 'text-rose-400 bg-rose-500/5' : 'text-amber-400 bg-amber-500/5';
+                        const displayScore = ((item?.score ?? 0) > 0 ? '+' : '') + (item?.score ?? 0).toFixed(1);
 
                         return (
-                            <div key={i} className={`flex flex-col gap-1 p-2 pl-3 border-l-2 ${borderColor} hover:bg-raised transition-colors group rounded-r cursor-pointer`}>
-                                <div className="flex justify-between items-start gap-2">
-                                    <p className="font-body text-[13px] text-primary leading-tight line-clamp-2 pr-6">
-                                        {item.headline}
+                            <div key={i} className="glass-card hover:bg-white/[0.04] p-3.5 group transition-all duration-300 relative overflow-hidden">
+                                <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${borderColor}`} />
+                                <div className="flex justify-between items-start gap-4">
+                                    <p className="font-body text-xs text-slate-300 font-semibold leading-relaxed line-clamp-2 group-hover:text-white transition-colors">
+                                        {item.title}
                                     </p>
-                                    <div className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-data font-bold ${badgeBg}`}>
+                                    <div className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/5 ${badgeColor}`}>
                                         {displayScore}
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center text-[11px] text-muted font-body mt-1">
-                                    <span>{item.source}</span>
-                                    <span>{item.time}</span>
+                                <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold tracking-wider uppercase font-body mt-3">
+                                    <span className="flex items-center gap-1.5">
+                                        <div className="w-1 h-1 rounded-full bg-slate-700" />
+                                        Neural V2
+                                    </span>
+                                    <span>{item.published ? new Date(item.published).toLocaleDateString('en-GB') : 'JUST NOW'}</span>
                                 </div>
                             </div>
                         );
