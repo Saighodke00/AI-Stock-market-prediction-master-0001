@@ -487,3 +487,75 @@ if __name__ == "__main__":
     print(f"\n{'='*60}")
     print("  Smoke test complete.")
     print(f"{'='*60}\n")
+
+
+# -- Adapter for main.py v3.0 -------------------------------------------------
+
+# Exact 36 features the Keras GRU/TCN/MAG models were trained on.
+# Order must match training order. Do NOT use select_dtypes — that picks up
+# extra columns (Open, PE_Ratio, EPS, Debt_to_Equity …) → shape mismatch.
+# Model expects input shape (None, 60, 36).
+_KERAS_FEATURE_COLS: list[str] = [
+    # OHLCV + macro (7 cols — Open excluded, it was not in the training set)
+    "High", "Low", "Close", "Volume", "VIX", "SP500", "NSEI",
+    # Technical indicators (12 cols)
+    "RSI_14",
+    "MACD_12_26_9", "MACDh_12_26_9", "MACDs_12_26_9",
+    "BBL_20_2", "BBM_20_2", "BBU_20_2", "BBB_20_2",
+    "ATR_14",
+    "OBV",
+    "STOCHk_14_3_3", "STOCHd_14_3_3",
+    # Lag features (9 cols = 3 sources × 3 lags)
+    "RSI_14_lag1", "RSI_14_lag3", "RSI_14_lag5",
+    "MACD_12_26_9_lag1", "MACD_12_26_9_lag3", "MACD_12_26_9_lag5",
+    "ATR_14_lag1", "ATR_14_lag3", "ATR_14_lag5",
+    # Rolling (2 cols)
+    "RSI_14_rolling_mean_5",
+    "Volume_ratio",
+    # Calendar / known-future (6 cols)
+    "day_of_week", "month", "quarter",
+    "is_month_end", "is_quarter_end", "days_to_earnings",
+]
+# Sanity check at import time
+assert len(_KERAS_FEATURE_COLS) == 36, (
+    f"_KERAS_FEATURE_COLS has {len(_KERAS_FEATURE_COLS)} entries, expected 36"
+)
+
+
+def build_features(df, ticker: str = "UNKNOWN"):
+    """
+    Adapter expected by main.py v3.0.
+      X_raw, feature_cols = build_features(df, ticker)
+
+    Runs build_all_features(), then selects exactly the 36 columns the
+    Keras models were trained on.  Returns:
+      - X_raw:        numpy float32 array of shape (n_rows, 36)
+      - feature_cols: list[str] of the 36 column names
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Cleaned OHLCV + macro DataFrame (output of fetch_data).
+    ticker : str
+        Ticker symbol forwarded to build_all_features for logging.
+    """
+    result_df = build_all_features(df, ticker)
+
+    # Select only the columns the Keras models know about
+    available = [c for c in _KERAS_FEATURE_COLS if c in result_df.columns]
+    missing   = [c for c in _KERAS_FEATURE_COLS if c not in result_df.columns]
+
+    if missing:
+        logger.warning(
+            "build_features: %d expected columns missing from feature df: %s. "
+            "Proceeding with %d available columns.",
+            len(missing), missing, len(available),
+        )
+
+    if len(available) == 0:
+        logger.error("build_features: no valid feature columns — returning empty array.")
+        return None, []
+
+    final_df = result_df[available].select_dtypes(include=["number"])
+    return final_df.values.astype("float32"), list(final_df.columns)
+

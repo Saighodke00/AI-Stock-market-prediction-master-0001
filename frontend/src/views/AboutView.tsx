@@ -49,73 +49,72 @@ const STACK = [
 
 export default function AboutView() {
     return (
-        <div className="p-4 md:p-5 lg:p-6 h-full overflow-y-auto">
+        <div className="p-8 max-w-[1400px] mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-700">
             {/* Hero */}
-            <div className="glass rounded-3xl p-8 border border-slate-800/60 mb-6 relative overflow-hidden">
+            <div className="glass-card p-12 border border-white/5 relative overflow-hidden group shadow-2xl">
                 {/* Background accent */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-violet-500/5 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-1000" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-violet-500/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-violet-500/20 transition-all duration-1000" />
 
-                <div className="relative">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                            <Award className="w-5 h-5 text-white" />
+                <div className="relative z-10">
+                    <div className="flex items-center gap-4 mb-8">
+                        <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30 group-hover:scale-110 transition-transform duration-500">
+                            <Award className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-white">Neural Architects</h2>
-                            <p className="text-xs text-slate-500">The team behind Apex AI</p>
+                            <h2 className="text-3xl font-display font-black text-white tracking-tight uppercase">Neural Architects</h2>
+                            <p className="text-xs text-slate-500 font-bold tracking-[0.2em] uppercase mt-1 italic">The Forge behind Apex AI v3.0</p>
                         </div>
                     </div>
-                    <p className="text-sm text-slate-400 leading-relaxed max-w-2xl">
-                        Apex AI is a research-grade, institutional-quality stock prediction platform built by a passionate team of AI engineers and quant analysts. Our mission is to democratize professional-grade trading intelligence that previously existed only inside hedge funds and investment banks.
+                    <p className="text-lg text-slate-400 font-body leading-relaxed max-w-3xl mb-8">
+                        Apex AI is a research-grade, institutional-quality algorithmic platform engineered for high-precision market topology mapping. Our mission is to democratize institutional-grade intelligence using state-of-the-art transformer architectures.
                     </p>
-                    <div className="flex flex-wrap gap-2 mt-5">
-                        {['TFT Architecture', 'Probabilistic Forecasting', 'FinBERT Sentiment', '3-Gate Signal Validation', 'Walk-Forward Backtesting'].map(tag => (
-                            <span key={tag} className="px-3 py-1 rounded-full text-[10px] font-bold border border-indigo-500/30 bg-indigo-500/10 text-indigo-400 uppercase tracking-wider">{tag}</span>
+                    <div className="flex flex-wrap gap-3">
+                        {['TFT Architecture', 'Probabilistic Forecasting', 'FinBERT Sentiment', 'Neural Validation', 'Vectorized Backtesting'].map(tag => (
+                            <span key={tag} className="px-4 py-1.5 rounded-full text-[10px] font-black border border-indigo-500/20 bg-indigo-500/5 text-indigo-400 uppercase tracking-widest hover:bg-indigo-500/10 transition-colors shadow-inner">{tag}</span>
                         ))}
                     </div>
                 </div>
             </div>
 
             {/* Team Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {TEAM.map((member) => (
                     <div
                         key={member.name}
-                        className="glass rounded-3xl p-6 border border-slate-800/60 hover:border-slate-700/80 hover:scale-[1.02] transition-all duration-300 cursor-pointer group relative overflow-hidden"
+                        className="glass-card p-8 border border-white/5 hover:border-indigo-500/30 transition-all duration-700 group relative overflow-hidden flex flex-col shadow-2xl"
                     >
-                        {/* Card glow */}
-                        <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${member.gradient} opacity-5 rounded-full blur-2xl pointer-events-none group-hover:opacity-10 transition-opacity`} />
-
                         {/* Avatar */}
-                        <div className="flex items-start justify-between mb-5">
-                            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center shadow-xl ${member.shadow} ring-2 ${member.ring}`}>
-                                <span className="text-xl font-black text-white">{member.initials}</span>
+                        <div className="flex items-start justify-between mb-8">
+                            <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center shadow-2xl ${member.shadow} ring-1 ring-white/20 group-hover:scale-110 transition-transform duration-500`}>
+                                <span className="text-2xl font-display font-black text-white tracking-tighter">{member.initials}</span>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2.5">
                                 {Object.entries(member.links).map(([platform, url]) => {
                                     const Icon = platform === 'github' ? Github : platform === 'linkedin' ? Linkedin : Twitter;
                                     return (
                                         <a
                                             key={platform}
                                             href={url}
-                                            className="w-7 h-7 rounded-lg bg-slate-800/60 border border-slate-700/40 flex items-center justify-center text-slate-500 hover:text-slate-200 hover:border-slate-600 transition-all"
+                                            className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center text-slate-500 hover:text-white hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-all shadow-xl"
                                         >
-                                            <Icon className="w-3.5 h-3.5" />
+                                            <Icon className="w-4 h-4" />
                                         </a>
                                     );
                                 })}
                             </div>
                         </div>
 
-                        <h3 className="text-sm font-bold text-white mb-0.5">{member.name}</h3>
-                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-3">{member.role}</p>
-                        <p className="text-[11px] text-slate-400 leading-relaxed mb-4">{member.bio}</p>
+                        <div className="flex-1">
+                            <h3 className="text-xl font-display font-black text-white mb-1 uppercase tracking-tight group-hover:text-indigo-400 transition-colors">{member.name}</h3>
+                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-6">{member.role}</p>
+                            <p className="text-xs text-slate-500 font-body leading-relaxed mb-8 italic opacity-80 group-hover:opacity-100 transition-opacity">"{member.bio}"</p>
+                        </div>
 
                         {/* Skills */}
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-2">
                             {member.skills.map(skill => (
-                                <span key={skill} className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-slate-800/70 border border-slate-700/40 text-slate-400 uppercase tracking-wide">
+                                <span key={skill} className="px-3 py-1 rounded-lg text-[9px] font-black bg-white/[0.02] border border-white/5 text-slate-500 uppercase tracking-widest group-hover:text-slate-300 transition-colors">
                                     {skill}
                                 </span>
                             ))}
@@ -125,17 +124,21 @@ export default function AboutView() {
             </div>
 
             {/* Tech Stack Grid */}
-            <div className="glass rounded-3xl p-6 border border-slate-800/60">
-                <h3 className="text-base font-bold text-white mb-5">Technology Stack</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="glass-card p-10 border border-white/5 shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-30" />
+                <h3 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-10 flex items-center gap-3">
+                    <Code2 className="w-4 h-4 text-indigo-400" />
+                    Deep Tech Stack
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
                     {STACK.map(cat => (
-                        <div key={cat.cat}>
-                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-3">{cat.cat}</p>
-                            <ul className="space-y-2">
+                        <div key={cat.cat} className="space-y-6">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400 pb-2 border-b border-indigo-500/20 w-fit">{cat.cat}</p>
+                            <ul className="space-y-4">
                                 {cat.items.map(item => (
-                                    <li key={item} className="flex items-center gap-2 text-[11px] text-slate-400">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/60 shrink-0" />
-                                        {item}
+                                    <li key={item} className="flex items-start gap-3 group/item">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/40 mt-1 transition-all group-hover/item:scale-150 group-hover/item:bg-indigo-500" />
+                                        <span className="text-[11px] font-bold text-slate-500 leading-tight group-hover/item:text-slate-300 transition-colors">{item}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -143,9 +146,12 @@ export default function AboutView() {
                     ))}
                 </div>
 
-                <div className="mt-6 pt-5 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-[11px] text-slate-600">Apex AI v2.0 · Multi-Modal TFT Architecture · March 2026</p>
-                    <p className="text-[11px] text-slate-700">Educational Purpose Only · Not Financial Advice</p>
+                <div className="mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 opacity-40 hover:opacity-100 transition-opacity duration-700">
+                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Quantum Forge v3.0 &middot; Neural Framework &middot; 2026-PRESENT</p>
+                    <div className="flex items-center gap-6">
+                        <span className="text-[10px] font-black text-rose-800 uppercase tracking-widest">Educational Purpose</span>
+                        <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Open Source Core</span>
+                    </div>
                 </div>
             </div>
         </div>

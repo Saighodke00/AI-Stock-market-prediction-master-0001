@@ -106,3 +106,34 @@ def add_technical_indicators(df):
         df[f'MACD_lag_{lag}'] = df['MACD'].shift(lag)
     
     return df
+
+
+# -- Adapters for main.py v3.0 -------------------------------------------------
+
+def compute_rsi(close, period: int = 14) -> float:
+    """Standalone RSI on a pandas Series or array. Returns the last value."""
+    import pandas as pd
+    s = pd.Series(close).dropna()
+    if len(s) < period + 1:
+        return 50.0
+    delta = s.diff()
+    gain  = delta.where(delta > 0, 0.0).ewm(alpha=1/period, adjust=False).mean()
+    loss  = (-delta.where(delta < 0, 0.0)).ewm(alpha=1/period, adjust=False).mean()
+    rs    = gain / (loss + 1e-9)
+    rsi_series = 100 - (100 / (1 + rs + 1e-9))
+    return float(rsi_series.iloc[-1])
+
+
+def compute_atr(df, period: int = 14) -> float:
+    """Standalone ATR on a DataFrame with High/Low/Close columns. Returns the last value."""
+    import pandas as pd
+    import numpy as np
+    h = df["High"] if "High" in df.columns else df["high"]
+    lo = df["Low"]  if "Low"  in df.columns else df["low"]
+    c  = df["Close"] if "Close" in df.columns else df["close"]
+    tr = np.maximum(
+        h - lo,
+        np.maximum(abs(h - c.shift(1)), abs(lo - c.shift(1)))
+    )
+    atr_val = float(pd.Series(tr).rolling(period).mean().iloc[-1])
+    return atr_val if not np.isnan(atr_val) else float((h - lo).mean())

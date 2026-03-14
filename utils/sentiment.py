@@ -462,3 +462,20 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("  Smoke test complete.")
     print("=" * 60 + "\n")
+
+
+# -- Alias for main.py v3.0 ----------------------------------------------------
+
+def get_sentiment(ticker: str):
+    """
+    Alias for get_market_sentiment() used by main.py v3.0.
+    Returns (aggregate_score: float, articles: list).
+    """
+    result = get_market_sentiment(ticker)
+    # get_market_sentiment returns (score, articles_list)
+    if isinstance(result, tuple) and len(result) == 2:
+        return result[0], result[1]
+    # Fallback if signature differs
+    if isinstance(result, dict):
+        return result.get("score", 0.0), result.get("articles", [])
+    return 0.0, []

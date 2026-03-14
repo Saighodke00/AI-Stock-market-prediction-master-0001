@@ -2,191 +2,87 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 
 @layer base {
   :root {
-    --bg-void: #020409;
-    --bg-base: #05080f;
-    --bg-surface: #080d18;
-    --bg-raised: #0c1220;
-    --bg-overlay: #111827;
+    --bg-void: #020408;
+    --bg-base: #050912;
+    --bg-surface: #0a111f;
+    --bg-raised: #11192a;
+    --bg-overlay: #182235;
 
-    --border-dim: #1a2035;
-    --border-mid: #1e2d45;
-    --border-bright: #243550;
+    --border-dim: rgba(255, 255, 255, 0.04);
+    --border-mid: rgba(255, 255, 255, 0.08);
+    --border-bright: rgba(255, 255, 255, 0.15);
 
-    --cyan: #00e5ff;
-    --cyan-dim: rgba(0, 229, 255, 0.08);
-    --cyan-glow: 0 0 20px rgba(0, 229, 255, 0.3);
+    --cyan: #00d2ff;
+    --cyan-glow: 0 0 20px rgba(0, 210, 255, 0.25);
 
-    --green: #00e676;
-    --green-dim: rgba(0, 230, 118, 0.08);
-    --green-glow: 0 0 20px rgba(0, 230, 118, 0.25);
+    --emerald: #10b981;
+    --emerald-glow: 0 0 20px rgba(16, 185, 129, 0.25);
 
-    --red: #ff1744;
-    --red-dim: rgba(255, 23, 68, 0.08);
-    --red-glow: 0 0 20px rgba(255, 23, 68, 0.25);
+    --rose: #f43f5e;
+    --rose-glow: 0 0 20px rgba(244, 63, 94, 0.25);
 
-    --gold: #ffc400;
-    --gold-dim: rgba(255, 196, 0, 0.08);
+    --amber: #f59e0b;
+    --amber-glow: 0 0 20px rgba(245, 158, 11, 0.25);
 
-    --violet: #7c4dff;
-    --violet-dim: rgba(124, 77, 255, 0.08);
+    --indigo: #6366f1;
+    --indigo-glow: 0 0 20px rgba(99, 102, 241, 0.25);
 
-    --text-primary: #e8eeff;
-    --text-secondary: #6b7fa3;
-    --text-muted: #3a4a6b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #475569;
   }
 
   body {
     background-color: var(--bg-base);
     color: var(--text-primary);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Inter', sans-serif;
     margin: 0;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-surface/40 backdrop-blur-md border border-white/[0.06] shadow-glass shadow-glass-inset;
+  }
+  
+  .glass-card {
+    @apply glass rounded-2xl p-5 hover:border-white/[0.12] transition-colors duration-300;
   }
 
-  /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl hover:text-white hover:bg-white/[0.04] transition-all;
+    color: var(--text-secondary);
   }
 
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--border-mid);
-    border-radius: 9999px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--border-bright);
+  .nav-item-active {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-white bg-indigo-500/10 border border-indigo-500/20 shadow-lg shadow-indigo-500/10;
   }
 }
 
 @layer utilities {
   .font-display {
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Outfit', sans-serif;
   }
 
   .font-body {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
   .font-data {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Inter', monospace;
   }
 
-  .bg-void {
-    background-color: var(--bg-void);
-  }
-
-  .bg-base {
-    background-color: var(--bg-base);
-  }
-
-  .bg-surface {
-    background-color: var(--bg-surface);
-  }
-
-  .bg-raised {
-    background-color: var(--bg-raised);
-  }
-
-  .bg-overlay {
-    background-color: var(--bg-overlay);
-  }
-
-  .border-dim {
-    border-color: var(--border-dim);
-  }
-
-  .border-mid {
-    border-color: var(--border-mid);
-  }
-
-  .border-bright {
-    border-color: var(--border-bright);
-  }
-
-  .text-primary {
-    color: var(--text-primary);
-  }
-
-  .text-secondary {
-    color: var(--text-secondary);
-  }
-
-  .text-muted {
-    color: var(--text-muted);
-  }
-
-  .text-cyan {
-    color: var(--cyan);
-  }
-
-  .text-green {
-    color: var(--green);
-  }
-
-  .text-red {
-    color: var(--red);
-  }
-
-  .text-gold {
-    color: var(--gold);
-  }
-
-  .text-violet {
-    color: var(--violet);
-  }
-
-  .bg-cyan-dim {
-    background-color: var(--cyan-dim);
-  }
-
-  .bg-green-dim {
-    background-color: var(--green-dim);
-  }
-
-  .bg-red-dim {
-    background-color: var(--red-dim);
-  }
-
-  .bg-gold-dim {
-    background-color: var(--gold-dim);
-  }
-
-  .bg-violet-dim {
-    background-color: var(--violet-dim);
-  }
-
-  .glow-cyan {
-    text-shadow: var(--cyan-glow);
-  }
-
-  .glow-green {
-    text-shadow: var(--green-glow);
-  }
-
-  .glow-red {
-    text-shadow: var(--red-glow);
-  }
-
-  .box-glow-cyan {
-    box-shadow: var(--cyan-glow);
-  }
-
-  .box-glow-green {
-    box-shadow: var(--green-glow);
-  }
-
-  .box-glow-red {
-    box-shadow: var(--red-glow);
-  }
+  .glow-cyan { text-shadow: var(--cyan-glow); }
+  .glow-emerald { text-shadow: var(--emerald-glow); }
+  .glow-rose { text-shadow: var(--rose-glow); }
+  .glow-amber { text-shadow: var(--amber-glow); }
+  .glow-indigo { text-shadow: var(--indigo-glow); }
 }
 
 @keyframes signal-reveal {

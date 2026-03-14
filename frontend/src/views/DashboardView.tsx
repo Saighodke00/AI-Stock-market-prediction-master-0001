@@ -19,7 +19,7 @@ interface DashboardViewProps {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
-const fmt = (v: number) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+const fmt = (v: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(v);
 const fmtK = (v: number) => v > 1000 ? `${(v / 1000).toFixed(1)}K` : v.toFixed(2);
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 const capSharpe = (v: number) => clamp(v, -10, 10).toFixed(2);
@@ -61,26 +61,27 @@ function RadialGauge({ score, label }: { score: number; label: string }) {
     const r = 40;
     const circ = 2 * Math.PI * r;
     const stroke = circ * (pct / 100);
-    const color = pct >= 65 ? '#34d399' : pct >= 40 ? '#f59e0b' : '#f43f5e';
+    const color = pct >= 65 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#f43f5e';
     return (
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-3">
             <div className="relative w-24 h-24">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                    <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(51,65,85,0.6)" strokeWidth="8" />
+                    <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="6" />
                     <circle
                         cx="50" cy="50" r={r} fill="none"
-                        stroke={color} strokeWidth="8"
+                        stroke={color} strokeWidth="6"
                         strokeDasharray={`${stroke} ${circ - stroke}`}
                         strokeLinecap="round"
-                        style={{ filter: `drop-shadow(0 0 6px ${color})`, transition: 'stroke-dasharray 0.8s ease' }}
+                        className="transition-all duration-1000 ease-out"
+                        style={{ filter: `drop-shadow(0 0 6px ${color}66)` }}
                     />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-xl font-black text-white">{pct}</span>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-widest">Score</span>
+                    <span className="text-2xl font-black text-white font-display">{pct}</span>
+                    <span className="text-[8px] text-slate-500 uppercase tracking-[0.2em] font-bold">Signal</span>
                 </div>
             </div>
-            <span className="text-xs text-slate-400 font-medium tracking-wide">{label}</span>
+            <span className="text-[11px] text-slate-400 font-semibold tracking-wide uppercase font-body">{label}</span>
         </div>
     );
 }
@@ -89,23 +90,26 @@ function RadialGauge({ score, label }: { score: number; label: string }) {
 function GateRow({ label, desc, value, pass, progress }: {
     label: string; desc: string; value: string; pass: boolean; progress: number;
 }) {
+    const colorClass = pass ? 'text-emerald-400' : 'text-rose-400';
+    const bgClass = pass ? 'bg-emerald-400/10' : 'bg-rose-400/10';
+    
     return (
-        <div className="flex items-center gap-3 py-2.5 border-b border-slate-800/60 last:border-0">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${pass ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'}`}>
-                {pass ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+        <div className="flex items-center gap-4 py-3 border-b border-white/[0.03] last:border-0 group">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105 ${bgClass} ${colorClass}`}>
+                {pass ? <CheckCircle2 className="w-4.5 h-4.5" /> : <XCircle className="w-4.5 h-4.5" />}
             </div>
             <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-semibold text-slate-200">{label}</span>
-                    <span className={`text-[10px] font-mono font-bold ${pass ? 'text-emerald-400' : 'text-rose-400'}`}>{value}</span>
+                <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-slate-200 uppercase tracking-tight font-display">{label}</span>
+                    <span className={`text-[11px] font-mono font-black ${colorClass}`}>{value}</span>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-1">
+                <div className="w-full bg-white/[0.03] rounded-full h-1.5 overflow-hidden">
                     <div
-                        className={`h-1 rounded-full transition-all duration-700 ${pass ? 'bg-emerald-400' : 'bg-rose-500'}`}
-                        style={{ width: `${clamp(progress, 0, 100)}%`, boxShadow: pass ? '0 0 8px rgba(52,211,153,0.5)' : '0 0 8px rgba(244,63,94,0.5)' }}
+                        className={`h-full rounded-full transition-all duration-1000 cubic-bezier(0.4, 0, 0.2, 1) ${pass ? 'bg-emerald-400' : 'bg-rose-500'}`}
+                        style={{ width: `${clamp(progress, 0, 100)}%`, boxShadow: pass ? '0 0 12px rgba(16, 185, 129, 0.3)' : '0 0 12px rgba(244, 63, 94, 0.3)' }}
                     />
                 </div>
-                <p className="text-[10px] text-slate-600 mt-0.5">{desc}</p>
+                <p className="text-[10px] text-slate-500 mt-1 font-medium font-body truncate">{desc}</p>
             </div>
         </div>
     );
@@ -115,24 +119,36 @@ function GateRow({ label, desc, value, pass, progress }: {
 function KpiCard({ label, value, sub, accent, icon: Icon }: {
     label: string; value: string; sub?: string; accent: 'emerald' | 'rose' | 'amber' | 'indigo' | 'violet'; icon: any;
 }) {
-    const colors: Record<string, string> = {
-        emerald: 'text-emerald-400 bg-emerald-400/10 border-emerald-500/20 glow-emerald',
-        rose: 'text-rose-400 bg-rose-400/10 border-rose-500/20 glow-rose',
-        amber: 'text-amber-400 bg-amber-400/10 border-amber-500/20 glow-amber',
-        indigo: 'text-indigo-400 bg-indigo-400/10 border-indigo-500/20 glow-indigo',
-        violet: 'text-violet-400 bg-violet-400/10 border-violet-500/20',
+    const themes: Record<string, { text: string, bg: string, border: string, marker: string }> = {
+        emerald: { text: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-500/20', marker: 'bg-emerald-400' },
+        rose:    { text: 'text-rose-400',    bg: 'bg-rose-400/10',    border: 'border-rose-500/20',    marker: 'bg-rose-400' },
+        amber:   { text: 'text-amber-400',   bg: 'bg-amber-400/10',   border: 'border-amber-500/20',   marker: 'bg-amber-400' },
+        indigo:  { text: 'text-indigo-400',  bg: 'bg-indigo-400/10',  border: 'border-indigo-500/20',  marker: 'bg-indigo-400' },
+        violet:  { text: 'text-violet-400',  bg: 'bg-violet-400/10',  border: 'border-violet-500/20',  marker: 'bg-violet-400' },
     };
-    const [textClass, bgClass] = colors[accent].split(' ');
+    const t = themes[accent];
+    
     return (
-        <div className={`glass rounded-2xl p-4 border ${colors[accent]}`}>
-            <div className="flex items-start justify-between gap-2 mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
-                <div className={`w-7 h-7 rounded-lg ${bgClass} flex items-center justify-center flex-shrink-0`}>
-                    <Icon className={`w-3.5 h-3.5 ${textClass}`} />
+        <div className={`glass-card relative overflow-hidden group`}>
+            {/* Status marker */}
+            <div className={`absolute top-0 left-0 w-1 h-full opacity-40 ${t.marker}`} />
+            
+            <div className="flex items-start justify-between gap-2 mb-4">
+                <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 font-body">{label}</p>
+                    <p className={`text-2xl font-black ${t.text} font-display tracking-tight group-hover:scale-[1.02] transition-transform`}>{value}</p>
+                </div>
+                <div className={`w-10 h-10 rounded-xl ${t.bg} flex items-center justify-center flex-shrink-0 border border-white/5`}>
+                    <Icon className={`w-5 h-5 ${t.text}`} />
                 </div>
             </div>
-            <p className={`text-2xl font-black ${textClass} leading-none mb-1`}>{value}</p>
-            {sub && <p className="text-[11px] text-slate-500 mt-1.5">{sub}</p>}
+            
+            {sub && (
+                <div className="flex items-center gap-1.5">
+                    <div className={`w-1 h-1 rounded-full ${t.marker}`} />
+                    <p className="text-[11px] text-slate-400 font-medium font-body">{sub}</p>
+                </div>
+            )}
         </div>
     );
 }
@@ -180,15 +196,15 @@ function WhatIfSlider({ label, min, max, value, onChange, unit }: {
     label: string; min: number; max: number; value: number; onChange: (v: number) => void; unit: string;
 }) {
     return (
-        <div>
-            <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-slate-400 font-medium">{label}</span>
-                <span className="text-xs font-mono text-indigo-400 font-bold">{value}{unit}</span>
+        <div className="group/slider">
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-focus-within/slider:text-indigo-400 transition-colors">{label}</span>
+                <span className="text-xs font-mono text-white font-black">{value}{unit}</span>
             </div>
             <input
                 type="range" min={min} max={max} value={value}
                 onChange={(e) => onChange(Number(e.target.value))}
-                className="w-full"
+                className="w-full accent-indigo-500 h-1 bg-white/5 rounded-full appearance-none cursor-pointer hover:bg-white/10 transition-all opacity-70 hover:opacity-100"
             />
         </div>
     );
@@ -215,6 +231,7 @@ export default function DashboardView({ signalData, loading, error, fetchData, t
         signal === 'BUY' ? 'emerald' :
             signal === 'SELL' ? 'rose' : 'amber';
     const SignalIcon = signal === 'BUY' ? TrendingUp : signal === 'SELL' ? TrendingDown : Activity;
+    const accentColor = signal === 'BUY' ? '#10b981' : signal === 'SELL' ? '#f43f5e' : '#f59e0b';
 
     const headlinesRaw = signalData?.sentiment?.headlines;
     const headlines = (Array.isArray(headlinesRaw) && headlinesRaw.length > 0)
@@ -244,13 +261,13 @@ export default function DashboardView({ signalData, loading, error, fetchData, t
     const gateSentOk = sentimentScore > 45;
 
     return (
-        <div className="p-4 md:p-5 lg:p-6 h-full overflow-y-auto">
+        <div className="p-8 max-w-[1500px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.03),_transparent)]">
             {/* Error Banner */}
             {error && (
-                <div className="mb-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-start gap-3 text-rose-400">
+                <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-start gap-4 text-rose-400 animate-in fade-in slide-in-from-top-4">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm flex-1">{error}</p>
-                    <button onClick={fetchData} className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 rounded-lg text-xs font-medium transition-colors">
+                    <p className="text-sm font-medium flex-1">{error}</p>
+                    <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 rounded-xl text-xs font-bold transition-all">
                         <RefreshCw className="w-3.5 h-3.5" /> Retry
                     </button>
                 </div>
@@ -291,11 +308,12 @@ export default function DashboardView({ signalData, loading, error, fetchData, t
                 </div>
 
                 {/* ── Row 2: Chart + Gate ───────────────────────── */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
                     {/* Main Chart */}
-                    <div className="xl:col-span-2 glass rounded-2xl p-5 border border-slate-800/60">
-                        <div className="flex items-center justify-between mb-4">
+                    <div className="xl:col-span-2 glass-card p-8 border border-white/5 shadow-2xl relative group overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
                             <div>
                                 <h3 className="text-sm font-bold text-slate-200">Forecast Visualizer</h3>
                                 <p className="text-[10px] text-slate-500 mt-0.5">Historical Price + 14-Day Confidence Cloud (P10/P50/P90)</p>
@@ -314,32 +332,27 @@ export default function DashboardView({ signalData, loading, error, fetchData, t
                             <AreaChart data={CHART_DATA} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
                                 <defs>
                                     <linearGradient id="histGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                                        <stop offset="0%" stopColor="#6366f1" stopOpacity={0.2} />
                                         <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
                                     </linearGradient>
                                     <linearGradient id="coneGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#34d399" stopOpacity={0.25} />
-                                        <stop offset="100%" stopColor="#34d399" stopOpacity={0.05} />
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.15} />
+                                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(51,65,85,0.3)" />
-                                <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} interval={9} />
-                                <YAxis tick={{ fill: '#475569', fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${fmtK(v)}`} domain={['auto', 'auto']} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                                <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 10, fontWeight: 500 }} tickLine={false} axisLine={false} interval={9} />
+                                <YAxis tick={{ fill: '#475569', fontSize: 10, fontWeight: 500 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${fmtK(v)}`} domain={['auto', 'auto']} />
                                 <RechartsTooltip content={<CustomTooltip />} />
                                 <ReferenceLine
                                     x={CHART_DATA[59].date}
-                                    stroke="rgba(99,102,241,0.4)"
+                                    stroke="rgba(255,255,255,0.1)"
                                     strokeDasharray="4 4"
-                                    label={{ value: 'Today', position: 'top', fill: '#6366f1', fontSize: 9 }}
                                 />
-                                {/* Historical */}
-                                <Area type="monotone" dataKey="price" name="Price" stroke="#6366f1" strokeWidth={2} fill="url(#histGrad)" dot={false} connectNulls={false} />
-                                {/* Forecast cone shading as p90 area */}
-                                <Area type="monotone" dataKey="p90" name="P90 (Optimistic)" stroke="rgba(52,211,153,0.5)" strokeWidth={1} strokeDasharray="4 2" fill="url(#coneGrad)" dot={false} connectNulls={false} />
-                                {/* P50 */}
+                                <Area type="monotone" dataKey="price" name="Price" stroke="#6366f1" strokeWidth={2.5} fill="url(#histGrad)" dot={false} connectNulls={false} />
+                                <Area type="monotone" dataKey="p90" name="P90 (Optimistic)" stroke="rgba(16,185,129,0.3)" strokeWidth={1.5} strokeDasharray="4 2" fill="url(#coneGrad)" dot={false} connectNulls={false} />
                                 <Area type="monotone" dataKey="p50" name="P50 (Median)" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 3" fill="transparent" dot={false} connectNulls={false} />
-                                {/* P10 */}
-                                <Area type="monotone" dataKey="p10" name="P10 (Bear)" stroke="rgba(244,63,94,0.5)" strokeWidth={1} strokeDasharray="4 2" fill="transparent" dot={false} connectNulls={false} />
+                                <Area type="monotone" dataKey="p10" name="P10 (Bear)" stroke="rgba(244,63,94,0.3)" strokeWidth={1.5} strokeDasharray="4 2" fill="transparent" dot={false} connectNulls={false} />
                             </AreaChart>
                         </ResponsiveContainer>
 
@@ -359,45 +372,49 @@ export default function DashboardView({ signalData, loading, error, fetchData, t
                     </div>
 
                     {/* Gate Verification */}
-                    <div className="glass rounded-2xl p-5 border border-slate-800/60">
-                        <div className="flex items-center gap-2 mb-4">
-                            <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                            <h3 className="text-sm font-bold text-slate-200">Neural Intelligence</h3>
+                    <div className="glass-card p-8 border border-white/5 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl" />
+                        <div className="flex items-center gap-3 mb-6">
+                            <ShieldCheck className="w-5 h-5 text-indigo-400" />
+                            <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Neural Pipeline</h3>
                         </div>
-                        <p className="text-[10px] text-slate-500 mb-4 leading-relaxed">3-Gate signal verification ensures only high-confidence, low-uncertainty signals are emitted.</p>
+                        <p className="text-[10px] font-bold text-slate-500 mb-8 leading-relaxed uppercase tracking-widest italic opacity-70">Multi-stage signal synthesis ensuring quantile-normalized convergence</p>
 
-                        <GateRow
-                            label="Gate 1 · TFT Confidence"
-                            desc="Model attention score ≥ 0.65 required"
-                            value={`${(gateConf * 100).toFixed(0)}%`}
-                            pass={gateConf >= 0.65}
-                            progress={gateConf * 100}
-                        />
-                        <GateRow
-                            label="Gate 2 · Cone Width"
-                            desc="Forecast spread (P90–P10)/P50 ≤ 15%"
-                            value={`${(gateCone * 100).toFixed(0)}%`}
-                            pass={gateCone <= 0.15}
-                            progress={100 - (gateCone / 0.15) * 100}
-                        />
-                        <GateRow
-                            label="Gate 3 · Sentiment"
-                            desc="News sentiment aligns with direction"
-                            value={gateSentOk ? 'PASS' : 'FAIL'}
-                            pass={gateSentOk}
-                            progress={sentimentScore}
-                        />
+                        <div className="space-y-4">
+                            <GateRow
+                                label="TFT CONFIDENCE"
+                                desc="Attention score threshold &ge; 0.65"
+                                value={`${(gateConf * 100).toFixed(0)}%`}
+                                pass={gateConf >= 0.65}
+                                progress={gateConf * 100}
+                            />
+                            <GateRow
+                                label="CONE PRECISION"
+                                desc="Entropy spread (P90&ndash;P10)/P50 &le; 15%"
+                                value={`${(gateCone * 100).toFixed(0)}%`}
+                                pass={gateCone <= 0.15}
+                                progress={100 - (gateCone / 0.15) * 100}
+                            />
+                            <GateRow
+                                label="SENTIMENT BIAS"
+                                desc="FinBERT news lag alignment"
+                                value={gateSentOk ? 'PASS' : 'FAIL'}
+                                pass={gateSentOk}
+                                progress={sentimentScore}
+                            />
+                        </div>
 
-                        <div className={`mt-5 p-3 rounded-xl border text-center ${signal === 'BUY' ? 'bg-emerald-500/10 border-emerald-500/30' : signal === 'SELL' ? 'bg-rose-500/10 border-rose-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
-                            <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${signal === 'BUY' ? 'text-emerald-400' : signal === 'SELL' ? 'text-rose-400' : 'text-amber-400'}`}>
-                                ● {signal} SIGNAL VERIFIED
+                        <div className={`mt-8 p-4 rounded-2xl border transition-all duration-700 ${signal === 'BUY' ? 'bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : signal === 'SELL' ? 'bg-rose-500/5 border-rose-500/20 shadow-[0_0_20px_rgba(244,63,94,0.1)]' : 'bg-amber-500/5 border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.1)]'}`}>
+                            <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 flex items-center gap-2 ${signal === 'BUY' ? 'text-emerald-400' : signal === 'SELL' ? 'text-rose-400' : 'text-amber-400'}`}>
+                                <div className="w-2 h-2 rounded-full bg-current animate-pulse shadow-[0_0_8px_currentColor]" />
+                                {signal} PROTOCOL ACTIVE
                             </p>
-                            <p className="text-[10px] text-slate-500">All 3 gates passed · Dispatching signal</p>
+                            <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">Convergence established &middot; Dispatch ready</p>
                         </div>
 
                         {/* Gauge */}
-                        <div className="flex justify-center mt-5">
-                            <RadialGauge score={sentimentScore} label="Sentiment Pulse" />
+                        <div className="flex justify-center mt-10">
+                            <RadialGauge score={sentimentScore} label="News Correlation" />
                         </div>
                     </div>
                 </div>

@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     createChart,
     ColorType,
-    SeriesType,
     LineStyle,
-    IChartApi
+    IChartApi,
+    CrosshairMode
 } from 'lightweight-charts';
+import { Monitor, BarChart3, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 
 interface OHLCVPoint {
     time: string | number;
@@ -45,48 +46,51 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ ohlcv, forec
 
         const chart = createChart(chartContainerRef.current, {
             layout: {
-                background: { type: ColorType.Solid, color: '#020409' },
-                textColor: '#546e7a',
+                background: { type: ColorType.Solid, color: 'transparent' },
+                textColor: '#64748b',
+                fontFamily: 'Inter, system-ui, sans-serif',
             },
             grid: {
-                vertLines: { color: '#1a2035' },
-                horzLines: { color: '#1a2035' },
+                vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
+                horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
             },
             crosshair: {
-                mode: 0,
+                mode: CrosshairMode.Normal,
                 vertLine: {
-                    color: '#00e5ff',
+                    color: '#6366f1',
                     width: 1,
                     style: LineStyle.Solid,
-                    labelBackgroundColor: '#00e5ff',
+                    labelBackgroundColor: '#6366f1',
                 },
                 horzLine: {
-                    color: '#00e5ff',
+                    color: '#6366f1',
                     width: 1,
                     style: LineStyle.Solid,
-                    labelBackgroundColor: '#00e5ff',
+                    labelBackgroundColor: '#6366f1',
                 },
             },
             timeScale: {
-                borderColor: '#1a2035',
+                borderColor: 'rgba(255, 255, 255, 0.05)',
                 timeVisible: true,
                 secondsVisible: false,
             },
             rightPriceScale: {
-                borderColor: '#1a2035',
+                borderColor: 'rgba(255, 255, 255, 0.05)',
             },
             width: chartContainerRef.current.clientWidth,
             height: 420,
+            handleScroll: true,
+            handleScale: true,
         });
         chartRef.current = chart;
 
         // 1. Candlestick Series
         const candlestickSeries = chart.addCandlestickSeries({
-            upColor: '#00e676',
-            downColor: '#ff1744',
+            upColor: '#10b981',
+            downColor: '#f43f5e',
             borderVisible: false,
-            wickUpColor: '#00e676',
-            wickDownColor: '#ff1744',
+            wickUpColor: '#10b981',
+            wickDownColor: '#f43f5e',
         });
 
         const formattedOhlc = ohlcv.map(p => ({
@@ -113,43 +117,75 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ ohlcv, forec
         const formattedVolume = ohlcv.map(p => ({
             time: (isNaN(Number(p.time)) ? p.time : Number(p.time)) as any,
             value: p.volume,
-            color: p.close >= p.open ? 'rgba(0, 230, 118, 0.4)' : 'rgba(255, 23, 68, 0.4)',
+            color: p.close >= p.open ? 'rgba(16, 185, 129, 0.2)' : 'rgba(244, 63, 94, 0.2)',
         })).sort((a, b) => (a.time > b.time ? 1 : -1));
 
         volumeSeries.setData(formattedVolume);
 
-        // 3. Forecast Lines
-        if (forecast.length) {
-            const p10Series = chart.addLineSeries({ color: '#ff1744', lineWidth: 1, lineStyle: LineStyle.Dashed });
-            const p50Series = chart.addLineSeries({ color: '#00e5ff', lineWidth: 2, lineStyle: LineStyle.Dashed });
-            const p90Series = chart.addLineSeries({ color: '#00e676', lineWidth: 1, lineStyle: LineStyle.Dashed });
-
+        // 3. Forecast Lines + Cone Shading
+        if (forecast.length && formattedOhlc.length) {
             const lastHistorical = formattedOhlc[formattedOhlc.length - 1];
 
-            // Start forecast lines from last historical close for continuity
-            const p10Data = [{ time: lastHistorical.time, value: lastHistorical.close }];
-            const p50Data = [{ time: lastHistorical.time, value: lastHistorical.close }];
-            const p90Data = [{ time: lastHistorical.time, value: lastHistorical.close }];
+            // Start all forecast lines from last historical close for continuity
+            const anchorTime = lastHistorical.time;
+            const anchorClose = lastHistorical.close;
 
-            forecast.forEach(f => {
-                const t = (isNaN(Number(f.time)) ? f.time : Number(f.time)) as any;
-                p10Data.push({ time: t, value: f.p10 });
-                p50Data.push({ time: t, value: f.p50 });
-                p90Data.push({ time: t, value: f.p90 });
+            const fmtForecast = forecast.map(f => ({
+                t: (isNaN(Number(f.time)) ? f.time : Number(f.time)) as any,
+                p10: f.p10,
+                p50: f.p50,
+                p90: f.p90,
+            })).sort((a, b) => (a.t > b.t ? 1 : -1));
+
+            // ── P90 top cone edge (bullish) — filled area downward ──
+            const p90Series = chart.addAreaSeries({
+                topColor:    'rgba(16, 185, 129, 0.1)',
+                bottomColor: 'rgba(16, 185, 129, 0.0)',
+                lineColor:   '#10b981',
+                lineWidth:   1,
+                lineStyle:   LineStyle.Dashed,
+                crosshairMarkerVisible: false,
             });
+            p90Series.setData([
+                { time: anchorTime, value: anchorClose },
+                ...fmtForecast.map(f => ({ time: f.t, value: f.p90 }))
+            ]);
 
-            p10Series.setData(p10Data.sort((a, b) => (a.time > b.time ? 1 : -1)));
-            p50Series.setData(p50Data.sort((a, b) => (a.time > b.time ? 1 : -1)));
-            p90Series.setData(p90Data.sort((a, b) => (a.time > b.time ? 1 : -1)));
+            // ── P50 median line ──
+            const p50Series = chart.addLineSeries({
+                color: '#6366f1',
+                lineWidth: 2,
+                lineStyle: LineStyle.Dashed,
+                crosshairMarkerVisible: true,
+            });
+            p50Series.setData([
+                { time: anchorTime, value: anchorClose },
+                ...fmtForecast.map(f => ({ time: f.t, value: f.p50 }))
+            ]);
 
-            // 4. NOW line
+            // ── P10 bottom cone edge (bearish) — filled area upward ──
+            const p10Series = chart.addAreaSeries({
+                topColor:    'rgba(244, 63, 94, 0.0)',
+                bottomColor: 'rgba(244, 63, 94, 0.1)',
+                lineColor:   '#f43f5e',
+                lineWidth:   1,
+                lineStyle:   LineStyle.Dashed,
+                crosshairMarkerVisible: false,
+                invertFilledArea: true,
+            });
+            p10Series.setData([
+                { time: anchorTime, value: anchorClose },
+                ...fmtForecast.map(f => ({ time: f.t, value: f.p10 }))
+            ]);
+
+            // ── NOW marker on the p50 line ──
             p50Series.createPriceLine({
-                price: lastHistorical.close,
-                color: '#ffc400',
+                price: anchorClose,
+                color: '#6366f1',
                 lineWidth: 1,
                 lineStyle: LineStyle.Solid,
                 axisLabelVisible: true,
-                title: 'NOW',
+                title: 'SIGNAL GENERATED',
             });
         }
 
@@ -188,32 +224,46 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ ohlcv, forec
     };
 
     return (
-        <div className="w-full bg-surface rounded-xl border border-dim flex flex-col min-h-[420px] relative overflow-hidden">
+        <div className="w-full glass-card overflow-hidden flex flex-col min-h-[480px] relative">
             {/* Header / Legend */}
-            <div className="flex items-center justify-between p-4 border-b border-dim shrink-0 z-10 bg-surface/80 backdrop-blur-sm">
-                <div className="flex flex-col gap-1">
-                    <h3 className="font-display font-medium text-primary text-xs tracking-wider flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-cyan glow-cyan" /> TERMINAL VIEW
-                    </h3>
+            <div className="flex items-center justify-between p-5 border-b border-white/5 shrink-0 z-10 bg-white/[0.02] backdrop-blur-md">
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                         <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                             <Monitor className="w-3.5 h-3.5 text-indigo-400" />
+                         </div>
+                         <h3 className="font-display font-bold text-white text-[10px] tracking-[0.2em] uppercase">
+                            Neural Terminal <span className="text-slate-500 ml-1">Live Inference</span>
+                         </h3>
+                    </div>
                     {legendData && (
-                        <div className="flex items-center gap-3 font-data text-[10px] tracking-tight text-secondary">
-                            <span className="uppercase">O:<span className="text-primary ml-1">{formatPrice(legendData.open)}</span></span>
-                            <span className="uppercase">H:<span className="text-primary ml-1">{formatPrice(legendData.high)}</span></span>
-                            <span className="uppercase">L:<span className="text-primary ml-1">{formatPrice(legendData.low)}</span></span>
-                            <span className="uppercase">C:<span className={legendData.close >= legendData.open ? 'text-green ml-1' : 'text-red ml-1'}>{formatPrice(legendData.close)}</span></span>
-                            <span className="uppercase">V:<span className="text-primary ml-1">{formatVol(legendData.volume)}</span></span>
+                        <div className="flex items-center gap-4 font-mono text-[10px] tracking-tight font-bold">
+                            <span className="flex items-center gap-1.5"><span className="text-slate-500">O</span> <span className="text-white">{formatPrice(legendData.open)}</span></span>
+                            <span className="flex items-center gap-1.5"><span className="text-slate-500">H</span> <span className="text-white">{formatPrice(legendData.high)}</span></span>
+                            <span className="flex items-center gap-1.5"><span className="text-slate-500">L</span> <span className="text-white">{formatPrice(legendData.low)}</span></span>
+                            <span className="flex items-center gap-1.5"><span className="text-slate-500">C</span> <span className={legendData.close >= legendData.open ? 'text-emerald-400' : 'text-rose-400'}>{formatPrice(legendData.close)}</span></span>
+                            <div className="w-px h-3 bg-white/10 mx-1" />
+                            <span className="flex items-center gap-1.5"><span className="text-slate-500">V</span> <span className="text-white tracking-widest">{formatVol(legendData.volume)}</span></span>
                         </div>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${action === 'BUY' ? 'bg-green/10 border-green text-green' : action === 'SELL' ? 'bg-red/10 border-red text-red' : 'bg-gold/10 border-gold text-gold'}`}>
-                        {action} SIGNAL
-                    </span>
+                <div className="flex flex-col items-end gap-2">
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-mono text-[10px] font-black tracking-widest uppercase transition-all duration-500 ${action === 'BUY' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : action === 'SELL' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
+                        {action === 'BUY' ? <TrendingUp size={12} /> : action === 'SELL' ? <TrendingDown size={12} /> : <Activity size={12} />}
+                        {action} TRIGGER
+                    </div>
                 </div>
             </div>
 
             {/* Chart Body */}
-            <div className="flex-1 w-full h-[420px]" ref={chartContainerRef} />
+            <div className="flex-1 w-full relative group">
+                {/* Watermark/Logo overlay */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-[0.03] select-none flex flex-col items-center">
+                    <BarChart3 size={120} className="text-white mb-4" />
+                    <span className="font-display font-black text-4xl tracking-widest text-white italic">APEX NEURAL v3</span>
+                </div>
+                <div className="absolute inset-0 z-0 h-[420px]" ref={chartContainerRef} />
+            </div>
         </div>
     );
 };

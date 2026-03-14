@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
-const fmt = (v: number | undefined | null) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v ?? 0);
+const fmt = (v: number | undefined | null) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v ?? 0);
+const fmtPrecise = (v: number | undefined | null) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(v ?? 0);
 const fmtPct = (v: number | undefined | null) => `${(v ?? 0) >= 0 ? '+' : ''}${(v ?? 0).toFixed(2)}%`;
 
 interface PortfolioData {
@@ -97,25 +98,33 @@ export default function PortfolioView() {
     }
 
     return (
-        <div className="p-4 md:p-5 lg:p-6 h-full overflow-y-auto">
+        <div className="p-8 max-w-[1400px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-                <div className="flex-1">
-                    <h2 className="text-lg font-black text-white">Live Paper Portfolio</h2>
-                    <p className="text-xs text-slate-500 mt-0.5">Real-time valuation based on yfinance data feeds</p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-1">
+                <div>
+                   <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                            <Briefcase className="w-5 h-5 text-indigo-400" />
+                        </div>
+                        <h1 className="text-3xl font-display font-black text-white tracking-tight uppercase">Strategy Ledger <span className="text-slate-600 ml-1 font-normal italic">/ Portfolio</span></h1>
+                   </div>
+                   <p className="text-slate-500 text-xs font-bold font-body tracking-[0.1em] uppercase max-w-xl leading-relaxed">
+                        Real-time equity valuation engine &middot; <span className="text-indigo-400">Low-latency yfinance sync</span> &middot; Neural risk clusters
+                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
                         onClick={fetchData}
-                        className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-700/40 text-slate-400 hover:text-white transition-all"
+                        className="group p-3 rounded-2xl bg-white/[0.03] border border-white/10 text-slate-400 hover:text-white transition-all shadow-xl"
                     >
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-400' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
                     </button>
                     <button
                         onClick={resetPortfolio}
-                        className="px-4 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-bold uppercase tracking-widest hover:bg-rose-500/20 transition-all"
+                        className="group flex items-center gap-3 bg-white/[0.03] border border-white/10 text-slate-400 hover:text-white hover:border-rose-500/50 hover:bg-rose-500/10 px-6 py-3 rounded-2xl font-display font-black text-[10px] tracking-widest transition-all duration-500 shadow-xl uppercase"
                     >
-                        Reset Portfolio
+                        <AlertCircle size={14} className="group-hover:text-rose-400 transition-colors" />
+                        Purge Portfolio
                     </button>
                 </div>
             </div>
@@ -128,32 +137,32 @@ export default function PortfolioView() {
             )}
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="glass rounded-3xl p-5 border border-slate-800/60 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform"><Wallet className="w-8 h-8" /></div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-2">Total Value</p>
-                    <p className="text-xl font-black text-white">{fmt(data?.total_value || 0)}</p>
-                    <p className={`text-[10px] font-bold mt-1 ${(data?.total_return_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {fmtPct(data?.total_return_pct || 0)} All-time
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="glass-card p-6 flex flex-col gap-1 transition-all duration-500 hover:scale-[1.02] bg-white/[0.03] border-white/10 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Wallet size={60} /></div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">Net Liquidity</p>
+                    <p className="text-2xl font-display font-black text-white tracking-tight">{fmt(data?.total_value || 0)}</p>
+                    <p className={`text-[10px] font-black mt-1 uppercase tracking-widest ${(data?.total_return_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {fmtPct(data?.total_return_pct || 0)} Yield
                     </p>
                 </div>
-                <div className="glass rounded-3xl p-5 border border-slate-800/60 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform"><DollarSign className="w-8 h-8" /></div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-2">Buying Power</p>
-                    <p className="text-xl font-black text-white">{fmt(data?.cash_balance || 0)}</p>
-                    <p className="text-[10px] font-bold text-slate-500 mt-1">Settled Cash</p>
+                <div className="glass-card p-6 flex flex-col gap-1 transition-all duration-500 hover:scale-[1.02] bg-white/[0.03] border-white/10 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><DollarSign size={60} /></div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">Buying Power</p>
+                    <p className="text-2xl font-display font-black text-white tracking-tight">{fmt(data?.cash_balance || 0)}</p>
+                    <p className="text-[10px] font-black text-slate-600 mt-1 uppercase tracking-widest">Settled Assets</p>
                 </div>
-                <div className="glass rounded-3xl p-5 border border-slate-800/60 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform"><TrendingUp className="w-8 h-8" /></div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-2">Market Value</p>
-                    <p className="text-xl font-black text-white">{fmt(data?.market_value || 0)}</p>
-                    <p className="text-[10px] font-bold text-slate-500 mt-1">{data?.positions?.length || 0} Positions</p>
+                <div className="glass-card p-6 flex flex-col gap-1 transition-all duration-500 hover:scale-[1.02] bg-white/[0.03] border-white/10 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><TrendingUp size={60} /></div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">Market Exposure</p>
+                    <p className="text-2xl font-display font-black text-white tracking-tight">{fmt(data?.market_value || 0)}</p>
+                    <p className="text-[10px] font-black text-slate-600 mt-1 uppercase tracking-widest">{data?.positions?.length || 0} active clusters</p>
                 </div>
-                <div className="glass rounded-3xl p-5 border border-slate-800/60 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform"><BarChart3 className="w-8 h-8" /></div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-2">Win Rate</p>
-                    <p className="text-xl font-black text-indigo-400">{(data?.win_rate || 0).toFixed(1)}%</p>
-                    <p className="text-[10px] font-bold text-slate-500 mt-1">{data?.num_trades || 0} Closed Trades</p>
+                <div className="glass-card p-6 flex flex-col gap-1 transition-all duration-500 hover:scale-[1.02] bg-white/[0.03] border-white/10 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><BarChart3 size={60} /></div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">Model Precision</p>
+                    <p className="text-2xl font-display font-black text-indigo-400 tracking-tight">{(data?.win_rate || 0).toFixed(1)}%</p>
+                    <p className="text-[10px] font-black text-slate-600 mt-1 uppercase tracking-widest">{data?.num_trades || 0} protocol archive</p>
                 </div>
             </div>
 
@@ -161,54 +170,57 @@ export default function PortfolioView() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Positions Table */}
-                <div className="lg:col-span-2 glass rounded-3xl border border-slate-800/60 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-800/60 flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-slate-200">Open Positions</h3>
-                        <span className="text-[10px] text-slate-600 flex items-center gap-1.5"><Clock className="w-3 h-3" />Updated 30s ago</span>
+                <div className="lg:col-span-2 glass-card p-0 border border-white/5 overflow-hidden shadow-2xl flex flex-col">
+                    <div className="px-6 py-5 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                        <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                             <TrendingUp size={14} className="text-indigo-400" />
+                             Live Equity Clusters
+                        </h3>
+                        <span className="text-[9px] text-slate-600 font-black uppercase tracking-widest flex items-center gap-1.5"><Clock size={12} />Updated 30s ago</span>
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto no-scrollbar">
                         <table className="w-full text-left">
                             <thead>
-                                <tr className="border-b border-slate-800/40 text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                                    <th className="px-6 py-4">Ticker</th>
-                                    <th className="px-6 py-4">Shares</th>
-                                    <th className="px-6 py-4">Avg Cost</th>
-                                    <th className="px-6 py-4">Current</th>
-                                    <th className="px-6 py-4 text-right">PnL</th>
+                                <tr className="border-b border-white/5 bg-white/[0.01]">
+                                    {["Instrument", "Holdings", "Avg Intake", "Spot Price", "Unrealised Alpha"].map(h => (
+                                        <th key={h} className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">{h}</th>
+                                    ))}
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-white/[0.02]">
                                 {(Array.isArray(data?.positions) ? data.positions : []).map((p, i) => (
-                                    <tr key={i} className="border-b border-slate-800/30 hover:bg-slate-900/40 transition-colors">
+                                    <tr key={i} className="hover:bg-white/[0.03] transition-all group">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-black text-xs text-indigo-400">
+                                                <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-black text-[10px] text-indigo-400 shadow-inner tracking-tighter">
                                                     {p.ticker.substring(0, 2)}
                                                 </div>
-                                                <span className="text-sm font-bold text-white uppercase">{p.ticker}</span>
+                                                <span className="text-sm font-display font-black text-white uppercase group-hover:text-indigo-400 transition-colors tracking-tight">{p.ticker}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-xs font-mono text-slate-300">{(p.shares ?? 0).toFixed(2)}</td>
-                                        <td className="px-6 py-4 text-xs font-mono text-slate-400">${(p.entry ?? 0).toFixed(2)}</td>
-                                        <td className="px-6 py-4 text-xs font-mono text-white">${(p.current ?? 0).toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-xs font-mono font-bold text-slate-300">{(p.shares ?? 0).toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-xs font-mono font-bold text-slate-400">{fmtPrecise(p.entry ?? 0)}</td>
+                                        <td className="px-6 py-4 text-xs font-mono font-black text-white">{fmtPrecise(p.current ?? 0)}</td>
                                         <td className="px-6 py-4 text-right">
-                                            <p className={`text-xs font-black font-mono ${(p?.pnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                {(p?.pnl ?? 0) >= 0 ? '+' : ''}{(p?.pnl ?? 0).toFixed(2)}
-                                            </p>
-                                            <p className={`text-[10px] font-bold ${p.pnl_pct >= 0 ? 'text-emerald-500/60' : 'text-rose-500/60'}`}>
-                                                {fmtPct(p.pnl_pct)}
-                                            </p>
+                                            <div className="flex flex-col items-end">
+                                                <p className={`text-xs font-black font-mono ${(p?.pnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                    {(p?.pnl ?? 0) >= 0 ? '+' : '-'}{fmtPrecise(Math.abs(p?.pnl ?? 0))}
+                                                </p>
+                                                <p className={`text-[10px] font-black uppercase tracking-tighter ${p.pnl_pct >= 0 ? 'text-emerald-500/50' : 'text-rose-500/50'}`}>
+                                                    {fmtPct(p.pnl_pct)}
+                                                </p>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
                                 {(!data || !Array.isArray(data.positions) || data.positions.length === 0) && (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-20 text-center">
-                                            <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center mx-auto mb-4 border border-slate-800">
-                                                <Briefcase className="w-5 h-5 text-slate-700" />
+                                        <td colSpan={5} className="px-6 py-32 text-center">
+                                            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6 border border-white/10">
+                                                <Briefcase className="w-8 h-8 text-slate-600" />
                                             </div>
-                                            <p className="text-sm font-bold text-slate-500">No open positions</p>
-                                            <p className="text-xs text-slate-700 mt-1">Trades will appear here once AI signals are followed.</p>
+                                            <h3 className="text-white font-display font-black text-xl mb-2 uppercase tracking-tight">Vapor Clusters</h3>
+                                            <p className="text-slate-500 font-body text-xs max-w-xs mx-auto leading-relaxed italic">No active risk detected. Initiate a protocol entry to monitor live equity clusters.</p>
                                         </td>
                                     </tr>
                                 )}
@@ -218,31 +230,36 @@ export default function PortfolioView() {
                 </div>
 
                 {/* Allocation Chart */}
-                <div className="glass rounded-3xl p-6 border border-slate-800/60 flex flex-col h-fit sticky top-20">
-                    <h3 className="text-sm font-bold text-slate-200 mb-6">Asset Allocation</h3>
-                    <div className="h-64 w-full relative">
+                <div className="glass-card p-8 border border-white/5 flex flex-col h-fit sticky top-24 shadow-2xl overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-30" />
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
+                        <PieChart size={14} className="text-indigo-400" />
+                        Asset Topology
+                    </h3>
+                    <div className="h-64 w-full relative group-hover:scale-105 transition-transform duration-700">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
                                     data={chartData}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
+                                    innerRadius={75}
+                                    outerRadius={95}
+                                    paddingAngle={8}
                                     dataKey="value"
+                                    stroke="none"
                                 >
                                     {chartData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="focus:outline-none" />
                                     ))}
                                 </Pie>
                                 <Tooltip
                                     content={({ active, payload }: any) => {
                                         if (active && payload && payload.length) {
                                             return (
-                                                <div className="glass rounded-xl p-3 border border-slate-700/60 shadow-2xl text-xs">
-                                                    <p className="text-white font-bold mb-1">{payload[0].name}</p>
-                                                    <p className="text-indigo-400">{fmt(payload[0].value)}</p>
+                                                <div className="glass-card p-4 border-indigo-500/20 shadow-2xl animate-in zoom-in-95 duration-300">
+                                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">{payload[0].name}</p>
+                                                    <p className="text-sm font-display font-black text-white">{fmt(payload[0].value)}</p>
                                                 </div>
                                             );
                                         }
@@ -252,19 +269,19 @@ export default function PortfolioView() {
                             </PieChart>
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <p className="text-[9px] font-bold text-slate-600 uppercase">Total</p>
-                            <p className="text-sm font-black text-white">${(data?.total_value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Portfolio</p>
+                            <p className="text-xl font-display font-black text-white tracking-tight">${(data?.total_value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                         </div>
                     </div>
 
-                    <div className="mt-6 space-y-3">
+                    <div className="mt-8 space-y-4">
                         {chartData.map((d, i) => (
-                            <div key={i} className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                                    <span className="text-xs font-bold text-slate-400">{d.name}</span>
+                            <div key={i} className="flex items-center justify-between group/item">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-3 h-3 rounded-full shadow-[0_0_10px_currentColor] transition-all group-hover/item:scale-125" style={{ backgroundColor: COLORS[i % COLORS.length], color: COLORS[i % COLORS.length] }} />
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover/item:text-white transition-colors">{d.name}</span>
                                 </div>
-                                <span className="text-xs font-mono text-slate-500">{((d.value / (data?.total_value || 1)) * 100).toFixed(1)}%</span>
+                                <span className="text-[10px] font-mono font-black text-slate-600 group-hover/item:text-indigo-400 transition-colors">{((d.value / (data?.total_value || 1)) * 100).toFixed(1)}%</span>
                             </div>
                         ))}
                     </div>
@@ -273,49 +290,53 @@ export default function PortfolioView() {
             </div>
 
             {/* Trade History Log */}
-            <div className="mt-6 glass rounded-3xl border border-slate-800/60 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-800/60 h-14 flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-200">Closed Trades & History</h3>
+            <div className="mt-8 glass-card p-0 border border-white/5 overflow-hidden shadow-2xl flex flex-col">
+                <div className="px-6 py-5 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                        <History size={14} className="text-indigo-400" />
+                        Settlement Archive
+                    </h3>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="border-b border-slate-800/40 text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                                <th className="px-6 py-4">Date</th>
-                                <th className="px-6 py-4">Ticker</th>
-                                <th className="px-6 py-4">Action</th>
-                                <th className="px-6 py-4">Shares</th>
-                                <th className="px-6 py-4">Price</th>
-                                <th className="px-6 py-4 text-right">Result</th>
+                            <tr className="border-b border-white/5 bg-white/[0.01]">
+                                {["Protocol Date", "Instrument", "Action", "Units", "Fill", "Settled P&L"].map(h => (
+                                    <th key={h} className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">{h}</th>
+                                ))}
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-white/[0.02]">
                             {(Array.isArray(trades) ? trades : []).slice(0, 50).map((t, i) => (
-                                <tr key={i} className="border-b border-slate-800/30 hover:bg-slate-900/40 transition-colors">
-                                    <td className="px-6 py-4 text-[11px] text-slate-500">{new Date(t.opened_at).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 text-xs font-bold text-slate-300 uppercase">{t.ticker}</td>
+                                <tr key={i} className="hover:bg-white/[0.03] transition-all group">
+                                    <td className="px-6 py-4 text-[11px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{new Date(t.opened_at).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                                    <td className="px-6 py-4 text-xs font-display font-black text-slate-300 uppercase tracking-tight group-hover:text-indigo-400 transition-colors">{t.ticker}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${t?.action === 'BUY' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest border border-current transition-colors ${t?.action === 'BUY' ? 'bg-indigo-500/5 text-indigo-400 border-indigo-500/20' : 'bg-rose-500/5 text-rose-400 border-rose-500/20'}`}>
                                             {t?.action}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-xs font-mono text-slate-500">{(t?.shares ?? 0).toFixed(2)}</td>
-                                    <td className="px-6 py-4 text-xs font-mono text-slate-500">${(t?.price ?? 0).toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-xs font-mono font-bold text-slate-500">{(t?.shares ?? 0).toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-xs font-mono font-bold text-slate-500">{fmtPrecise(t?.price ?? 0)}</td>
                                     <td className="px-6 py-4 text-right">
                                         {t.pnl !== null ? (
-                                            <span className={`text-[11px] font-black font-mono ${t.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                {t.pnl >= 0 ? '+' : ''}{fmt(t.pnl)}
+                                            <span className={`text-[11px] font-black font-mono transition-colors ${(t.pnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                {(t.pnl ?? 0) >= 0 ? '+' : '-'}{fmtPrecise(Math.abs(t.pnl ?? 0))}
                                             </span>
                                         ) : (
-                                            <span className="text-[10px] text-slate-700 italic">Open</span>
+                                            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest italic animate-pulse">In-Flight</span>
                                         )}
                                     </td>
                                 </tr>
                             ))}
                             {trades.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-600 text-[11px]">
-                                        No trading history recorded yet.
+                                    <td colSpan={6} className="px-6 py-32 text-center">
+                                        <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6 border border-white/10">
+                                            <History className="w-8 h-8 text-slate-600" />
+                                        </div>
+                                        <h3 className="text-white font-display font-black text-xl mb-2 uppercase tracking-tight">Archive Null</h3>
+                                        <p className="text-slate-500 font-body text-xs max-w-xs mx-auto leading-relaxed italic">No historical trades found in the ledger. All executions will be permanently logged here.</p>
                                     </td>
                                 </tr>
                             )}

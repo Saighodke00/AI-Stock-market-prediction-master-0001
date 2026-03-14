@@ -19,20 +19,18 @@ export const TickerTape: React.FC = () => {
     const doubledTickers = [...mockTickers, ...mockTickers, ...mockTickers];
 
     return (
-        <div className="h-[32px] bg-void border-t border-dim shrink-0 flex items-center overflow-hidden w-full relative z-50">
+        <div className="h-[36px] bg-void border-t border-white/5 shrink-0 flex items-center overflow-hidden w-full relative z-50">
             <div className="flex items-center whitespace-nowrap animate-ticker hover:[webkit-animation-play-state:paused] hover:[animation-play-state:paused]">
                 {doubledTickers.map((item, index) => {
                     const isPositive = item.change.startsWith('+');
-                    const colorClass = isPositive ? 'text-green' : 'text-red';
+                    const colorClass = isPositive ? 'text-emerald-400' : 'text-rose-400';
                     const symbolStr = isPositive ? '▲' : '▼';
 
                     return (
-                        <div key={index} className="flex items-center px-4 shrink-0">
-                            <span className="font-data text-[10px] text-cyan tracking-[1px] mr-3">{item.symbol}</span>
-                            <span className="font-data text-[10px] text-primary font-bold mr-2">{item.price}</span>
-                            <span className={`font-data text-[10px] ${colorClass}`}>{symbolStr} {item.change}</span>
-                            {/* Divider */}
-                            <div className="w-px h-3 bg-dim ml-4" />
+                        <div key={index} className="flex items-center px-6 shrink-0 border-r border-white/5">
+                            <span className="text-[10px] font-bold text-slate-400 tracking-wider mr-3 font-body">{item.symbol}</span>
+                            <span className="text-[10px] text-white font-mono font-bold mr-3">{item.price}</span>
+                            <span className={`text-[10px] font-bold ${colorClass}`}>{symbolStr} {item.change}</span>
                         </div>
                     );
                 })}

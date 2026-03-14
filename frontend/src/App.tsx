@@ -7,10 +7,10 @@ import { TickerTape } from './components/layout/TickerTape';
 
 import { SwingTradingPage } from './pages/SwingTrading';
 import { IntradayTradingPage } from './pages/IntradayTrading';
-import { ScreenerPage } from './pages/Screener';
+import ScreenerPage from './pages/Screener';
 import { DashboardPage } from './pages/Dashboard';
 import { SentimentPage } from './pages/SentimentPage';
-import { PaperTradingPage } from './pages/PaperTradingPage';
+import PaperTradingPage from './pages/PaperTradingPage';
 import { UnderConstructionPage } from './pages/UnderConstruction';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 

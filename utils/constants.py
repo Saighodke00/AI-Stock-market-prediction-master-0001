@@ -67,3 +67,12 @@ TIMEFRAME_CONFIG = {
     "1D":  {"interval": "1d",  "period": "1y",   "bars": 252, "label": "Daily Swing"},
     "1W":  {"interval": "1wk", "period": "5y",   "bars": 200, "label": "Weekly Position"},
 }
+
+# Top-20 NSE stocks — used by the async screener in main.py
+NSE_SCREENER_TICKERS = [
+    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "BHARTIARTL.NS",
+    "SBIN.NS", "INFY.NS", "ITC.NS", "HINDUNILVR.NS", "LT.NS",
+    "BAJFINANCE.NS", "HCLTECH.NS", "MARUTI.NS", "SUNPHARMA.NS", "ONGC.NS",
+    "TATAMOTORS.NS", "NTPC.NS", "KOTAKBANK.NS", "TITAN.NS", "WIPRO.NS",
+]
+
