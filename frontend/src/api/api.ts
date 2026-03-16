@@ -3,7 +3,7 @@
 // Aligned with main.py v3.0 response shapes.
 
 /// <reference types="vite/client" />
-const BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:8000";
+const BASE = (import.meta as any).env?.VITE_API_URL ?? ""; // Use proxy in dev, or VITE_API_URL if set
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Shared helpers

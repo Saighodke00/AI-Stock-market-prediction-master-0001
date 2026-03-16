@@ -7,7 +7,10 @@ import { XAIPanel } from '../components/trading/XAIPanel';
 import { SentimentPanel } from '../components/trading/SentimentPanel';
 import { PositionSizer } from '../components/trading/PositionSizer';
 import { NeuralSpinner } from '../components/ui/LoadingStates';
-import { Search, Timer, Zap, AlertCircle, RefreshCcw, ChevronDown, Activity } from 'lucide-react';
+import { Search, Timer, Zap, AlertCircle, RefreshCcw, ChevronDown, Activity, ShieldCheck, CheckCircle2, XCircle, Target, Newspaper, BarChart3 } from 'lucide-react';
+
+import { SignalBadge } from '../components/trading/SignalBadge';
+import { GateCard } from '../components/trading/GateCard';
 
 const TICKERS = [
     'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'BHARTIARTL.NS',
@@ -59,11 +62,17 @@ export const IntradayTradingPage: React.FC = () => {
 
 
     const metrics = backtest ? [
-        { label: 'Scalp Win Rate', value: backtest.win_rate * 100, format: 'percent' as const },
+        { label: 'Scalp Win Rate', value: backtest.win_rate, format: 'percent' as const },
         { label: 'Profit Factor', value: backtest.profit_factor, format: 'decimal' as const },
         { label: 'Max Intraday DD', value: -(backtest.max_drawdown * 100), format: 'percent' as const, inverseColors: true },
         { label: 'Sharpe Ratio', value: backtest.sharpe_ratio, format: 'decimal' as const },
-        { label: 'Accuracy', value: (backtest.forecast_accuracy ?? 54) * 100, format: 'percent' as const },
+        { label: 'Accuracy', value: backtest.forecast_accuracy ?? 54, format: 'percent' as const },
+    ] : [];
+
+    const gateDisplay = signal?.gate_results ? [
+        { label: 'Volatility Cone', passed: signal.gate_results.gate1_cone, title: 'Forecast cone width is tight enough to scalp', icon: Target },
+        { label: 'Neural Sentiment', passed: signal.gate_results.gate2_sentiment, title: 'FinBERT score aligns with signal direction', icon: Newspaper },
+        { label: 'RSI Confirmation', passed: signal.gate_results.gate3_technical, title: 'RSI confirms the buy/sell zone', icon: BarChart3 },
     ] : [];
 
     return (
@@ -150,18 +159,39 @@ export const IntradayTradingPage: React.FC = () => {
 
                         {/* Intelligence Sidebar */}
                         <div className="w-full xl:w-[350px] shrink-0 flex flex-col gap-8 glass-card border-white/5 p-6 shadow-2xl relative overflow-hidden">
-                            {/* Status Marker */}
-                            <div className="absolute top-0 right-0 p-4 opacity-50">
+                             <div className="absolute top-0 right-0 p-4 opacity-50">
                                  <Activity className="w-4 h-4 text-indigo-500 animate-pulse" />
-                            </div>
+                             </div>
 
-                            <div className="flex flex-col gap-4">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                    <h3 className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Strategy Metrics</h3>
-                                </div>
-                                <MetricGrid metrics={metrics} />
-                            </div>
+                             {/* Pulsing Signal Badge */}
+                             <SignalBadge action={signal.action} />
+
+                             <div className="w-full h-px bg-white/5" />
+
+                             {/* Guardrail Gates */}
+                             {gateDisplay.length > 0 && (
+                                 <div className="flex flex-col gap-4">
+                                      <div className="flex items-center gap-2">
+                                         <ShieldCheck className="w-4 h-4 text-slate-500" />
+                                         <h3 className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Neural Guardrails</h3>
+                                     </div>
+                                     <div className="grid grid-cols-1 gap-3">
+                                         {gateDisplay.map(g => (
+                                             <GateCard key={g.label} {...g} />
+                                         ))}
+                                     </div>
+                                 </div>
+                             )}
+
+                             <div className="w-full h-px bg-white/5" />
+
+                             <div className="flex flex-col gap-4">
+                                 <div className="flex items-center gap-2">
+                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                     <h3 className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Strategy Metrics</h3>
+                                 </div>
+                                 <MetricGrid metrics={metrics} />
+                             </div>
 
                             <div className="w-full h-px bg-white/5" />
 

@@ -7,7 +7,10 @@ import { XAIPanel } from '../components/trading/XAIPanel';
 import { SentimentPanel } from '../components/trading/SentimentPanel';
 import { PositionSizer } from '../components/trading/PositionSizer';
 import { NeuralSpinner } from '../components/ui/LoadingStates';
-import { Search, Timer, Zap, AlertCircle, RefreshCcw, ChevronDown, Activity, ShieldCheck, CheckCircle2, XCircle } from 'lucide-react';
+import { Search, Timer, Zap, AlertCircle, RefreshCcw, ChevronDown, Activity, ShieldCheck, CheckCircle2, XCircle, Newspaper, BarChart3, Target, Info } from 'lucide-react';
+
+import { SignalBadge } from '../components/trading/SignalBadge';
+import { GateCard } from '../components/trading/GateCard';
 
 const TICKERS = [
     'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'BHARTIARTL.NS',
@@ -58,7 +61,7 @@ export const SwingTradingPage: React.FC = () => {
     }, [ticker, tf]);
 
     const metrics = backtest ? [
-        { label: 'Win Rate', value: (backtest.win_rate ?? 0) * 100, format: 'percent' as const },
+        { label: 'Win Rate', value: backtest.win_rate ?? 0, format: 'percent' as const },
         { label: 'Profit Factor', value: backtest.profit_factor ?? 0, format: 'decimal' as const },
         { label: 'Max Drawdown', value: -((backtest.max_drawdown ?? 0) * 100), format: 'percent' as const, inverseColors: true },
         { label: 'Sharpe Ratio', value: backtest.sharpe_ratio ?? 0, format: 'decimal' as const },
@@ -67,9 +70,9 @@ export const SwingTradingPage: React.FC = () => {
 
     // Gate display — 3 real mathematical gates
     const gateDisplay = signal?.gate_results ? [
-        { label: 'Cone ≤12%', passed: signal.gate_results.gate1_cone, title: 'Forecast cone width is tight enough to trade' },
-        { label: 'Sentiment', passed: signal.gate_results.gate2_sentiment, title: 'FinBERT score aligns with signal direction' },
-        { label: 'RSI Confirm', passed: signal.gate_results.gate3_technical, title: 'RSI confirms the buy/sell zone' },
+        { label: 'Forecast Cone', passed: signal.gate_results.gate1_cone, title: 'Forecast cone width is tight enough to trade', icon: Target },
+        { label: 'Neural Sentiment', passed: signal.gate_results.gate2_sentiment, title: 'FinBERT score aligns with signal direction', icon: Newspaper },
+        { label: 'RSI Confirmation', passed: signal.gate_results.gate3_technical, title: 'RSI confirms the buy/sell zone', icon: BarChart3 },
     ] : [];
 
     return (
@@ -156,29 +159,25 @@ export const SwingTradingPage: React.FC = () => {
 
                         {/* Analysis Sidebar */}
                         <div className="w-full xl:w-[350px] shrink-0 flex flex-col gap-8 glass-card border-white/5 p-6 shadow-2xl relative overflow-hidden">
-                             {/* Status Indicator */}
                              <div className="absolute top-0 right-0 p-4 opacity-50">
                                 <Activity className="w-4 h-4 text-indigo-500 animate-pulse" />
                              </div>
+
+                             {/* Pulsing Signal Badge */}
+                             <SignalBadge action={signal.action} />
+
+                             <div className="w-full h-px bg-white/5" />
 
                             {/* Guardrail Gates */}
                             {gateDisplay.length > 0 && (
                                 <div className="flex flex-col gap-4">
                                      <div className="flex items-center gap-2">
                                         <ShieldCheck className="w-4 h-4 text-slate-500" />
-                                        <h3 className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Signal Guardrails</h3>
+                                        <h3 className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Neural Guardrails</h3>
                                     </div>
-                                    <div className="flex flex-col gap-3">
+                                    <div className="grid grid-cols-1 gap-3">
                                         {gateDisplay.map(g => (
-                                            <div key={g.label} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all group" title={g.title}>
-                                                <span className="font-body text-xs text-slate-400 group-hover:text-white transition-colors">{g.label}</span>
-                                                <div className="flex items-center gap-2">
-                                                    {g.passed ? <CheckCircle2 size={12} className="text-emerald-400" /> : <XCircle size={12} className="text-rose-400" />}
-                                                    <span className={`text-[10px] font-black tracking-widest uppercase ${g.passed ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                        {g.passed ? 'Pass' : 'Fail'}
-                                                    </span>
-                                                </div>
-                                            </div>
+                                            <GateCard key={g.label} {...g} />
                                         ))}
                                     </div>
                                 </div>

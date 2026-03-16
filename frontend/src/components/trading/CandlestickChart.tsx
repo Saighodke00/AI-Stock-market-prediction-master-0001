@@ -25,15 +25,75 @@ interface ForecastPoint {
 }
 
 interface CandlestickChartProps {
-    ohlcv: OHLCVPoint[];
-    forecast: ForecastPoint[];
-    action: string;
+    ticker?: string;
+    ohlcv?: OHLCVPoint[];
+    forecast?: ForecastPoint[];
+    action?: string;
 }
 
-export const CandlestickChart: React.FC<CandlestickChartProps> = ({ ohlcv, forecast, action }) => {
+export const CandlestickChart: React.FC<CandlestickChartProps> = ({ 
+    ticker, 
+    ohlcv: initialOhlcv = [], 
+    forecast: initialForecast = [], 
+    action: initialAction = 'HOLD' 
+}) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const [legendData, setLegendData] = useState<OHLCVPoint | null>(null);
+    
+    const [internalData, setInternalData] = useState<{
+        ohlcv: OHLCVPoint[],
+        forecast: ForecastPoint[],
+        action: string
+    }>({
+        ohlcv: initialOhlcv,
+        forecast: initialForecast,
+        action: initialAction
+    });
+
+    const [isFetching, setIsFetching] = useState(false);
+
+    // Sync if props change
+    useEffect(() => {
+        if (initialOhlcv.length > 0) {
+            setInternalData({
+                ohlcv: initialOhlcv,
+                forecast: initialForecast,
+                action: initialAction
+            });
+        }
+    }, [initialOhlcv, initialForecast, initialAction]);
+
+    // Self-fetch if empty and ticker provided
+    useEffect(() => {
+        if (internalData.ohlcv.length === 0 && ticker) {
+            const fetchData = async () => {
+                setIsFetching(true);
+                try {
+                    const response = await fetch(`http://localhost:8000/api/signal/${ticker}`);
+                    const data = await response.json();
+                    
+                    // Transformation logic to match OHLCVPoint and ForecastPoint
+                    // Note: This expects the /api/signal response to contain chart data
+                    // If it doesn't, we might need a different endpoint like /api/chart/{ticker}
+                    if (data.ohlcv) {
+                        setInternalData({
+                            ohlcv: data.ohlcv,
+                            forecast: data.forecast || [],
+                            action: data.action || 'HOLD'
+                        });
+                    }
+                } catch (error) {
+                    console.error("Failed to self-fetch chart data", error);
+                } finally {
+                    setIsFetching(false);
+                }
+            };
+            fetchData();
+        }
+    }, [ticker, internalData.ohlcv.length]);
+
+    const { ohlcv, forecast, action } = internalData;
 
     useEffect(() => {
         if (!chartContainerRef.current || !ohlcv.length) return;
@@ -224,9 +284,12 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ ohlcv, forec
     };
 
     return (
-        <div className="w-full glass-card overflow-hidden flex flex-col min-h-[480px] relative">
+        <div className="w-full glass-card overflow-hidden flex flex-col min-h-[500px] relative border-white/5 shadow-2xl group hover:border-white/10 transition-all duration-500">
+            {/* Gloss Effect Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 via-transparent to-transparent pointer-events-none" />
+            
             {/* Header / Legend */}
-            <div className="flex items-center justify-between p-5 border-b border-white/5 shrink-0 z-10 bg-white/[0.02] backdrop-blur-md">
+            <div className="flex items-center justify-between p-6 border-b border-white/5 shrink-0 z-10 bg-void/40 backdrop-blur-xl">
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
                          <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">

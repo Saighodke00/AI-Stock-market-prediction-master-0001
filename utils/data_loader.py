@@ -5,6 +5,22 @@ import numpy as np
 
 # Phase-2 pipeline: multi-modal fetch + static metadata + validation
 from utils.data_pipeline import fetch_multi_modal, add_static_metadata, validate_data
+from utils.constants import NSE_SCREENER_TICKERS
+
+def normalize_ticker(ticker: str) -> str:
+    """Normalize ticker symbols for yfinance."""
+    t = ticker.upper().strip()
+    
+    # 1. Handle common Indian stocks missing .NS suffix
+    # Strip .NS if it exists to normalize search
+    clean_t = t.replace(".NS", "").replace(".BO", "")
+    
+    # Check if the clean symbol is in our known NSE list
+    nse_symbols = [s.split(".")[0] for s in NSE_SCREENER_TICKERS]
+    if clean_t in nse_symbols:
+        return f"{clean_t}.NS"
+        
+    return t
 
 def fetch_data(ticker: str, period: str = "2y", interval: str = "1d") -> pd.DataFrame | None:
     """Fetch OHLCV data enriched with macro indices and static company metadata.
@@ -22,6 +38,7 @@ def fetch_data(ticker: str, period: str = "2y", interval: str = "1d") -> pd.Data
 
     Returns None on any unrecoverable error.
     """
+    ticker = normalize_ticker(ticker)
     try:
         # ── Intraday fast-path (no macro / metadata available sub-daily) ──────
         if interval != "1d":

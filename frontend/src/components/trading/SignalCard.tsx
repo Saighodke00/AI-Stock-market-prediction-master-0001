@@ -88,7 +88,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <span className="font-mono text-xl text-slate-200 font-bold tracking-tight">₹{data?.current_price?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ?? '—'}</span>
+                            <span className="font-mono text-xl text-slate-200 font-bold tracking-tight">₹{(data?.current_price || data?.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             <div className={`flex items-center gap-1 font-mono text-[11px] font-bold ${priceColor} bg-white/5 px-2 py-1 rounded-lg border border-white/5`}>
                                 <PriceIcon className="w-3 h-3" />
                                 {Math.abs(data?.price_change_pct ?? 0).toFixed(2)}%
@@ -110,7 +110,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-slate-500 tracking-[0.3em] uppercase mb-1">Recommended Action</span>
                             <span className={`font-display font-black text-6xl tracking-tighter leading-none uppercase ${stateColor} italic`}>
-                                {data.action}
+                                {data?.action || 'HOLD'}
                             </span>
                         </div>
                     </div>
@@ -129,12 +129,12 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                                 RET: {(data?.expected_return ?? 0).toFixed(2)}%
                             </div>
                         </div>
-                        <div className="h-2 w-full bg-white/[0.03] rounded-full overflow-hidden border border-white/5 relative">
+                        <div className="h-2 w-full bg-void rounded-full overflow-hidden border border-white/5 relative shadow-inner">
                             <div
-                                className={`h-full ${stateBg} shadow-[0_0_15px_rgba(255,255,255,0.2)] transition-all ease-out duration-1000 relative z-10`}
+                                className={`h-full ${stateBg} bg-gradient-to-r from-transparent via-white/10 to-transparent bg-[length:200%_100%] animate-shimmer shadow-[0_0_15px_rgba(255,255,255,0.2)] transition-all ease-out duration-1000 relative z-10`}
                                 style={{ width: `${fillWidth}%` }}
                             />
-                            <div className="absolute inset-0 bg-white/5 animate-pulse" />
+                            <div className="absolute inset-0 bg-white/5" />
                         </div>
                     </div>
                 </div>
@@ -143,15 +143,15 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                 <div className="grid grid-cols-3 divide-x divide-white/5 border-t border-b border-white/5 bg-white/[0.01]">
                     <div className="p-6 text-center flex flex-col gap-2 group hover:bg-white/[0.02] transition-colors cursor-default">
                         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] font-body">Bear (P10)</span>
-                        <span className="font-mono text-xl text-slate-300 group-hover:text-white transition-colors">₹{Math.round(data?.p10 ?? 0).toLocaleString('en-IN')}</span>
+                        <span className="font-mono text-xl text-slate-300 group-hover:text-white transition-colors">₹{Math.round(data?.p10 || 0).toLocaleString('en-IN')}</span>
                     </div>
                     <div className="p-6 text-center flex flex-col gap-2 group hover:bg-white/[0.02] transition-colors cursor-default border-x border-white/5">
                         <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-[0.2em] font-body">Base (P50)</span>
-                        <span className="font-mono text-2xl text-white font-bold">₹{Math.round(data?.p50 ?? 0).toLocaleString('en-IN')}</span>
+                        <span className="font-mono text-2xl text-white font-bold">₹{Math.round(data?.p50 || 0).toLocaleString('en-IN')}</span>
                     </div>
                     <div className="p-6 text-center flex flex-col gap-2 group hover:bg-white/[0.02] transition-colors cursor-default">
                         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] font-body">Bull (P90)</span>
-                        <span className="font-mono text-xl text-slate-300 group-hover:text-white transition-colors">₹{Math.round(data?.p90 ?? 0).toLocaleString('en-IN')}</span>
+                        <span className="font-mono text-xl text-slate-300 group-hover:text-white transition-colors">₹{Math.round(data?.p90 || 0).toLocaleString('en-IN')}</span>
                     </div>
                 </div>
 

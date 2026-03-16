@@ -24,6 +24,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import yfinance as yf
+from utils.yf_utils import download_yf, get_ticker
+
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -96,8 +98,9 @@ def fetch_multi_modal(ticker: str, period: str = "2y") -> pd.DataFrame:
     # ------------------------------------------------------------------
     logger.info("Fetching OHLCV data for %s (period=%s)...", ticker, period)
     try:
-        raw = yf.download(
+        raw = download_yf(
             ticker,
+            use_session=False,
             period=period,
             interval="1d",
             progress=False,
@@ -119,6 +122,9 @@ def fetch_multi_modal(ticker: str, period: str = "2y") -> pd.DataFrame:
     if isinstance(raw.columns, pd.MultiIndex):
         raw.columns = raw.columns.get_level_values(0)
 
+    # Dedup columns (yfinance sometimes returns duplicate 'Close' if auto_adjust=True)
+    raw = raw.loc[:, ~raw.columns.duplicated()]
+
     # Keep only standard OHLCV columns that are present
     ohlcv_cols = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in raw.columns]
     df: pd.DataFrame = raw[ohlcv_cols].copy()
@@ -135,7 +141,7 @@ def fetch_multi_modal(ticker: str, period: str = "2y") -> pd.DataFrame:
         yticker, col = args
         logger.info("Fetching macro index %s -> '%s'...", yticker, col)
         try:
-            macro_raw = yf.download(yticker, period=period, interval="1d", progress=False, auto_adjust=True, group_by="column")
+            macro_raw = download_yf(yticker, use_session=False, period=period, interval="1d", progress=False, auto_adjust=True, group_by="column")
             if macro_raw is None or macro_raw.empty:
                 logger.warning("Empty data for macro index %s - column '%s' will be NaN.", yticker, col)
                 return col, None
@@ -143,13 +149,20 @@ def fetch_multi_modal(ticker: str, period: str = "2y") -> pd.DataFrame:
             if isinstance(macro_raw.columns, pd.MultiIndex):
                 macro_raw.columns = macro_raw.columns.get_level_values(0)
 
+            # Dedup macro columns
+            macro_raw = macro_raw.loc[:, ~macro_raw.columns.duplicated()]
+
+            if "Close" not in macro_raw.columns:
+                logger.warning("No 'Close' column for macro %s", yticker)
+                return col, None
+
             close_series = macro_raw["Close"]
             if isinstance(close_series, pd.DataFrame):
                 close_series = close_series.iloc[:, 0]
 
             close_series.index = pd.to_datetime(close_series.index)
             close_series.name = col
-            return col, close_series
+            return col, close_series.astype(float)
 
         except Exception as exc:
             logger.warning("Could not fetch macro index %s (%s) - column '%s' will be NaN.", yticker, exc, col)
@@ -214,7 +227,7 @@ def add_static_metadata(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
     logger.info("Fetching static metadata for %s...", ticker)
     info: dict[str, Any] = {}
     try:
-        ticker_obj = yf.Ticker(ticker)
+        ticker_obj = get_ticker(ticker, use_session=False)
         info = ticker_obj.info or {}
     except Exception as exc:
         logger.warning(

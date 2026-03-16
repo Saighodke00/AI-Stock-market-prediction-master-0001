@@ -31,6 +31,7 @@ import logging
 from typing import Optional
 
 import numpy as np
+from utils.yf_utils import download_yf
 import pandas as pd
 
 try:
@@ -70,49 +71,21 @@ def _register(col: str, ftype: str) -> None:
 # 1. add_technical_indicators
 # ---------------------------------------------------------------------------
 def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    """Add 15 technical indicators using the pandas-ta library.
-
-    All indicators are tagged as ``unknown`` - they are derived from past
-    price/volume and are not known in advance.
-
-    Indicators added
-    ----------------
-    +----------------------------+----------------------+------------------------+
-    | Indicator                  | Output columns       | Source columns         |
-    +============================+======================+========================+
-    | RSI (14)                   | RSI_14               | Close                  |
-    | MACD (12,26,9)             | MACD_12_26_9,        | Close                  |
-    |                            | MACDh_12_26_9,       |                        |
-    |                            | MACDs_12_26_9        |                        |
-    | Bollinger Bands (20,2)     | BBL_20_2, BBM_20_2,  | Close                  |
-    |                            | BBU_20_2, BBB_20_2   |                        |
-    | ATR (14)                   | ATR_14               | High, Low, Close       |
-    | OBV                        | OBV                  | Close, Volume          |
-    | Stochastic (14,3)          | STOCHk_14_3_3,       | High, Low, Close       |
-    |                            | STOCHd_14_3_3        |                        |
-    +----------------------------+----------------------+------------------------+
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Must contain at minimum: ``Open``, ``High``, ``Low``, ``Close``,
-        ``Volume`` with a ``DatetimeIndex``.
-
-    Returns
-    -------
-    pd.DataFrame
-        Input df extended with indicator columns.
-    """
+    """Add 15 technical indicators using the pandas-ta library."""
     df = df.copy()
 
     if not _HAS_TA:
         logger.warning("'ta' library unavailable - skipping technical indicators.")
         return df
 
-    c   = df["Close"]
-    h   = df["High"]
-    lo  = df["Low"]
-    vol = df["Volume"]
+    # Ensure we have Series, not DataFrames (in case of duplicate columns)
+    def _to_series(s):
+        return s.iloc[:, 0] if isinstance(s, pd.DataFrame) else s
+
+    c   = _to_series(df["Close"])
+    h   = _to_series(df["High"])
+    lo  = _to_series(df["Low"])
+    vol = _to_series(df["Volume"])
 
     # ── RSI (14) -> RSI_14 ────────────────────────────────────────────────
     df["RSI_14"] = _ta.momentum.RSIIndicator(close=c, window=14).rsi()
@@ -169,33 +142,7 @@ def add_lagged_features(
     df: pd.DataFrame,
     lags: list[int] = [1, 3, 5],
 ) -> pd.DataFrame:
-    """Add lagged and rolling features for key indicators.
-
-    All lag/rolling features are tagged as ``unknown``.
-
-    Columns added
-    -------------
-    Lagged (shifted copies):
-        ``RSI_14_lag{n}``, ``MACD_12_26_9_lag{n}``, ``ATR_14_lag{n}``
-        for each n in *lags*.
-
-    Rolling:
-        ``RSI_14_rolling_mean_5`` - 5-day rolling mean of RSI_14.
-        ``Volume_ratio``          - today's Volume / 20-day mean Volume.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Must contain ``RSI_14``, ``MACD_12_26_9``, ``ATR_14``, ``Volume``
-        where available.
-    lags : list[int], optional
-        Lag periods.  Defaults to ``[1, 3, 5]``.
-
-    Returns
-    -------
-    pd.DataFrame
-        Input df extended with lag and rolling columns.
-    """
+    """Add lagged and rolling features for key indicators."""
     df = df.copy()
 
     LAG_SOURCES = ["RSI_14", "MACD_12_26_9", "ATR_14"]
@@ -233,35 +180,7 @@ def add_time_features(
     df: pd.DataFrame,
     earnings_dates: Optional[list] = None,
 ) -> pd.DataFrame:
-    """Add calendar-based time features.
-
-    These are **KNOWN_FUTURE** features - they are deterministic and known
-    at inference time, which is a key advantage in TFT's architecture
-    (known-future covariates get a special encoder treatment).
-
-    Columns added
-    -------------
-    ``day_of_week``       - integer 0 (Mon) ... 4 (Fri).
-    ``month``             - integer 1 ... 12.
-    ``quarter``           - integer 1 ... 4.
-    ``is_month_end``      - 1 on the last trading day of a month, else 0.
-    ``is_quarter_end``    - 1 on the last trading day of a quarter, else 0.
-    ``days_to_earnings``  - calendar days to the next earnings date; 0 if
-                           *earnings_dates* is not provided.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Must have a ``DatetimeIndex``.
-    earnings_dates : list, optional
-        List of ``datetime``-like earnings dates for the ticker.
-        If None, ``days_to_earnings`` is set to 0 (a safe default).
-
-    Returns
-    -------
-    pd.DataFrame
-        Input df extended with calendar columns.
-    """
+    """Add calendar-based time features."""
     df = df.copy()
     idx = pd.DatetimeIndex(df.index)
 
@@ -293,27 +212,7 @@ def add_time_features(
 # 4. add_integer_time_index
 # ---------------------------------------------------------------------------
 def add_integer_time_index(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
-    """Add ``time_idx`` and ``ticker`` columns required by pytorch-forecasting.
-
-    ``pytorch-forecasting``'s ``TimeSeriesDataSet`` requires:
-      * ``time_idx``  - a monotonically increasing integer (0, 1, 2, ...).
-      * a group column (``ticker``) that acts as the entity identifier.
-
-    Both are registered as ``static`` since they are invariant to time or
-    are simply administrative identifiers.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Any feature-enriched DataFrame with a sorted DatetimeIndex.
-    ticker : str
-        Ticker symbol string, e.g. ``"AAPL"`` or ``"RELIANCE.NS"``.
-
-    Returns
-    -------
-    pd.DataFrame
-        Input df with ``time_idx`` (int64) and ``ticker`` (str) prepended.
-    """
+    """Add ``time_idx`` and ``ticker`` columns required by pytorch-forecasting."""
     df = df.copy()
     df.sort_index(inplace=True)   # ensure chronological order
     df.insert(0, "time_idx", np.arange(len(df), dtype=np.int64))
@@ -328,35 +227,10 @@ def add_integer_time_index(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
 # 5. build_all_features
 # ---------------------------------------------------------------------------
 def build_all_features(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
-    """Run the full TFT feature-engineering pipeline in the correct order.
+    """Run the full TFT feature-engineering pipeline in the correct order."""
+    # ── Dedup columns immediately ────────────────────────────────────────
+    df = df.loc[:, ~df.columns.duplicated()].copy()
 
-    Execution order
-    ---------------
-    1. :func:`add_technical_indicators`  - price/volume-derived indicators
-    2. :func:`add_lagged_features`       - lag / rolling windows
-    3. :func:`add_time_features`         - calendar known-future features
-    4. :func:`add_integer_time_index`    - pytorch-forecasting essentials
-    5. ``dropna()``                      - remove warm-up rows (indicator lag)
-
-    Static columns already in *df* (from ``data_pipeline.add_static_metadata``)
-    - ``sector``, ``industry``, ``log_market_cap``, ``beta`` - are registered
-    as ``static`` if present.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Cleaned OHLCV + macro DataFrame (output of
-        ``data_pipeline.fetch_multi_modal`` + ``add_static_metadata`` +
-        ``denoising.apply_denoising_to_dataframe``).
-    ticker : str
-        Ticker symbol, forwarded to :func:`add_integer_time_index`.
-
-    Returns
-    -------
-    pd.DataFrame
-        Ready-to-train feature DataFrame with all NaN rows dropped.
-        Also prints feature count and shape.
-    """
     # Register any static metadata columns that arrived from data_pipeline
     for col, ftype in [
         ("sector",          "static"),
@@ -389,16 +263,16 @@ def build_all_features(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
     n_known    = sum(1 for v in FEATURE_TYPES.values() if v == "known_future")
     n_static   = sum(1 for v in FEATURE_TYPES.values() if v == "static")
 
-    print(f"\n  {'─'*54}")
+    print(f"\n  {'-'*54}")
     print(f"  Apex AI - Feature Matrix Summary  [{ticker}]")
-    print(f"  {'─'*54}")
+    print(f"  {'-'*54}")
     print(f"  Total columns     : {n_features}")
     print(f"  Rows (after dropna): {rows_after}  ({rows_before - rows_after} warm-up rows dropped)")
-    print(f"  {'─'*54}")
+    print(f"  {'-'*54}")
     print(f"  UNKNOWN        (time-varying, not known in advance): {n_unknown}")
     print(f"  KNOWN_FUTURE   (time-varying, known at inference)  : {n_known}")
     print(f"  STATIC         (constant per entity)               : {n_static}")
-    print(f"  {'─'*54}\n")
+    print(f"  {'-'*54}\n")
 
     logger.info(
         "build_all_features: ticker=%s, shape=%s, unknown=%d, known=%d, static=%d",
@@ -433,9 +307,9 @@ if __name__ == "__main__":
 
     # ── Try real AAPL data; fall back to synthetic ─────────────────────
     try:
-        import yfinance as yf
+        from utils.yf_utils import download_yf
         print("  Fetching AAPL from yfinance...")
-        raw = yf.download("AAPL", period="3y", interval="1d",
+        raw = download_yf("AAPL", period="3y", interval="1d",
                           progress=False, auto_adjust=True)
         if isinstance(raw.columns, pd.MultiIndex):
             raw.columns = raw.columns.get_level_values(0)
@@ -492,9 +366,6 @@ if __name__ == "__main__":
 # -- Adapter for main.py v3.0 -------------------------------------------------
 
 # Exact 36 features the Keras GRU/TCN/MAG models were trained on.
-# Order must match training order. Do NOT use select_dtypes — that picks up
-# extra columns (Open, PE_Ratio, EPS, Debt_to_Equity …) → shape mismatch.
-# Model expects input shape (None, 60, 36).
 _KERAS_FEATURE_COLS: list[str] = [
     # OHLCV + macro (7 cols — Open excluded, it was not in the training set)
     "High", "Low", "Close", "Volume", "VIX", "SP500", "NSEI",
@@ -531,31 +402,18 @@ def build_features(df, ticker: str = "UNKNOWN"):
     Keras models were trained on.  Returns:
       - X_raw:        numpy float32 array of shape (n_rows, 36)
       - feature_cols: list[str] of the 36 column names
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Cleaned OHLCV + macro DataFrame (output of fetch_data).
-    ticker : str
-        Ticker symbol forwarded to build_all_features for logging.
     """
     result_df = build_all_features(df, ticker)
 
-    # Select only the columns the Keras models know about
-    available = [c for c in _KERAS_FEATURE_COLS if c in result_df.columns]
-    missing   = [c for c in _KERAS_FEATURE_COLS if c not in result_df.columns]
+    # 1. Deduplicate columns (redundant but safe)
+    result_df = result_df.loc[:, ~result_df.columns.duplicated()]
 
-    if missing:
-        logger.warning(
-            "build_features: %d expected columns missing from feature df: %s. "
-            "Proceeding with %d available columns.",
-            len(missing), missing, len(available),
-        )
+    # 2. Reindex to EXACTLY the 36 columns expected by Keras, filling missing with 0.0
+    # This prevents the "X has 33 features, but RobustScaler is expecting 36" crash.
+    final_df = result_df.reindex(columns=_KERAS_FEATURE_COLS, fill_value=0.0)
 
-    if len(available) == 0:
-        logger.error("build_features: no valid feature columns — returning empty array.")
-        return None, []
+    # 3. Ensure all columns are numeric, handle inf, and fill remaining NaNs
+    final_df = final_df.apply(pd.to_numeric, errors="coerce")
+    final_df = final_df.replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
-    final_df = result_df[available].select_dtypes(include=["number"])
     return final_df.values.astype("float32"), list(final_df.columns)
-

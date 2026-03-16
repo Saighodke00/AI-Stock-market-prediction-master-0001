@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSentiment, SentimentData } from '../api/api';
 import { AlertCircle, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { SentimentGauge } from '../components/trading/SentimentGauge';
 
 export const SentimentPage: React.FC = () => {
     const [ticker, setTicker] = useState('RELIANCE.NS');
@@ -9,6 +10,12 @@ export const SentimentPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const tickers = ['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'AAPL', 'TSLA', 'NVDA', 'MSFT'];
+
+    const getSentimentColor = (score: number) => {
+        if (score > 0.1) return 'text-emerald-400';
+        if (score < -0.1) return 'text-rose-400';
+        return 'text-amber-400';
+    };
 
     useEffect(() => {
         const load = async () => {
@@ -26,12 +33,6 @@ export const SentimentPage: React.FC = () => {
         };
         load();
     }, [ticker]);
-
-    const getSentimentColor = (score: number) => {
-        if (score > 0.1) return 'text-emerald-400';
-        if (score < -0.1) return 'text-rose-400';
-        return 'text-amber-400';
-    };
 
     const renderContent = () => {
         if (isLoading) {
@@ -64,7 +65,6 @@ export const SentimentPage: React.FC = () => {
 
         const score = data.aggregate_score ?? data.score ?? 0;
         const articles = data.articles ?? [];
-        const normalizedScore = ((score + 1) * 50);
 
         return (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -72,18 +72,20 @@ export const SentimentPage: React.FC = () => {
                 <div className="lg:col-span-1 glass-card p-10 flex flex-col items-center justify-center text-center gap-8 relative overflow-hidden group border-indigo-500/20 shadow-indigo-500/5 shadow-2xl">
                     <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
                     <span className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Aggregate Sentiment</span>
-                    <div className="relative">
-                        <div className={`text-9xl font-black font-display tracking-tighter transition-all ${getSentimentColor(score)}`}>
-                            {normalizedScore.toFixed(0)}
-                        </div>
-                        <div className="absolute -inset-4 bg-indigo-500/20 blur-3xl opacity-20 -z-10 animate-pulse" />
+                    
+                    <div className="relative w-full">
+                         <SentimentGauge score={score} />
+                         <div className={`mt-4 text-5xl font-black font-display tracking-tighter ${getSentimentColor(score)}`}>
+                             {score.toFixed(2)}
+                         </div>
                     </div>
+
                     <div className="space-y-2">
                         <p className="text-white font-bold text-lg font-display uppercase tracking-tight">
-                            {normalizedScore > 60 ? 'Strongly Bullish' : normalizedScore < 40 ? 'Strongly Bearish' : 'Neutral Market'}
+                            {score > 0.3 ? 'Strongly Bullish' : score > 0.1 ? 'Mildly Bullish' : score < -0.3 ? 'Strongly Bearish' : score < -0.1 ? 'Mildly Bearish' : 'Neutral Market'}
                         </p>
                         <p className="text-slate-500 font-medium font-body text-xs px-4">
-                            Neural analysis processed {articles.length} real-time signals for {ticker}
+                            FinBERT NLP model confirms neural alignment across {articles.length} news sectors.
                         </p>
                     </div>
                 </div>
