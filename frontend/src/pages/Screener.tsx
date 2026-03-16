@@ -7,88 +7,133 @@ import {
   fetchScreener, fetchBulkDeals,
   ScreenerResult, BulkDeal,
 } from "../api/api";
-import { Database, Gavel, BarChart2, Filter, Zap, ArrowUpDown, RefreshCw, CheckCircle2, XCircle, MinusCircle, AlertCircle, Search, TrendingUp, TrendingDown } from "lucide-react";
+import { Database, Gavel, BarChart2, Filter, Zap, ArrowUpDown, RefreshCw, CheckCircle2, XCircle, MinusCircle, AlertCircle, Search, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { NeuralSpinner } from "../components/ui/LoadingStates";
 
-function ActionBadge({ action }: { action: string }) {
-  const styles: Record<string, string> = {
-    BUY:  "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    SELL: "bg-rose-500/10    text-rose-400    border-rose-500/20",
-    HOLD: "bg-amber-500/10   text-amber-400   border-amber-500/20",
-  };
+function RSIBadge({ value }: { value: number }) {
+  const isOverbought = value > 70;
+  const isOversold = value < 30;
+  const color = isOverbought ? "text-rose-400" : isOversold ? "text-emerald-400" : "text-amber-400";
+  const bg = isOverbought ? "bg-rose-500/10" : isOversold ? "bg-emerald-500/10" : "bg-amber-500/10";
+  const border = isOverbought ? "border-rose-500/20" : isOversold ? "border-emerald-500/20" : "border-amber-500/20";
+  
   return (
-    <span className={`font-mono text-[9px] font-black tracking-widest px-2.5 py-1 rounded-lg border uppercase ${styles[action] ?? styles.HOLD}`}>
-      {action}
-    </span>
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${bg} ${border} ${color}`}>
+      <span className="font-mono text-[10px] font-black uppercase tracking-widest">RSI</span>
+      <span className="font-display font-black text-xs">{value.toFixed(0)}</span>
+      <div className="w-12 h-1 bg-void/50 rounded-full overflow-hidden">
+        <div className={`h-full ${color.replace('text-', 'bg-')}`} style={{ width: `${value}%` }} />
+      </div>
+    </div>
   );
 }
 
-function GateDots({ gates }: { gates: ScreenerResult["gate_results"] }) {
+function ActionBadge({ action }: { action: string }) {
+  const color = action === "BUY" ? "text-emerald-400" : action === "SELL" ? "text-rose-400" : "text-amber-400";
+  const bg = action === "BUY" ? "bg-emerald-500/10" : action === "SELL" ? "bg-rose-500/10" : "bg-amber-500/10";
+  const border = action === "BUY" ? "border-emerald-500/20" : action === "SELL" ? "border-rose-500/20" : "border-amber-500/20";
+  
   return (
-    <div className="flex gap-2 items-center">
-      {[gates.gate1_cone, gates.gate2_sentiment, gates.gate3_technical].map((pass, i) => (
-        <div key={i} title={["Cone", "Sentiment", "RSI"][i]}>
-            {pass ? <div className="p-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20"><CheckCircle2 size={10} className="text-emerald-400" /></div> : <div className="p-0.5 rounded-full bg-white/5 border border-white/10"><MinusCircle size={10} className="text-slate-600" /></div>}
-        </div>
+    <div className={`px-4 py-1.5 rounded-full border ${bg} ${border} ${color} font-display font-black text-[10px] tracking-[0.2em] animate-pulse-glow`}>
+      {action}
+    </div>
+  );
+}
+
+function ConfidenceSparkBar({ value }: { value: number }) {
+  return (
+    <div className="w-full space-y-1">
+      <div className="flex justify-between items-center text-[9px] font-black text-slate-500 uppercase tracking-widest">
+        <span>Confidence</span>
+        <span>{(value * 100).toFixed(0)}%</span>
+      </div>
+      <div className="h-1 w-full bg-void rounded-full overflow-hidden border border-white/5">
+        <div 
+          className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 animate-shimmer bg-[length:200%_100%]" 
+          style={{ width: `${value * 100}%` }} 
+        />
+      </div>
+    </div>
+  );
+}
+
+function GateDots({ gates }: { gates: any }) {
+  const gateList = [
+    { name: 'Cone', passed: gates.gate1_cone },
+    { name: 'Sent', passed: gates.gate2_sentiment },
+    { name: 'Tech', passed: gates.gate3_technical }
+  ];
+
+  return (
+    <div className="flex gap-1.5">
+      {gateList.map((g, i) => (
+        <div 
+          key={i}
+          className={`w-1.5 h-1.5 rounded-full ${g.passed ? 'bg-emerald-500 shadow-[0_0_5px_theme(colors.emerald.500)]' : 'bg-rose-500 shadow-[0_0_5px_theme(colors.rose.500)]'}`}
+          title={`${g.name}: ${g.passed ? 'PASS' : 'FAIL'}`}
+        />
       ))}
     </div>
   );
 }
 
-function ConfidenceBar({ value }: { value: number }) {
-  const pct   = Math.round(value * 100);
-  const color = pct >= 80 ? "bg-emerald-500" : pct >= 65 ? "bg-amber-500" : "bg-slate-600";
-  return (
-    <div className="flex flex-col gap-1 w-32">
-      <div className="flex justify-between items-center px-1">
-          <span className="text-[10px] font-mono font-bold text-slate-500 tracking-tighter uppercase">Confidence</span>
-          <span className="text-[10px] font-mono font-bold text-white">{pct}%</span>
-      </div>
-      <div className="w-full bg-white/5 rounded-full h-1 overflow-hidden border border-white/5">
-        <div className={`h-full rounded-full ${color} shadow-[0_0_10px_currentColor] transition-all duration-1000`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function SignalRow({ row, rank }: { row: ScreenerResult; rank: number }) {
+function SignalCard({ row, rank }: { row: ScreenerResult; rank: number }) {
   const pctSign  = row.price_change_pct >= 0 ? "+" : "";
   const pctColor = row.price_change_pct >= 0 ? "text-emerald-400" : "text-rose-400";
   const p50Chg   = ((row.p50 - row.current_price) / row.current_price * 100);
   const p50Sign  = p50Chg >= 0 ? "+" : "";
+  const p50Color = p50Chg >= 0 ? "text-emerald-400" : "text-rose-400";
+
+  const cardStyles: Record<string, string> = {
+    BUY:  "border-emerald-500/20 bg-emerald-500/[0.02] hover:bg-emerald-500/[0.05]",
+    SELL: "border-rose-500/20    bg-rose-500/[0.02]    hover:bg-rose-500/[0.05]",
+    HOLD: "border-white/5        bg-white/[0.01]        hover:bg-white/[0.03]",
+  };
 
   return (
-    <tr className="border-b border-white/5 hover:bg-white/[0.04] transition-all group cursor-pointer">
-      <td className="py-4 px-6 text-slate-600 font-mono text-[10px] font-bold tracking-widest">{rank.toString().padStart(2, '0')}</td>
-      <td className="py-4 px-6">
+    <div className={`group flex flex-col md:flex-row items-center gap-6 p-5 rounded-2xl border transition-all duration-300 cursor-pointer mb-4 ${cardStyles[row.action] ?? ""}`}>
+      {/* Rank & Symbol */}
+      <div className="flex items-center gap-4 w-full md:w-64 shrink-0">
+        <span className="font-mono text-[10px] font-bold text-slate-600 tracking-tighter w-6">{rank.toString().padStart(2, '0')}</span>
         <div className="flex flex-col">
-          <span className="font-display font-black text-white text-sm tracking-tight group-hover:text-indigo-400 transition-colors">
+          <span className="font-display font-black text-white text-lg tracking-tight group-hover:text-cyan transition-colors uppercase leading-none mb-1">
             {row.ticker}
           </span>
-          <span className="text-[9px] text-slate-600 font-bold tracking-widest uppercase">National Exchange</span>
+          <span className="text-[9px] text-slate-600 font-bold tracking-widest uppercase opacity-60">National Stock Exchange</span>
         </div>
-      </td>
-      <td className="py-4 px-6"><ActionBadge action={row.action} /></td>
-      <td className="py-4 px-6"><ConfidenceBar value={row.confidence} /></td>
-      <td className="py-4 px-6 font-mono text-white text-xs font-bold text-right tracking-tight">
-        ₹{row.current_price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-      </td>
-      <td className={`py-4 px-6 font-mono text-xs font-black text-right ${pctColor}`}>
-        {pctSign}{row.price_change_pct.toFixed(2)}%
-      </td>
-      <td className="py-4 px-6 text-right">
+      </div>
+
+      {/* Logic & Confidence */}
+      <div className="flex items-center gap-6 w-full md:w-auto flex-1">
+        <ActionBadge action={row.action} />
+        <ConfidenceSparkBar value={row.confidence} />
+        <div className="hidden lg:block border-l border-white/5 h-8 mx-2" />
+        <GateDots gates={row.gate_results} />
+      </div>
+
+      {/* Metrics */}
+      <div className="flex items-center justify-between md:justify-end gap-10 w-full md:w-auto shrink-0">
         <div className="flex flex-col items-end">
-            <span className="font-mono text-xs text-emerald-400 font-bold">₹{row.p50.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-            <span className="text-[10px] text-slate-600 font-bold">({p50Sign}{p50Chg.toFixed(1)}%)</span>
+          <span className="font-mono font-black text-white text-md tracking-tight">₹{(row.current_price || 0).toLocaleString("en-IN", { minimumFractionDigits: 1 })}</span>
+          <span className={`font-mono text-[10px] font-black tracking-tighter ${pctColor}`}>{pctSign}{row.price_change_pct.toFixed(2)}%</span>
         </div>
-      </td>
-      <td className="py-4 px-6 text-right">
-         <span className={`font-mono text-xs font-black ${row.rsi > 70 ? "text-rose-400" : row.rsi < 30 ? "text-emerald-400" : "text-slate-400"}`}>
-            {row.rsi.toFixed(0)}
-         </span>
-      </td>
-      <td className="py-4 px-6"><GateDots gates={row.gate_results} /></td>
-    </tr>
+
+        <div className="flex flex-col items-end">
+          <h4 className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Neural Target</h4>
+          <span className={`font-mono font-black ${p50Color} text-md tracking-tight`}>₹{(row.p50 || 0).toLocaleString("en-IN", { minimumFractionDigits: 1 })}</span>
+          <span className="text-[10px] text-slate-600 font-bold tracking-tighter">({p50Sign}{p50Chg.toFixed(1)}%)</span>
+        </div>
+
+        <RSIBadge value={row.rsi} />
+      </div>
+
+      {/* Quick Action */}
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <button className="p-2 rounded-xl bg-void border border-dim text-cyan hover:bg-cyan hover:text-void transition-all shadow-glow-cyan">
+          <Activity size={16} />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -249,35 +294,26 @@ export default function Screener() {
         </div>
 
         {tab === "signals" ? (
-          <>
-            {error && <div className="px-5 py-4 text-rose-400 text-[10px] font-black tracking-widest uppercase bg-rose-500/5 border-b border-rose-500/20 flex items-center gap-3 animate-pulse">
+          <div className="p-6">
+            {error && <div className="mb-6 px-5 py-4 text-rose-400 text-[10px] font-black tracking-widest uppercase bg-rose-500/5 border border-rose-500/20 rounded-xl flex items-center gap-3 animate-pulse">
                 <AlertCircle size={14} />
                 {error}
             </div>}
+            
             {loading && signals.length === 0 ? (
               <div className="p-20 flex flex-col items-center justify-center">
                 <NeuralSpinner />
                 <span className="text-[10px] font-black tracking-[0.3em] text-slate-500 uppercase mt-6 animate-pulse">Scanning Global Orderbooks...</span>
               </div>
             ) : (
-              <div className="overflow-x-auto no-scrollbar">
-                <table className="w-full text-left">
-                  <thead className="bg-white/[0.01]">
-                    <tr className="border-b border-white/5">
-                      {["#","Instrument","Action","Reliability","Spot Price","Daily Chg","Neural Alpha","RSI","Gates"].map(h => (
-                        <th key={h} className="py-4 px-6 text-slate-500 text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                                {h}
-                                {h !== "#" && h !== "Gates" && <ArrowUpDown size={10} className="text-slate-700" />}
-                            </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.02]">
-                    {filtered.map((row, i) => <SignalRow key={row.ticker} row={row} rank={i+1} />)}
-                  </tbody>
-                </table>
+              <div className="flex flex-col">
+                <div className="hidden md:flex items-center gap-6 px-5 mb-4 opacity-40">
+                    <span className="text-[9px] font-black uppercase tracking-widest w-[280px]">Instrument</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest flex-1">Neural Analysis</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest w-[400px] text-right pr-10">Market Metrics</span>
+                </div>
+                {filtered.map((row, i) => <SignalCard key={row.ticker} row={row} rank={i+1} />)}
+                
                 {filtered.length === 0 && !loading && (
                   <div className="p-32 text-center flex flex-col items-center justify-center">
                       <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10">
@@ -289,7 +325,7 @@ export default function Screener() {
                 )}
               </div>
             )}
-          </>
+          </div>
         ) : (
           dealsLoading ? (
              <div className="p-20 flex flex-col items-center justify-center">

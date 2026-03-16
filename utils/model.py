@@ -1,4 +1,6 @@
 import numpy as np
+from utils.keras_fix import apply_keras_fix
+apply_keras_fix()
 try:
     import tensorflow as tf
     try:
@@ -287,11 +289,11 @@ class CausalTradingEngine:
         # saved before the @register_keras_serializable decorator was added.
         _custom = {'quantile_loss': quantile_loss}
         if os.path.exists(gru_path):
-            engine.gru_dir = tf.keras.models.load_model(gru_path, custom_objects=_custom)
+            engine.gru_dir = keras.models.load_model(gru_path, custom_objects=_custom)
         if os.path.exists(tcn_path):
-            engine.tcn_dir = tf.keras.models.load_model(tcn_path, custom_objects=_custom)
+            engine.tcn_dir = keras.models.load_model(tcn_path, custom_objects=_custom)
         if os.path.exists(mag_path):
-            engine.mag_model = tf.keras.models.load_model(mag_path, custom_objects=_custom)
+            engine.mag_model = keras.models.load_model(mag_path, custom_objects=_custom)
         if HAS_LGBM and os.path.exists(gbm_path):
             booster = lgb.Booster(model_file=gbm_path)
             engine.gbm_dir = booster

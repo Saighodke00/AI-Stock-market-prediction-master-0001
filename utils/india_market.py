@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import requests
 from bs4 import BeautifulSoup
-import yfinance as yf
 from datetime import datetime
+from utils.yf_utils import download_yf
 
 class IndiaMarketIntelligence:
     """
@@ -51,7 +51,7 @@ class IndiaMarketIntelligence:
         results = []
         for name, ticker in sectors.items():
             try:
-                data = yf.download(ticker, period="1d", interval="5m", progress=False)
+                data = download_yf(ticker, period="1d", interval="5m", progress=False)
                 if not data.empty:
                     last_price_series = data['Close'].iloc[-1]
                     open_price_series = data['Open'].iloc[0]

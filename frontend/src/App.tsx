@@ -14,9 +14,8 @@ import PaperTradingPage from './pages/PaperTradingPage';
 import { UnderConstructionPage } from './pages/UnderConstruction';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
-// Remaining Placeholder pages
-const Patterns = () => <UnderConstructionPage title="Pattern Intelligence" />;
-const HyperTuner = () => <UnderConstructionPage title="Hyperparameter Tuner" />;
+import { PatternsPage } from './pages/PatternsPage';
+import { HyperTunerPage } from './pages/HyperTunerPage';
 
 function App() {
     return (
@@ -29,17 +28,17 @@ function App() {
                 <div className="flex flex-1 overflow-hidden">
                     <LeftSidebar />
 
-                    <main className="flex-1 overflow-y-auto relative animate-page-in bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-void via-base to-base">
+                    <main className="flex-1 overflow-y-auto relative bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-void via-base to-base">
                         <ErrorBoundary>
                             <Routes>
                                 <Route path="/" element={<DashboardPage />} />
                                 <Route path="/swing" element={<SwingTradingPage />} />
                                 <Route path="/intraday" element={<IntradayTradingPage />} />
                                 <Route path="/screener" element={<ScreenerPage />} />
-                                <Route path="/patterns" element={<Patterns />} />
+                                <Route path="/patterns" element={<PatternsPage />} />
                                 <Route path="/sentiment" element={<SentimentPage />} />
                                 <Route path="/paper" element={<PaperTradingPage />} />
-                                <Route path="/tuner" element={<HyperTuner />} />
+                                <Route path="/tuner" element={<HyperTunerPage />} />
                             </Routes>
                         </ErrorBoundary>
                     </main>

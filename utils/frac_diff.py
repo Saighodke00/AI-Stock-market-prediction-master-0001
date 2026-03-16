@@ -40,6 +40,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.stattools import adfuller
+from utils.yf_utils import download_yf
+
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -377,13 +379,22 @@ if __name__ == "__main__":
 
     # Try to load real AAPL data; fall back to synthetic if no network
     try:
-        import yfinance as yf
+        from utils.yf_utils import download_yf
         print("  Fetching AAPL close prices from Yahoo Finance...")
-        raw = yf.download("AAPL", period="5y", interval="1d",
+        raw = download_yf("AAPL", use_session=False, period="5y", interval="1d",
                           progress=False, auto_adjust=True)
+
         price_series = raw["Close"].dropna().squeeze()
         price_series.name = "AAPL"
-        print(f"  Loaded {len(price_series)} rows of real AAPL data.\n")
+    except Exception:
+        print("  Network fetch failed; using synthetic data.")
+        price_series = pd.Series(
+            np.cumprod(1 + np.random.normal(0, 0.01, 1260)) * 150,
+            index=pd.date_range("2019-01-01", periods=1260, freq="B"),
+            name="AAPL_SYNTHETIC"
+        )
+        print(f"  Generated {len(price_series)} rows of synthetic data.\n")
+
     except Exception as exc:
         print(f"  yfinance unavailable ({exc}). Using synthetic data.\n")
         np.random.seed(0)

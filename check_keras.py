@@ -1,23 +1,46 @@
-import tensorflow as tf
-import os
+import sys
+try:
+    import tensorflow as tf
+    print(f"TensorFlow version: {tf.__version__}")
+except ImportError:
+    print("TensorFlow not installed")
 
-def check_keras_model(model_path):
-    print(f"Checking {model_path}...")
-    if not os.path.exists(model_path):
-        print(f"Error: {model_path} does not exist!")
-        return
+try:
+    import keras
+    print(f"Keras version: {keras.__version__}")
+    from keras import Model
+    print(f"Model class: {Model}")
+    # Try to find Functional
     try:
-        print("Starting load_model...")
-        model = tf.keras.models.load_model(model_path)
-        print("Model loaded successfully!")
-        print("Inputs:", model.inputs)
-        print("Outputs:", model.outputs)
-        model.summary()
+        from keras.src.models.functional import Functional
+        print(f"Found Functional in keras.src: {Functional}")
+    except:
+        print("Functional not in keras.src")
+    
+    # Check registration
+    import keras
+    print(f"Custom objects before: {list(keras.saving.get_custom_objects().keys())[:10]}")
+    
+    try:
+        from keras.src.models.functional import Functional
+        keras.saving.get_custom_objects()["Functional"] = Functional
+        print("Registered Functional successfully")
     except Exception as e:
-        print(f"Error loading {model_path}: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Registration failed: {e}")
+        
+    print(f"Custom objects after: {list(keras.saving.get_custom_objects().keys())[:10]}")
+    
+    # Check if tf.keras sees it too
+    import tensorflow as tf
+    try:
+        print(f"tf.keras custom objects: {list(tf.keras.utils.get_custom_objects().keys())[:10]}")
+    except:
+        print("tf.keras.utils.get_custom_objects not found")
+except ImportError:
+    print("Keras not installed")
 
-# Check one of the Keras models
-check_keras_model('models/intraday_41b101a7f4/mag_model.keras')
-print("Script finished.")
+try:
+    import tf_keras
+    print(f"tf_keras version: {tf_keras.__version__}")
+except ImportError:
+    print("tf_keras not installed")

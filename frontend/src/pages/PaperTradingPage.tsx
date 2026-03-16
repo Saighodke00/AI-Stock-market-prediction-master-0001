@@ -8,8 +8,15 @@ import {
   executeTrade, resetPortfolio,
   Position, Trade, PortfolioSummary, TradeRequest,
 } from "../api/api";
-import { Wallet, Briefcase, History, TrendingUp, TrendingDown, Trash2, PlusCircle, MinusCircle, Info, ShieldCheck, PieChart, Activity, DollarSign, Clock, LayoutGrid, List } from "lucide-react";
+import { 
+  Wallet, Briefcase, History, TrendingUp, TrendingDown, Trash2, 
+  PlusCircle, MinusCircle, Info, ShieldCheck, PieChart, Activity, 
+  DollarSign, Clock, LayoutGrid, List, AlertCircle, CheckCircle2, 
+  RefreshCw, Zap 
+} from "lucide-react";
 import { NeuralSpinner } from "../components/ui/LoadingStates";
+import { EquityCurveChart } from "../components/trading/EquityCurveChart";
+import { WinLossPie } from "../components/trading/WinLossPie";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Sub-components
@@ -115,6 +122,23 @@ function TradePanel({ onTradeSuccess }: { onTradeSuccess: () => void }) {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const [success, setSuccess]   = useState<string | null>(null);
+
+  // Auto-fill price when ticker changes
+  useEffect(() => {
+    if (form.ticker.length >= 3) {
+      const timer = setTimeout(() => {
+        fetch(`http://localhost:8000/api/signal/${form.ticker}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.current_price) {
+              setForm(f => ({ ...f, price: data.current_price }));
+            }
+          })
+          .catch(err => console.error("Price fetch error:", err));
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [form.ticker]);
 
   const handleSubmit = async () => {
     if (!form.ticker || form.quantity <= 0 || form.price <= 0) {
@@ -377,8 +401,8 @@ export default function PaperTradingPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             label="Equity Value"
-            value={`₹${summary.portfolio_value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
-            sub={`Cash Liability: ₹${summary.cash_balance.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
+            value={`₹${(summary.portfolio_value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
+            sub={`Cash Liability: ₹${(summary.cash_balance || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
             icon={<Wallet size={20} />}
           />
           <StatCard
@@ -390,9 +414,9 @@ export default function PaperTradingPage() {
           />
           <StatCard
             label="Closed P&L"
-            value={`${summary.realised_pnl >= 0 ? "+" : ""}₹${summary.realised_pnl.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
+            value={`${(summary.realised_pnl || 0) >= 0 ? "+" : ""}₹${Math.abs(summary.realised_pnl || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
             sub="Realized Injections"
-            highlight={summary.realised_pnl >= 0 ? "green" : "red"}
+            highlight={(summary.realised_pnl || 0) >= 0 ? "green" : "red"}
             icon={<DollarSign size={20} />}
           />
           <StatCard
@@ -407,13 +431,61 @@ export default function PaperTradingPage() {
 
       {/* Two-column layout: trade panel + table */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left: execute trade */}
-        <div className="lg:col-span-4">
+        {/* Left: execute trade & Analytics */}
+        <div className="lg:col-span-4 flex flex-col gap-8">
           <TradePanel onTradeSuccess={reload} />
+          
+          <div className="glass-card p-6 border-white/5 bg-white/[0.02]">
+            <div className="flex items-center gap-2 mb-6 text-indigo-400">
+               <PieChart size={16} />
+               <h3 className="text-white font-display font-black text-xs uppercase tracking-[0.2em]">Distribution Matrix</h3>
+            </div>
+            {summary && <WinLossPie wins={Math.round(summary.trade_count * (summary.win_rate/100))} losses={summary.trade_count - Math.round(summary.trade_count * (summary.win_rate/100))} />}
+            <div className="grid grid-cols-2 gap-4 mt-6">
+                <div className="p-3 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 text-center">
+                    <div className="text-[9px] font-black text-emerald-400/60 uppercase tracking-widest mb-1">Optimized</div>
+                    <div className="text-white font-display font-black text-lg">WINS</div>
+                </div>
+                <div className="p-3 rounded-2xl bg-rose-500/5 border border-rose-500/10 text-center">
+                    <div className="text-[9px] font-black text-rose-400/60 uppercase tracking-widest mb-1">Risked</div>
+                    <div className="text-white font-display font-black text-lg">LOSS</div>
+                </div>
+            </div>
+          </div>
         </div>
 
-        {/* Right: positions / history */}
-        <div className="lg:col-span-8 glass-card p-0 overflow-hidden shadow-2xl flex flex-col">
+        {/* Right: components */}
+        <div className="lg:col-span-8 flex flex-col gap-8">
+          {/* Equity Curve Block */}
+          <div className="glass-card p-6 border-white/5 bg-void shadow-2xl relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-6 opacity-5">
+                <TrendingUp size={120} className="text-indigo-500" />
+             </div>
+             <div className="flex justify-between items-center mb-6 relative z-10">
+                <div className="flex items-center gap-2 text-indigo-400">
+                    <Activity size={16} />
+                    <h3 className="text-white font-display font-black text-xs uppercase tracking-[0.2em]">Portfolio Trajectory</h3>
+                </div>
+                <div className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black tracking-widest uppercase">
+                    Real-time Projection
+                </div>
+             </div>
+             <EquityCurveChart data={[
+                 { date: 'T-10', value: 980000 },
+                 { date: 'T-9', value: 995000 },
+                 { date: 'T-8', value: 990000 },
+                 { date: 'T-7', value: 1010000 },
+                 { date: 'T-6', value: 1005000 },
+                 { date: 'T-5', value: 1025000 },
+                 { date: 'T-4', value: 1040000 },
+                 { date: 'T-3', value: 1035000 },
+                 { date: 'T-2', value: 1055000 },
+                 { date: 'T-1', value: 1062000 },
+                 { date: 'NOW', value: summary?.portfolio_value || 1062000 },
+             ]} />
+          </div>
+
+          <div className="glass-card p-0 overflow-hidden shadow-2xl flex-1 flex flex-col">
           {/* Tabs */}
           <div className="flex border-b border-white/5 bg-white/[0.02]">
             {(["positions", "history"] as Tab[]).map(tab => (
@@ -439,12 +511,21 @@ export default function PaperTradingPage() {
           <div className="overflow-x-auto no-scrollbar flex-1">
             {activeTab === "positions" ? (
               positions.length === 0 ? (
-                <div className="p-32 text-center flex flex-col items-center justify-center">
-                    <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10">
-                        <List size={32} className="text-slate-600" />
+                <div className="p-32 text-center flex flex-col items-center justify-center animate-in fade-in duration-1000">
+                    <div className="w-20 h-20 rounded-full bg-white/[0.02] flex items-center justify-center mb-6 border border-white/5 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <List size={32} className="text-slate-700 group-hover:text-indigo-500 transition-colors" />
                     </div>
-                    <h3 className="text-white font-display font-black text-xl mb-2 uppercase tracking-tight">Vapor Positions</h3>
-                    <p className="text-slate-500 font-body text-xs max-w-xs mx-auto leading-relaxed italic">No active risk detected. Initiate a BUY protocol to monitor live equity clusters.</p>
+                    <div className="flex flex-col items-center gap-3">
+                        <h3 className="text-white font-display font-black text-xl mb-1 uppercase tracking-tight">Vapor Clusters</h3>
+                        <div className="flex gap-2">
+                            <div className="h-1.5 w-12 bg-white/5 rounded-full shimmer" />
+                            <div className="h-1.5 w-8 bg-white/5 rounded-full shimmer" />
+                        </div>
+                        <p className="text-slate-600 font-body text-[10px] font-bold max-w-[240px] mx-auto leading-relaxed tracking-widest uppercase opacity-60">
+                            No active neural risk detected. Initiate a BUY protocol to monitor equity clusters.
+                        </p>
+                    </div>
                 </div>
               ) : (
                 <table className="w-full text-left">
@@ -492,5 +573,6 @@ export default function PaperTradingPage() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

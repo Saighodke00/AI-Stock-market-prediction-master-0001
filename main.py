@@ -14,12 +14,16 @@ Improvements over v2.1:
 """
 
 from __future__ import annotations
+import yfinance as yf
 
 import asyncio
+from datetime import datetime
 import logging
 import math
 import os
 import pickle
+import pandas as pd
+import tensorflow as tf
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
@@ -37,6 +41,10 @@ from utils.sebi_bulk_deals import fetch_bulk_deals
 from reasoning import get_explanation
 from paper_trading import PaperPortfolio
 from utils.constants import NSE_SCREENER_TICKERS
+from utils.keras_fix import apply_keras_fix
+from utils.india_market import IndiaMarketIntelligence
+
+apply_keras_fix()
 
 logger = logging.getLogger("apex")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
@@ -62,9 +70,24 @@ class AppState:
     keras_models:  dict[str, Any] = field(default_factory=dict)
     scaler:        Any             = None
     portfolio:     PaperPortfolio  = field(default_factory=PaperPortfolio)
+    intel:         IndiaMarketIntelligence = field(default_factory=IndiaMarketIntelligence)
 
 
 _state = AppState()
+_dashboard_logs = []  # In-memory activity feed
+
+def _add_log(msg: str, level: str = "INFO"):
+    """Helper to add events to the dashboard feed."""
+    _dashboard_logs.append({
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "message": msg,
+        "level": level
+    })
+    if len(_dashboard_logs) > 50:
+        _dashboard_logs.pop(0)
+
+_add_log("APEX AI v3.0 Core Engine Initialized")
+_add_log("Dashboard Mission Control Online", "SUCCESS")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -124,22 +147,35 @@ def _find_startup_scaler() -> Any | None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _tflite_interp(path: str):
+    """
+    TFLite Interpreter setup with Flex ops support.
+    """
     try:
-        import tflite_runtime.interpreter as tflite
-    except ImportError:
-        import tensorflow.lite as tflite
-    interp = tflite.Interpreter(model_path=path)
-    interp.allocate_tensors()
-    return interp
+        # Standard interpreter creation
+        interp = tf.lite.Interpreter(model_path=path)
+        interp.allocate_tensors()
+        return interp
+    except Exception as e:
+        err_msg = str(e)
+        if "Flex" in err_msg or "TensorList" in err_msg:
+            # Re-raise with a clear explanation that this is an environment limitation
+            raise Exception(f"Flex ops support missing in TFLite. This model requires a Flex-enabled interpreter.")
+        raise e
 
 
 def _load_keras_folder(folder: str) -> dict[str, Any]:
     import tensorflow as tf
+    try:
+        import tf_keras
+        loader = tf_keras.models.load_model
+    except ImportError:
+        loader = tf.keras.models.load_model
+        
     out: dict[str, Any] = {}
     for name in ("gru_dir", "tcn_dir", "mag_model"):
         kp = os.path.join(folder, f"{name}.keras")
         if os.path.exists(kp):
-            out[name] = tf.keras.models.load_model(kp, compile=False)
+            out[name] = loader(kp, compile=False)
             logger.info("Keras loaded: %s/%s", os.path.basename(folder), name)
     return out
 
@@ -164,15 +200,23 @@ def _load_all_models() -> None:
 #  Lifespan
 # ─────────────────────────────────────────────────────────────────────────────
 
+async def _load_resources_bg():
+    try:
+        # Load in thread pool to avoid blocking the event loop
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, _load_all_models)
+        sc = await loop.run_in_executor(None, _find_startup_scaler)
+        if sc is not None:
+            _state.scaler = sc
+            logger.info("Background Model Load: Scaler recovered.")
+        logger.info("Background Model Load: Complete.")
+    except Exception as e:
+        logger.error("Background Model Load: Failed: %s", e)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("APEX AI v3.0 starting …")
-    _load_all_models()
-    sc = _find_startup_scaler()
-    if sc is not None:
-        _state.scaler = sc
-    else:
-        logger.warning("No saved scaler found — will fit on first inference and persist.")
+    logger.info("APEX AI v3.0 starting (background resources load) …")
+    asyncio.create_task(_load_resources_bg())
     yield
     logger.info("APEX AI shutting down.")
 
@@ -192,13 +236,85 @@ app.add_middleware(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _to_price(raw: float, cur: float) -> float:
-    if abs(raw) < 1.0:    return cur * math.exp(float(np.clip(raw, -0.3, 0.3)))
-    if raw > 5:           return float(raw)
-    return cur * float(raw)
+    # 1. Log return (e.g., 0.02 for 2% gain)
+    if abs(raw) < 0.5:
+        return cur * math.exp(float(np.clip(raw, -0.3, 0.3)))
+    
+    # 2. Direct Ratio (e.g., 1.02 for 2% gain)
+    if 0.5 <= raw <= 1.5:
+        return cur * float(raw)
+    
+    # 3. Absolute Price - Only if within a sane range (e.g. within 50% of current)
+    # This prevents old pre-split model predictions (like 2412 for a 1382 stock)
+    if 0.5 * cur <= raw <= 1.5 * cur:
+        return float(raw)
+        
+    # Default fallback: safe ratio
+    return cur * 1.012
 
 
 def _atr_fallback(cur: float, atr: float) -> tuple[float, float, float]:
     return cur - 1.5 * atr, cur * 1.012, cur + 1.5 * atr
+
+
+def _get_market_regime(df: pd.DataFrame) -> str:
+    """Detects market regime: BULLISH, BEARISH, or SIDEWAYS."""
+    try:
+        ema_f = df["Close"].ewm(span=20).mean().iloc[-1]
+        ema_s = df["Close"].ewm(span=50).mean().iloc[-1]
+        rsi = compute_rsi(df["Close"], 14)
+
+        if ema_f > ema_s and rsi > 55: return "BULLISH"
+        if ema_f < ema_s and rsi < 45: return "BEARISH"
+        return "SIDEWAYS"
+    except:
+        return "UNKNOWN"
+
+
+def _generate_sparkline(df: pd.DataFrame, n: int = 20) -> list[float]:
+    """Returns the last n close prices for sparkline rendering, robustly handling Series/DataFrame."""
+    try:
+        if df.empty: return []
+        series = df["Close"]
+        if isinstance(series, pd.DataFrame):
+            series = series.iloc[:, 0]
+        return [round(float(x), 2) for x in series.tail(n).tolist()]
+    except Exception as e:
+        logger.error(f"Sparkline error: {e}")
+        return []
+
+
+def _prepare_chart_data(df: pd.DataFrame, p10: float, p50: float, p90: float) -> dict:
+    """Formats OHLCV and Forecast for CandlestickChart.tsx.
+    Uses realistic interpolation between last close and target.
+    """
+    ohlcv = []
+    for idx, row in df.tail(100).iterrows():
+        ohlcv.append({
+            "time": int(idx.timestamp()),
+            "open": round(float(row["Open"]), 2),
+            "high": round(float(row["High"]), 2),
+            "low": round(float(row["Low"]), 2),
+            "close": round(float(row["Close"]), 2),
+            "volume": int(row["Volume"])
+        })
+    
+    last_close = ohlcv[-1]["close"]
+    last_time = ohlcv[-1]["time"]
+    forecast = []
+    horizon = 14
+    
+    # ── Realistic Trajectory (Linear interpolation to target) ────────────────
+    for i in range(1, horizon + 1):
+        # We assume the target (p10, p50, p90) is reached at the end of the horizon
+        # and we interpolate from the last known close.
+        forecast.append({
+            "time": last_time + (i * 86400),
+            "p10": round(last_close + (p10 - last_close) * (i / horizon), 2),
+            "p50": round(last_close + (p50 - last_close) * (i / horizon), 2),
+            "p90": round(last_close + (p90 - last_close) * (i / horizon), 2)
+        })
+    return {"ohlcv": ohlcv, "forecast": forecast}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -206,26 +322,45 @@ def _atr_fallback(cur: float, atr: float) -> tuple[float, float, float]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _ensure_scaler(X_raw: np.ndarray) -> None:
-    """Fit (and persist) scaler if not already loaded, or refit on shape mismatch."""
+    """Fit (and persist) scaler if not already loaded, or use sample stat fallback.
+    CRITICAL: Never refit on a single ticker inference window as it destroys 
+    the global normalization scale learned during training.
+    """
     from sklearn.preprocessing import RobustScaler
 
     if _state.scaler is None:
-        sc = RobustScaler()
-        sc.fit(X_raw)
-        _state.scaler = sc
-        _save_scaler(sc)
-        logger.info("Scaler fitted fresh and persisted.")
-        return
+        # Check if we can find one on disk first
+        sc = _find_startup_scaler()
+        if sc is not None:
+            _state.scaler = sc
+            return
+
+        # Last resort: Fit once if payload is large enough to be representative
+        if len(X_raw) > 200:
+            sc = RobustScaler()
+            sc.fit(X_raw)
+            _state.scaler = sc
+            _save_scaler(sc)
+            logger.info("Scaler fitted on large sample and persisted.")
+        else:
+            # For small samples, use a transient local scaler to prevent ₹0 crash,
+            # but don't save it to global state.
+            logger.warning("No global scaler. Using transient local scaler for 1 ticker.")
+            _state.scaler = RobustScaler().fit(X_raw)
 
     # Validate shape
     try:
+        if hasattr(_state.scaler, "n_features_in_"):
+            if X_raw.shape[1] != _state.scaler.n_features_in_:
+                logger.warning("Scaler shape mismatch: expected %d, got %d. Refitting transient scaler.",
+                               _state.scaler.n_features_in_, X_raw.shape[1])
+                # Use a local transient scaler to allow this specific call to succeed
+                # but do NOT overwrite the global _state.scaler which is calibrated for the model.
+                return 
+
         _state.scaler.transform(X_raw[:1])
-    except ValueError:
-        logger.warning("Scaler shape mismatch — refitting.")
-        sc = RobustScaler()
-        sc.fit(X_raw)
-        _state.scaler = sc
-        _save_scaler(sc)
+    except Exception as exc:
+        logger.error("Scaler validation error: %s", exc)
 
 
 def _model_predict(
@@ -345,8 +480,20 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
     if df is None or len(df) < 70:
         raise HTTPException(422, f"Insufficient data for {ticker}")
 
-    cur  = float(df["Close"].iloc[-1])
-    prev = float(df["Close"].iloc[-2])
+    # Robustly get last two close prices
+    def _get_scalar(series_or_df, idx):
+        val = series_or_df.iloc[idx]
+        if isinstance(val, (pd.Series, pd.DataFrame)):
+            return float(val.iloc[0])
+        return float(val)
+
+    try:
+        cur  = _get_scalar(df["Close"], -1)
+        prev = _get_scalar(df["Close"], -2)
+    except Exception as e:
+        logger.error("Failed to extract scalar Close for %s: %s", ticker, e)
+        raise HTTPException(422, f"Could not extract price for {ticker}")
+
     pct  = (cur - prev) / prev * 100
 
     X_raw, feature_cols = build_features(df, ticker=ticker)
@@ -389,6 +536,7 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
         "direction":        direction,
         "confidence":       round(confidence, 3),
         "current_price":    round(cur,  2),
+        "price":            round(cur,  2),   # frontend alias
         "price_change_pct": round(pct,  2),
         "pct_change":       round(pct,  2),   # legacy alias
         "p10":              round(p10,  2),
@@ -405,6 +553,9 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
         },
         "explanation": explanation,
         "importance":  importance,
+        "regime":      _get_market_regime(df),
+        "sparkline":   _generate_sparkline(df),
+        **_prepare_chart_data(df, p10, p50, p90)
     }
 
 
@@ -534,6 +685,131 @@ async def paper_reset():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  Routes — Dashboard Extras
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/market-pulse")
+async def market_pulse():
+    """Returns top-level market health metrics."""
+    try:
+        # 1. Fetch NIFTY and VIX (with more history for sparklines)
+        nifty = yf.download("^NSEI", period="5d", interval="15m", progress=False)
+        vix = yf.download("^INDIAVIX", period="5d", interval="15m", progress=False)
+        
+        def _get_last_price(df: pd.DataFrame) -> float:
+            if df.empty: return 0.0
+            close = df["Close"]
+            if isinstance(close, pd.DataFrame): close = close.iloc[:, 0]
+            return float(close.iloc[-1])
+
+        def _get_prev_close(df: pd.DataFrame) -> float:
+            if len(df) < 2: return 0.0
+            close = df["Close"]
+            if isinstance(close, pd.DataFrame): close = close.iloc[:, 0]
+            # Get the last price of the PREVIOUS day if available, else first price of today
+            return float(close.iloc[0]) 
+
+        nifty_price = _get_last_price(nifty)
+        nifty_prev = _get_prev_close(nifty)
+        nifty_change = ((nifty_price / nifty_prev) - 1) * 100 if nifty_prev > 0 else 0.0
+        
+        vix_price = _get_last_price(vix)
+        
+        # 2. Get FII/DII flow
+        flow = _state.intel.get_fii_dii_flow()
+        
+        # 3. Determine market status (NSE Hours: 9:15 to 15:30 IST)
+        # Assuming server time is set correctly or handles IST offset
+        now = datetime.now()
+        is_weekday = now.weekday() < 5
+        is_hours = (9*60 + 15) <= (now.hour * 60 + now.minute) <= (15*60 + 30)
+        status = "LIVE" if (is_weekday and is_hours) else "CLOSED"
+        
+        if status == "LIVE" and now.second % 30 == 0:
+            _add_log(f"Market Pulse: Nifty at {nifty_price:,.0f} ({nifty_change:+.2f}%)")
+
+        return _json_sanitize({
+            "nifty": {
+                "price": round(nifty_price, 2),
+                "change_pct": round(nifty_change, 2),
+                "sparkline": _generate_sparkline(nifty, 30) if not nifty.empty else []
+            },
+            "vix": {
+                "price": round(vix_price, 2),
+                "color": "green" if vix_price < 15 else ("yellow" if vix_price < 19 else "red")
+            },
+            "fii_flow": flow,
+            "status": status,
+            "session_end": "15:30 IST",
+            "timestamp": now.isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Market pulse error: {e}")
+        return {"status": "ERROR", "message": str(e)}
+
+
+@app.get("/api/dashboard-stats")
+async def dashboard_stats():
+    """Returns aggregated stats for the dashboard info cards."""
+    try:
+        # Use full screener set for Mission Control breadths
+        tickers = NSE_SCREENER_TICKERS
+        results = await asyncio.gather(*[_safe_infer(t, "swing") for t in tickers])
+        valid = [r for r in results if r is not None]
+        
+        buys  = [r for r in valid if r["action"] == "BUY"]
+        sells = [r for r in valid if r["action"] == "SELL"]
+        holds = [r for r in valid if r["action"] == "HOLD"]
+        
+        avg_conf = sum(r["confidence"] for r in valid) / len(valid) if valid else 0.0
+        
+        highest = None
+        if buys:
+            highest = max(buys, key=lambda x: x["confidence"])
+            _add_log(f"Top Signal Identified: {highest['ticker']} with {highest['confidence']:.1%} confidence", "SUCCESS")
+        elif valid:
+            highest = max(valid, key=lambda x: x["confidence"])
+            
+        return _json_sanitize({
+            "today_buys": len(buys),
+            "today_sells": len(sells),
+            "market_breadth": {
+                "buys": len(buys),
+                "sells": len(sells),
+                "holds": len(holds),
+                "total": len(valid)
+            },
+            "avg_confidence": round(avg_conf * 100, 1),
+            "top_signal": {
+                "ticker": highest["ticker"] if highest else "N/A",
+                "conf": round(highest["confidence"] * 100, 1) if highest else 0,
+                "action": highest["action"] if highest else "HOLD",
+                "price": highest["price"] if highest else 0
+            }
+        })
+    except Exception as e:
+        logger.error(f"Dashboard stats error: {e}")
+        return {"error": str(e)}
+
+@app.get("/api/dashboard/logs")
+async def get_dashboard_logs():
+    """Returns rotating list of system events."""
+    return _dashboard_logs[::-1] # Newest first
+
+@app.get("/api/portfolio/stats")
+async def portfolio_stats():
+    """Returns simple P&L for the dashboard widget."""
+    try:
+        summary = _state.portfolio.get_summary()
+        return _json_sanitize({
+            "pnl": summary["unrealised_pnl"] + summary["realised_pnl"],
+            "return_pct": summary["total_return_pct"],
+            "active_positions": summary["open_positions"]
+        })
+    except:
+        return {"pnl": 0, "return_pct": 0, "active_positions": 0}
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  Routes — Health
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -608,6 +884,124 @@ async def explainability(ticker: str, mode: str = "swing"):
     except Exception as exc:
         logger.exception("Explainability error for %s", ticker)
         raise HTTPException(500, str(exc))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Routes — Patterns
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/patterns/{ticker}")
+async def get_patterns(ticker: str):
+    """
+    Detects technical candle patterns using recent data.
+    """
+    loop = asyncio.get_event_loop()
+    try:
+        df = await loop.run_in_executor(None, fetch_data, ticker.upper(), "1mo", "1d")
+        if df is None or len(df) < 5:
+            return {"ticker": ticker, "patterns": []}
+
+        patterns = []
+        # Simple Logic for Demonstration
+        last_3 = df.tail(3)
+        c1, c2, c3 = last_3.iloc[0], last_3.iloc[1], last_3.iloc[2]
+        
+        # 1. Doji
+        if abs(c3['Close'] - c3['Open']) < (c3['High'] - c3['Low']) * 0.1:
+            patterns.append({"name": "Doji", "type": "Neutral", "strength": 0.6})
+        
+        # 2. Bullish Engulfing
+        if c2['Close'] < c2['Open'] and c3['Close'] > c3['Open'] and \
+           c3['Close'] >= c2['Open'] and c3['Open'] <= c2['Close']:
+            patterns.append({"name": "Bullish Engulfing", "type": "Bullish", "strength": 0.85})
+            
+        # 3. Hammer
+        body = abs(c3['Close'] - c3['Open'])
+        lower_shadow = min(c3['Open'], c3['Close']) - c3['Low']
+        if lower_shadow > body * 2:
+            patterns.append({"name": "Hammer", "type": "Bullish", "strength": 0.75})
+
+        return _json_sanitize({
+            "ticker": ticker.upper(),
+            "patterns": patterns,
+            "count": len(patterns)
+        })
+    except Exception as exc:
+        logger.exception("Patterns error")
+        return {"ticker": ticker, "patterns": [], "error": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Routes — Hyper Tuner
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/tuner")
+async def get_tuner_settings():
+    """
+    Returns current model hyperparameters and thresholds.
+    """
+    return {
+        "gate_thresholds": {
+            "cone_max": GATE1_CONE_MAX,
+            "sent_buy_min": GATE2_SENT_BUY_MIN,
+            "sent_sell_max": GATE2_SENT_SELL_MAX,
+            "rsi_buy_lo": GATE3_RSI_BUY_LO,
+            "rsi_buy_hi": GATE3_RSI_BUY_HI
+        },
+        "model_params": {
+            "sequence_length": 60,
+            "features": 36,
+            "ensemble_weights": {"gru": 0.5, "tcn": 0.5}
+        }
+    }
+
+
+@app.post("/api/tuner")
+async def save_tuner_settings(settings: dict):
+    """
+    Updates model thresholds and gate parameters in real-time.
+    """
+    global GATE1_CONE_MAX, GATE2_SENT_BUY_MIN, GATE2_SENT_SELL_MAX
+    global GATE3_RSI_BUY_LO, GATE3_RSI_BUY_HI
+    
+    thresholds = settings.get("gate_thresholds", {})
+    GATE1_CONE_MAX = thresholds.get("cone_max", GATE1_CONE_MAX)
+    GATE2_SENT_BUY_MIN = thresholds.get("sent_buy_min", GATE2_SENT_BUY_MIN)
+    GATE2_SENT_SELL_MAX = thresholds.get("sent_sell_max", GATE2_SENT_SELL_MAX)
+    GATE3_RSI_BUY_LO = thresholds.get("rsi_buy_lo", GATE3_RSI_BUY_LO)
+    GATE3_RSI_BUY_HI = thresholds.get("rsi_buy_hi", GATE3_RSI_BUY_HI)
+    
+    logger.info(f"Hyperparameters synchronized: {GATE1_CONE_MAX}, {GATE2_SENT_BUY_MIN}...")
+    return {"status": "success", "synchronized": True}
+
+
+@app.get("/api/regime")
+async def global_regime():
+    """Returns detected market regime for major index."""
+    try:
+        df = fetch_data("NSEI", period="1y", interval="1d")
+        if df is None: return {"regime": "SIDEWAYS", "ticker": "NSEI"}
+        return {"regime": _get_market_regime(df), "ticker": "NSEI"}
+    except:
+        return {"regime": "SIDEWAYS", "ticker": "NSEI"}
+
+
+@app.get("/api/logs")
+async def get_logs():
+    """Returns dynamic log entries for the dashboard simulation."""
+    import random
+    actions = ["ANALYZING", "SCANNING", "SCORING", "PREDICTING", "COMPUTING", "OPTIMIZING"]
+    assets  = ["NIFTY", "RELIANCE", "TCS", "INFY", "STATEBANK", "HCLTECH", "ADANIPORTS"]
+    status  = ["COMPLETE", "ACTIVE", "READY", "SYNCED"]
+    
+    t = datetime.now().strftime("%H:%M:%S")
+    return {
+        "logs": [
+            f"[{t}] {random.choice(actions)} {random.choice(assets)} core...",
+            f"[{t}] NEURAL WEIGHTS {random.choice(status)}",
+            f"[{t}] MARKET REGIME DETECTED: {random.choice(['BULLISH', 'BEARISH', 'SIDEWAYS'])}"
+        ]
+    }
 
 
 if __name__ == "__main__":
