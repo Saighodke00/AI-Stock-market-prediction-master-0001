@@ -28,10 +28,10 @@ const mockMarketPulse = [
 
 export const LeftSidebar: React.FC = () => {
     return (
-        <div className="w-[240px] bg-void border-r border-white/5 shrink-0 hidden lg:flex flex-col h-full z-40">
+        <div className="w-[210px] bg-void border-r border-white/5 shrink-0 hidden lg:flex flex-col h-full z-40">
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto pt-6 pb-4 px-3">
+            <nav className="flex-1 overflow-y-auto pt-6 pb-4 px-3 custom-scrollbar">
                 <div className="mb-4">
                     <h3 className="text-[10px] font-bold text-slate-600 tracking-[0.1em] px-4 mb-2 uppercase font-body">Navigation</h3>
                     <ul className="space-y-1">
@@ -78,26 +78,6 @@ export const LeftSidebar: React.FC = () => {
                     </button>
                 </div>
             </nav>
-
-            {/* Market Pulse (Fixed Bottom) */}
-            <div className="p-5 border-t border-white/5 bg-void/50 backdrop-blur-sm">
-                <div className="space-y-3">
-                    {mockMarketPulse.map((item) => {
-                        const isPositive = item.change >= 0;
-                        const changeColor = isPositive ? 'text-emerald-400' : 'text-rose-400';
-                        const ArrowOpts = isPositive ? '▲' : '▼';
-                        return (
-                            <div key={item.symbol} className="flex justify-between items-center text-[11px] font-body">
-                                <span className="text-slate-500 font-medium">{item.symbol}</span>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-white font-mono font-bold opacity-80">{item.value}</span>
-                                    <span className={`${changeColor} font-bold min-w-[45px] text-right`}>{ArrowOpts}{item.change > 0 ? '+' : ''}{item.change}%</span>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
         </div>
     );
 };

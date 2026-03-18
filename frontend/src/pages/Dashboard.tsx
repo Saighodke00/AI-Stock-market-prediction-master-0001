@@ -20,8 +20,8 @@ export const DashboardPage: React.FC = () => {
         const fetchData = async () => {
             try {
                 const [statsRes, signalsRes] = await Promise.all([
-                    fetch('http://localhost:8000/api/dashboard-stats'),
-                    fetch('http://localhost:8000/api/screener')
+                    fetch('/api/dashboard-stats'),
+                    fetch('/api/screener')
                 ]);
                 
                 const statsData = await statsRes.json();
@@ -48,19 +48,19 @@ export const DashboardPage: React.FC = () => {
         .slice(0, 3);
 
     return (
-        <div className="flex flex-col h-full overflow-y-auto pb-12 animate-page-in gap-8 bg-void scrollbar-hide">
+        <div className="flex flex-col h-full overflow-y-auto pb-12 animate-page-in gap-10 bg-void scrollbar-hide">
             {/* 1. Live Market Pulse Bar */}
             <MarketPulseBar />
 
-            <div className="px-6 flex flex-col gap-8">
+            <div className="px-10 flex flex-col gap-10">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
                     <div className="relative group">
-                        <div className={`absolute -inset-4 ${bgClass} rounded-full blur-[100px] opacity-10 group-hover:opacity-20 transition-opacity duration-1000`} />
-                        <h1 className={`font-display font-black ${colorClass} text-6xl tracking-tighter ${glowClass} inline-block uppercase relative z-10`}>
+                        <div className={`absolute -inset-12 ${bgClass} rounded-full blur-[140px] opacity-20 group-hover:opacity-30 transition-opacity duration-1000`} />
+                        <h1 className={`font-display font-black ${colorClass} text-3xl md:text-4xl tracking-tighter ${glowClass} inline-block uppercase relative z-10`}>
                             Mission Control
                         </h1>
-                        <p className="font-data text-[10px] text-secondary tracking-[0.6em] mt-3 uppercase opacity-50">
+                        <p className="font-data text-[9px] text-slate-400 tracking-[0.4em] mt-2 uppercase font-bold relative z-10">
                             // Unified Neural Strategic Command Terminal
                         </p>
                     </div>
@@ -98,8 +98,15 @@ export const DashboardPage: React.FC = () => {
                                     onClick={() => nav(`/swing?ticker=${topSignal.ticker}`)}
                                 />
                              ) : (
-                                <div className="h-48 bg-surface/20 animate-pulse rounded-3xl border border-white/5 flex items-center justify-center font-data text-xs text-secondary uppercase tracking-widest">
-                                    Analyzing Market Intelligence...
+                                <div className="h-48 glass rounded-3xl border border-white/10 flex flex-col items-center justify-center gap-4 relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer" />
+                                    <Zap size={24} className="text-slate-600 animate-pulse" />
+                                    <div className="flex flex-col items-center gap-2">
+                                        <span className="font-data text-[10px] text-slate-500 uppercase tracking-[0.5em] animate-pulse">Neural Genesis in Progress</span>
+                                        <div className="h-1 w-32 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-cyan/40 animate-conf-fill" style={{ width: '45%' }} />
+                                        </div>
+                                    </div>
                                 </div>
                              )}
                         </div>

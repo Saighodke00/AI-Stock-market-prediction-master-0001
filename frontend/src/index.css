@@ -45,30 +45,43 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Custom Scrollbar Styling - Premium Dark Theme */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  /* Hide global browser scrollbar but keep functionality */
+  html::-webkit-scrollbar {
+    display: none;
+  }
+  html {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  ::-webkit-scrollbar-track {
-    background: var(--bg-void);
+  /* Custom Modern Scrollbar for containers */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
   }
 
-  ::-webkit-scrollbar-thumb {
-    background: var(--bg-overlay);
-    border-radius: 10px;
-    transition: background 0.2s ease;
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    border: 1px solid transparent;
+    background-clip: content-box;
   }
 
-  /* Firefox Support */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: var(--bg-overlay) var(--bg-void);
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+    background-clip: content-box;
+  }
+
+  /* Utilities */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
