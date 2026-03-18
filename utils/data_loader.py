@@ -6,6 +6,7 @@ import numpy as np
 # Phase-2 pipeline: multi-modal fetch + static metadata + validation
 from utils.data_pipeline import fetch_multi_modal, add_static_metadata, validate_data
 from utils.constants import NSE_SCREENER_TICKERS
+from utils.yf_utils import download_yf
 
 def normalize_ticker(ticker: str) -> str:
     """Normalize ticker symbols for yfinance."""
@@ -42,7 +43,7 @@ def fetch_data(ticker: str, period: str = "2y", interval: str = "1d") -> pd.Data
     try:
         # ── Intraday fast-path (no macro / metadata available sub-daily) ──────
         if interval != "1d":
-            data = yf.download(
+            data = download_yf(
                 ticker, period=period, interval=interval,
                 progress=False, group_by='column'
             )

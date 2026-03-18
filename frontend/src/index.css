@@ -33,7 +33,7 @@
 
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
-    --text-muted: #475569;
+    --text-muted: #64748b;
   }
 
   body {
@@ -44,24 +44,81 @@
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
   }
+
+  /* Custom Scrollbar Styling - Premium Dark Theme */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-void);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--bg-overlay);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
+
+  /* Firefox Support */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-overlay) var(--bg-void);
+  }
 }
 
 @layer components {
   .glass {
-    @apply bg-surface/40 backdrop-blur-md border border-white/[0.06] shadow-glass shadow-glass-inset;
+    background-color: rgba(10, 17, 31, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
   }
   
   .glass-card {
-    @apply glass rounded-2xl p-5 hover:border-white/[0.12] transition-colors duration-300;
+    background-color: rgba(10, 17, 31, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    transition: all 0.3s ease;
+  }
+
+  .glass-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
   }
 
   .nav-item {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl hover:text-white hover:bg-white/[0.04] transition-all;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
     color: var(--text-secondary);
   }
 
+  .nav-item:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
   .nav-item-active {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-white bg-indigo-500/10 border border-indigo-500/20 shadow-lg shadow-indigo-500/10;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+    border-radius: 0.75rem;
+    color: white;
+    background-color: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.1);
   }
 }
 
