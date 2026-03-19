@@ -145,7 +145,7 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
         "emoji": "🟡", "article_count": 0, "articles": [], "cached": False,
     }
     try:
-        stock = get_ticker(ticker, use_session=False)
+        stock = get_ticker(ticker, use_session=True)
         news_items = stock.news
     except Exception as e:
         logger.warning("Error fetching news for %s: %s", ticker, e)

@@ -70,7 +70,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             const fetchData = async () => {
                 setIsFetching(true);
                 try {
-                    const response = await fetch(`http://localhost:8000/api/signal/${ticker}`);
+                    const response = await fetch(`/api/signal/${ticker}`);
                     const data = await response.json();
                     
                     // Transformation logic to match OHLCVPoint and ForecastPoint

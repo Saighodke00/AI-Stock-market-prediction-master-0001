@@ -7,7 +7,7 @@ export const PortfolioSnapshot: React.FC = () => {
 
     useEffect(() => {
         const fetchPortfolio = () => {
-            fetch('http://localhost:8000/api/portfolio/stats')
+            fetch('/api/portfolio/stats')
                 .then(res => res.json())
                 .then(setStats)
                 .catch(err => console.error("Portfolio fetch error:", err));

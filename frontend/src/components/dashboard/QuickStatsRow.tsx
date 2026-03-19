@@ -7,7 +7,7 @@ export const QuickStatsRow: React.FC = () => {
 
     useEffect(() => {
         const fetchStats = () => {
-            fetch('http://localhost:8000/api/dashboard-stats')
+            fetch('/api/dashboard-stats')
                 .then(res => res.json())
                 .then(setStats)
                 .catch(err => console.error("Stats fetch error:", err));

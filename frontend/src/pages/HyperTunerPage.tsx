@@ -7,7 +7,7 @@ export const HyperTunerPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('http://localhost:8000/api/tuner')
+        fetch('/api/tuner')
             .then(res => res.json())
             .then(data => {
                 setSettings(data);
@@ -22,7 +22,7 @@ export const HyperTunerPage: React.FC = () => {
     const handleSave = async () => {
         setLoading(true);
         try {
-            await fetch('http://localhost:8000/api/tuner', {
+            await fetch('/api/tuner', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings)

@@ -16,7 +16,7 @@ export const PatternsPage: React.FC = () => {
     const fetchPatterns = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:8000/api/patterns/${ticker}`);
+            const res = await fetch(`/api/patterns/${ticker}`);
             const json = await res.json();
             setData(json);
         } catch (err) {

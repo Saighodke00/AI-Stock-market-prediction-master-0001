@@ -63,7 +63,7 @@ export const SwingTradingPage: React.FC = () => {
     const metrics = backtest ? [
         { label: 'Win Rate', value: backtest.win_rate ?? 0, format: 'percent' as const },
         { label: 'Profit Factor', value: backtest.profit_factor ?? 0, format: 'decimal' as const },
-        { label: 'Max Drawdown', value: -((backtest.max_drawdown ?? 0) * 100), format: 'percent' as const, inverseColors: true },
+        { label: 'Max Drawdown', value: (backtest.max_drawdown ?? 0) * 100, format: 'percent' as const, inverseColors: true },
         { label: 'Sharpe Ratio', value: backtest.sharpe_ratio ?? 0, format: 'decimal' as const },
         { label: 'Win Rate (IS)', value: 54, format: 'percent' as const },
     ] : [];
@@ -81,7 +81,7 @@ export const SwingTradingPage: React.FC = () => {
             <div className="fixed inset-0 pointer-events-none opacity-[0.03] grain-noise z-50" />
 
             {/* Top Controls */}
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8 px-1">
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-4 px-1">
                 <div className="flex flex-wrap items-center gap-6">
                     <div className="relative group">
                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-indigo-400 transition-colors">
@@ -150,9 +150,9 @@ export const SwingTradingPage: React.FC = () => {
                 </div>
             ) : (
                 <>
-                    <div className="flex flex-col xl:flex-row gap-8 items-start">
+                    <div className="flex flex-col xl:flex-row gap-6 items-start">
                         {/* Main Pillar */}
-                        <div className="flex-1 flex flex-col gap-8 w-full">
+                        <div className="flex-1 flex flex-col gap-6 w-full">
                             <SignalCard data={signal} isLoading={false} timeframe={`${tf} SWING`} />
                             <CandlestickChart ohlcv={signal.ohlcv ?? []} forecast={signal.forecast ?? []} action={signal.action} />
                         </div>
@@ -207,7 +207,7 @@ export const SwingTradingPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="mt-8">
+                    <div className="mt-4">
                         <PositionSizer data={signal} />
                     </div>
                 </>

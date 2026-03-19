@@ -12,7 +12,7 @@ export const LiveSystemLogs: React.FC = () => {
 
     useEffect(() => {
         const fetchLogs = () => {
-            fetch('http://localhost:8000/api/dashboard/logs')
+            fetch('/api/dashboard/logs')
                 .then(res => res.json())
                 .then(data => {
                     if (Array.isArray(data)) {

@@ -127,7 +127,7 @@ function TradePanel({ onTradeSuccess }: { onTradeSuccess: () => void }) {
   useEffect(() => {
     if (form.ticker.length >= 3) {
       const timer = setTimeout(() => {
-        fetch(`http://localhost:8000/api/signal/${form.ticker}`)
+        fetch(`/api/signal/${form.ticker}`)
           .then(res => res.json())
           .then(data => {
             if (data.current_price) {

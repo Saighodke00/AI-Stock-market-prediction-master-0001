@@ -100,7 +100,7 @@ def fetch_multi_modal(ticker: str, period: str = "2y") -> pd.DataFrame:
     try:
         raw = download_yf(
             ticker,
-            use_session=False,
+            use_session=True,
             period=period,
             interval="1d",
             progress=False,
@@ -141,7 +141,7 @@ def fetch_multi_modal(ticker: str, period: str = "2y") -> pd.DataFrame:
         yticker, col = args
         logger.info("Fetching macro index %s -> '%s'...", yticker, col)
         try:
-            macro_raw = download_yf(yticker, use_session=False, period=period, interval="1d", progress=False, auto_adjust=True, group_by="column")
+            macro_raw = download_yf(yticker, use_session=True, period=period, interval="1d", progress=False, auto_adjust=True, group_by="column")
             if macro_raw is None or macro_raw.empty:
                 logger.warning("Empty data for macro index %s - column '%s' will be NaN.", yticker, col)
                 return col, None
@@ -227,8 +227,12 @@ def add_static_metadata(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
     logger.info("Fetching static metadata for %s...", ticker)
     info: dict[str, Any] = {}
     try:
-        ticker_obj = get_ticker(ticker, use_session=False)
+        ticker_obj = get_ticker(ticker, use_session=True)
+        # Use a timeout if possible, or just catch failure
         info = ticker_obj.info or {}
+    except AttributeError:
+        info = {}
+        logger.info("Ticker object missing .info for %s", ticker)
     except Exception as exc:
         logger.warning(
             "Could not retrieve yfinance info for '%s' (%s). "

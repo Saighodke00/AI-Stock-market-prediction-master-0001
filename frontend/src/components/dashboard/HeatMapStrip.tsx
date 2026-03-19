@@ -6,7 +6,7 @@ export const HeatMapStrip: React.FC = () => {
     const nav = useNavigate();
 
     useEffect(() => {
-        fetch('http://localhost:8000/api/screener')
+        fetch('/api/screener')
             .then(res => res.json())
             .then(data => {
                 if (data.results) {
@@ -21,10 +21,10 @@ export const HeatMapStrip: React.FC = () => {
     return (
         <div className="flex flex-col gap-3 px-6 select-none mt-2">
             <div className="flex justify-between items-end">
-                <h2 className="font-data text-[9px] text-secondary tracking-[0.3em] uppercase opacity-70">
+                <h2 className="font-data text-[9px] text-slate-400 tracking-[0.3em] uppercase font-bold">
                     // Sector Liquidity Heatmap
                 </h2>
-                <span className="font-data text-[8px] text-muted uppercase">20 Global Tickers Active</span>
+                <span className="font-data text-[8px] text-slate-500 uppercase font-bold">20 Global Tickers Active</span>
             </div>
             
             <div className="flex gap-1.5 h-12 w-full">

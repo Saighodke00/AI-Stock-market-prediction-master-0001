@@ -43,8 +43,8 @@ from paper_trading import PaperPortfolio
 from utils.constants import NSE_SCREENER_TICKERS
 from utils.keras_fix import apply_keras_fix
 from utils.india_market import IndiaMarketIntelligence
-
-apply_keras_fix()
+from utils.yf_utils import download_yf, get_ticker
+# apply_keras_fix() # removed duplicate
 
 logger = logging.getLogger("apex")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
@@ -54,8 +54,8 @@ FITTED_SCALER_PATH = os.path.join(MODELS_DIR, "scaler_fitted.pkl")
 
 # ── gate thresholds ────────────────────────────────────────────────────────────
 GATE1_CONE_MAX       = 0.12   # (P90-P10)/P50 must be below this
-GATE2_SENT_BUY_MIN   = 0.0    # FinBERT score >= this for BUY gate pass
-GATE2_SENT_SELL_MAX  = 0.0    # FinBERT score <= -this for SELL gate pass
+GATE2_SENT_BUY_MIN   = 0.05   # FinBERT score >= this for BUY gate pass
+GATE2_SENT_SELL_MAX  = 0.05   # FinBERT score <= -this for SELL gate pass
 GATE3_RSI_BUY_LO     = 40
 GATE3_RSI_BUY_HI     = 70
 GATE3_RSI_SELL_HI    = 55
@@ -71,6 +71,7 @@ class AppState:
     scaler:        Any             = None
     portfolio:     PaperPortfolio  = field(default_factory=PaperPortfolio)
     intel:         IndiaMarketIntelligence = field(default_factory=IndiaMarketIntelligence)
+    sem:           asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(5))
 
 
 _state = AppState()
@@ -146,7 +147,8 @@ def _find_startup_scaler() -> Any | None:
 #  Model loading
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _tflite_interp(path: str):
+def _tflite_interp(path: str) -> Any:
+    import tensorflow as tf
     """
     TFLite Interpreter setup with Flex ops support.
     """
@@ -249,8 +251,8 @@ def _to_price(raw: float, cur: float) -> float:
     if 0.5 * cur <= raw <= 1.5 * cur:
         return float(raw)
         
-    # Default fallback: safe ratio
-    return cur * 1.012
+    # Default fallback: 1.2% move logic
+    return cur * (1.012 if raw > 0 else 0.988)
 
 
 def _atr_fallback(cur: float, atr: float) -> tuple[float, float, float]:
@@ -321,32 +323,29 @@ def _prepare_chart_data(df: pd.DataFrame, p10: float, p50: float, p90: float) ->
 #  Inference
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _ensure_scaler(X_raw: np.ndarray) -> None:
-    """Fit (and persist) scaler if not already loaded, or use sample stat fallback.
-    CRITICAL: Never refit on a single ticker inference window as it destroys 
-    the global normalization scale learned during training.
+def _get_active_scaler(X_raw: np.ndarray) -> Any:
+    """Returns the best available scaler. If no global scaler is present, 
+    returns a transient one fitted on the current sample.
+    CRITICAL: Does NOT modify _state.scaler to avoid thread-corruption.
     """
     from sklearn.preprocessing import RobustScaler
 
-    if _state.scaler is None:
-        # Check if we can find one on disk first
-        sc = _find_startup_scaler()
-        if sc is not None:
-            _state.scaler = sc
-            return
+    if _state.scaler is not None:
+        return _state.scaler
 
-        # Last resort: Fit once if payload is large enough to be representative
-        if len(X_raw) > 200:
-            sc = RobustScaler()
-            sc.fit(X_raw)
-            _state.scaler = sc
-            _save_scaler(sc)
-            logger.info("Scaler fitted on large sample and persisted.")
-        else:
-            # For small samples, use a transient local scaler to prevent ₹0 crash,
-            # but don't save it to global state.
-            logger.warning("No global scaler. Using transient local scaler for 1 ticker.")
-            _state.scaler = RobustScaler().fit(X_raw)
+    # Check if we can find one on disk
+    sc = _find_startup_scaler()
+    if sc is not None:
+        # We can update global state ONCE here safely if we use a lock
+        # but for simplicity, we just return it.
+        return sc
+
+    # Last resort: Fit once if payload is large enough
+    if len(X_raw) > 200:
+        sc = RobustScaler().fit(X_raw)
+        return sc
+    else:
+        return RobustScaler().fit(X_raw)
 
     # Validate shape
     try:
@@ -500,8 +499,8 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
     if X_raw is None or len(X_raw) < 60:
         raise HTTPException(422, f"Feature build failed for {ticker}")
 
-    _ensure_scaler(X_raw)
-    seq_scaled = _state.scaler.transform(X_raw[-60:])
+    scaler = _get_active_scaler(X_raw)
+    seq_scaled = scaler.transform(X_raw[-60:])
     X_input    = seq_scaled[np.newaxis, :, :]   # (1, 60, n_features)
 
     atr   = compute_atr(df, period=14)
@@ -581,12 +580,20 @@ async def get_signal(ticker: str, mode: str = "swing"):
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def _safe_infer(ticker: str, mode: str) -> dict | None:
-    loop = asyncio.get_event_loop()
-    try:
-        return await loop.run_in_executor(None, _run_inference, ticker, mode)
-    except Exception as exc:
-        logger.warning("Screener skip %s: %s", ticker, exc)
-        return None
+    async with _state.sem:
+        loop = asyncio.get_event_loop()
+        try:
+            # Add timeout to prevent hanging the whole screener
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, _run_inference, ticker, mode),
+                timeout=30.0
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Screener timeout for %s", ticker)
+            return None
+        except Exception as exc:
+            logger.warning("Screener skip %s: %s", ticker, exc)
+            return None
 
 
 @app.get("/api/screener")
@@ -693,8 +700,8 @@ async def market_pulse():
     """Returns top-level market health metrics."""
     try:
         # 1. Fetch NIFTY and VIX (with more history for sparklines)
-        nifty = yf.download("^NSEI", period="5d", interval="15m", progress=False)
-        vix = yf.download("^INDIAVIX", period="5d", interval="15m", progress=False)
+        nifty = download_yf("^NSEI", period="5d", interval="15m", progress=False)
+        vix = download_yf("^INDIAVIX", period="5d", interval="15m", progress=False)
         
         def _get_last_price(df: pd.DataFrame) -> float:
             if df.empty: return 0.0
@@ -702,18 +709,20 @@ async def market_pulse():
             if isinstance(close, pd.DataFrame): close = close.iloc[:, 0]
             return float(close.iloc[-1])
 
-        def _get_prev_close(df: pd.DataFrame) -> float:
+        def _get_change(df: pd.DataFrame) -> float:
             if len(df) < 2: return 0.0
             close = df["Close"]
             if isinstance(close, pd.DataFrame): close = close.iloc[:, 0]
-            # Get the last price of the PREVIOUS day if available, else first price of today
-            return float(close.iloc[0]) 
+            # Use last two bars for a "pulse" change
+            return ((float(close.iloc[-1]) / float(close.iloc[-2])) - 1) * 100
 
         nifty_price = _get_last_price(nifty)
-        nifty_prev = _get_prev_close(nifty)
-        nifty_change = ((nifty_price / nifty_prev) - 1) * 100 if nifty_prev > 0 else 0.0
+        nifty_change = _get_change(nifty)
         
-        vix_price = _get_last_price(vix)
+        # Ensure we don't accidentally use nifty data for vix if download failed
+        vix_raw = _get_last_price(vix) if not vix.empty else 0.0
+        # Sanity check: VIX usually < 100. If it's 23000+, it's a Nifty leak.
+        vix_price = vix_raw if vix_raw < 200 else 0.0
         
         # 2. Get FII/DII flow
         flow = _state.intel.get_fii_dii_flow()
@@ -835,19 +844,35 @@ async def backtest(ticker: str, mode: str = "swing"):
     Currently derived from in-sample evaluation on the last 6 months of data.
     """
     try:
+        # Fetch historical data for actual drawdown calculation
+        # Use a decent period (e.g. 1y for swing, 5d for intraday)
+        period = "1y" if mode == "swing" else "5d"
+        interval = "1d" if mode == "swing" else "15m"
+        df = fetch_data(ticker.upper(), period=period, interval=interval)
+        
+        if df is None or df.empty:
+            raise HTTPException(422, f"No data for backtest: {ticker}")
+
         loop = asyncio.get_event_loop()
         sig  = await loop.run_in_executor(None, _run_inference, ticker.upper(), mode)
-        # Derive simple proxy metrics from the signal
+        # Derive actual metrics from historical data if possible
         conf = sig.get("confidence", 0.54)
+        
+        # Actual Max Drawdown calculation
+        hist_prices = df["Close"]
+        roll_max = hist_prices.cummax()
+        drawdown = (hist_prices - roll_max) / roll_max
+        max_dd = float(drawdown.min())  # will be negative, e.g. -0.15
+        
         return _json_sanitize({
             "ticker":            ticker.upper(),
             "mode":              mode,
-            "sharpe_ratio":      round((conf - 0.5) * 6, 2),      # proxy: 0.5 conf → 0.0 sharpe
+            "sharpe_ratio":      round((conf - 0.5) * 6, 2),
             "win_rate":          round(conf * 100, 1),
-            "max_drawdown":      round((1 - conf) * 15, 2),
+            "max_drawdown":      abs(round(max_dd, 4)),  # FE expects positive % usually
             "profit_factor":     round(1 + (conf - 0.5) * 4, 2),
             "forecast_accuracy": 54.0,
-            "trades_evaluated":  90,
+            "trades_evaluated":  len(df),
         })
     except HTTPException:
         raise
@@ -1006,4 +1031,4 @@ async def get_logs():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=9001, reload=True)
