@@ -63,7 +63,7 @@ echo ------------------------------------------------
 :: 2.1 Backend (FastAPI + Uvicorn)
 echo [*] Starting %CYA%FastAPI Backend%RST% on port 8000...
 echo [INFO] Redirecting logs to separate window: "Apex AI - Backend"
-start "Apex AI - Backend" cmd /k "call venv\Scripts\activate.bat && echo [BACKEND] Starting Uvicorn Engine... && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+start "Apex AI - Backend" cmd /k "call venv\Scripts\activate.bat && echo [BACKEND] Starting Uvicorn Engine... && uvicorn main:app --host 0.0.0.0 --port 9001 --reload"
 
 :: 2.2 Frontend (React + Vite)
 echo [*] Starting %CYA%React UI%RST% on port 3000...

@@ -6,7 +6,7 @@ export const MarketRegimeBanner: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('http://localhost:8000/api/regime')
+        fetch('/api/regime')
             .then(res => res.json())
             .then(data => {
                 setRegime(data.regime);

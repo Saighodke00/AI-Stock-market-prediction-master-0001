@@ -12,8 +12,20 @@ const BASE = (import.meta as any).env?.VITE_API_URL ?? ""; // Use proxy in dev, 
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, opts);
   if (!res.ok) {
-    const detail = await res.text().catch(() => res.statusText);
-    throw new Error(`API ${res.status}: ${detail}`);
+    let errorMsg = `API ${res.status}: ${res.statusText}`;
+    try {
+      const data = await res.json();
+      if (data && data.detail) {
+        errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+      } else if (data && data.message) {
+        errorMsg = data.message;
+      }
+    } catch (e) {
+      // Fallback to text if not JSON
+      const text = await res.text().catch(() => "");
+      if (text) errorMsg = text.length > 100 ? text.substring(0, 100) + "..." : text;
+    }
+    throw new Error(errorMsg);
   }
   return res.json() as Promise<T>;
 }

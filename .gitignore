@@ -30,6 +30,7 @@ plots/
 *.db
 *.sqlite
 *.sqlite3
+*.log
 
 # ── Debug / Temp / Test output files ─────────────────────────────────────────
 debug_*.py

@@ -25,12 +25,26 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
     const currentPrice = data.current_price;
     const p50 = data.p50;
 
-    // Calculate ATR approx or fallback to distance 
-    // Normally ATR is passed from API, here we derive it from p10 distance safely
-    const stopLossDistance = Math.abs(currentPrice - data.p10);
-    const stopLossPrice = data.action === 'BUY'
-        ? Math.max(0, currentPrice - stopLossDistance)
-        : currentPrice + stopLossDistance;
+    // Stop Loss calculation (Safety Floor)
+    // p10 is the 10th percentile forecast, which serves as a natural stop/floor.
+    // We ensure it's in the correct direction relative to currentPrice.
+    const atr = data.atr || (currentPrice * 0.015); 
+    const isBuy = data.action === 'BUY';
+    
+    let stopLossPrice = data.p10;
+    
+    // Safety check: SL must be below entry for BUY, above for SELL
+    if (isBuy) {
+        if (!stopLossPrice || stopLossPrice >= currentPrice) {
+            stopLossPrice = currentPrice - (2 * atr);
+        }
+    } else if (data.action === 'SELL') {
+        if (!stopLossPrice || stopLossPrice <= currentPrice) {
+            stopLossPrice = currentPrice + (2 * atr);
+        }
+    }
+
+    const stopLossDistance = Math.abs(currentPrice - stopLossPrice);
 
     const riskAmount = portfolioValue * (riskPct / 100);
 

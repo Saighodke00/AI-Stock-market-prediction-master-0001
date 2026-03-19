@@ -11,7 +11,7 @@ export const useAccentColor = () => {
 
     useEffect(() => {
         const fetchRegime = () => {
-            fetch('http://localhost:8000/api/regime')
+            fetch('/api/regime')
                 .then(res => res.json())
                 .then(data => {
                     setRegime(data.regime);
