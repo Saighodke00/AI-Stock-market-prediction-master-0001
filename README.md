@@ -1,46 +1,74 @@
-# AI-Based Stock Price Prediction System
+# APEX AI: Advanced Stock Market Intelligence v3.0
 
-A professional implementation of an LSTM-based stock prediction dashboard.
+![APEX AI Hero](assets/hero.png)
 
-## Features
-- **Real-time Data**: Fetches live data using `yfinance`.
-- **Advanced AI**: Uses LSTM (Long Short-Term Memory) neural networks.
-- **Technical Analysis**: RSI, SMA, and MACD indicators.
-- **Decision Engine**: Automated BUY/SELL/HOLD signals based on strict logic.
-- **Backtesting**: Verify model performance on historical data.
-- **Professional UI**: Dark-mode, glassmorphism design built with Streamlit.
+**APEX AI** is a professional-grade stock market analysis and prediction system. It combines deep learning (LSTM/TCN), real-time data orchestration, and a 3-gate confluence engine to deliver high-conviction trading signals.
 
-## Installation
+## 🚀 Key Features
 
-1. Create a virtual environment (optional but recommended):
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+- **3-Gate Confluence Engine**: Signals only pass if they clear three distinct hurdles:
+  - **Gate 1 (Volatility)**: Predictive "cone" width must be within stable bounds.
+  - **Gate 2 (Sentiment)**: Real-time FinBERT analysis of latest news must align with the signal.
+  - **Gate 3 (Technical)**: RSI and momentum indicators must confirm the entry/exit.
+- **Async High-Performance Screener**: Concurrently analyzes the entire NSE watch-list in seconds using `asyncio`.
+- **Mission Control Dashboard**: A premium, real-time interface featuring:
+  - Live Market Pulse (Nifty 50, VIX, FII/DII Flows).
+  - Neural Forecast Charts with P10/P50/P90 confidence intervals.
+  - Interactive Sparklines and Sentiment Gauges.
+- **Paper Trading Simulator**: Realistic portfolio management with historical performance tracking.
+- **SEBI Bulk Deal Integration**: Track institutional footprints directly from NSE data.
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## 🛠️ Tech Stack
 
-## Usage
+### Backend
+- **Core**: Python 3.10+ & FastAPI
+- **AI/ML**: TensorFlow 2.15, TFLite (with Flex Ops), Scikit-Learn
+- **Data**: yfinance (Hardened Session), Pandas, NumPy
+- **NLP**: Transformers (FinBERT) for sentiment analysis
 
-Run the dashboard:
+### Frontend
+- **Framework**: React 18 (Vite) + TypeScript
+- **Styling**: Tailwind CSS (Glassmorphism UI)
+- **Charts**: Lightweight Charts (TradingView), Recharts
+- **State Management**: Zustand
+- **Icons**: Lucide React
+
+## 📦 Installation
+
+### Prerequisites
+- Node.js 18+
+- Python 3.10+
+
+### 1. Setup Backend
 ```bash
-streamlit run app.py
+git clone https://github.com/Saighodke00/AI-Stock-market-prediction-master-0001.git
+cd AI-Stock-market-prediction-master-0001
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
 ```
 
-## System Architecture
-- `app.py`: Main application interface.
-- `utils/data_loader.py`: Data fetching and normalization.
-- `utils/indicators.py`: Technical indicator calculations.
-- `utils/model.py`: TensorFlow/Keras LSTM model definition.
-- `utils/backtest.py`: Backtesting engine.
+### 2. Setup Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-## Team
-- **Sai Narendra Ghodke** - *Lead AI Architect & Developer*
-- **Siddhartha Vijay Bhosale** - *Data Scientist & Quantitative Analyst*
-- **Sunraj Shetty** - *Frontend Engineer & UI/UX Specialist*
+## 🏗️ System Architecture
 
-## License
-Educational Purpose Only.
+- `main.py`: FastAPI backend entry point and signal orchestration.
+- `utils/data_pipeline.py`: Robust data fetching and feature engineering.
+- `utils/sentiment.py`: News scraping and FinBERT sentiment scoring.
+- `models/`: Pre-trained LSTM and TCN models (Keras & TFLite).
+- `frontend/src/`: Modern React dashboard components.
+
+## 👥 The Team
+
+- **Sai Narendra Ghodke** - *Lead AI Architect*
+- **Siddhartha Vijay Bhosale** - *Quantitative Analyst*
+- **Sunraj Shetty** - *Full-Stack Engineer*
+
+## 📜 License
+Educational Purpose Only. Built with ❤️ for financial intelligence.
