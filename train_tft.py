@@ -144,7 +144,7 @@ def build_model(training_dataset) -> "TemporalFusionTransformer":
 # ---------------------------------------------------------------------------
 # 2. build_trainer
 # ---------------------------------------------------------------------------
-def build_trainer(log_dir: str = DEFAULT_LOG_DIR) -> "pl.Trainer":
+def build_trainer(log_dir: str = DEFAULT_LOG_DIR, max_epochs: int = MAX_EPOCHS) -> "pl.Trainer":
     """Create a PyTorch-Lightning Trainer with recommended TFT settings.
 
     Callbacks
@@ -175,9 +175,10 @@ def build_trainer(log_dir: str = DEFAULT_LOG_DIR) -> "pl.Trainer":
         dirpath=DEFAULT_CKPT_DIR,
         filename="tft-{epoch:03d}-{val_loss:.4f}",
         monitor="val_loss",
-        save_top_k=SAVE_TOP_K,
+        save_top_k=1,
         mode="min",
         verbose=True,
+        save_on_train_epoch_end=True,
     )
 
     early_stop_callback = EarlyStopping(
@@ -191,7 +192,8 @@ def build_trainer(log_dir: str = DEFAULT_LOG_DIR) -> "pl.Trainer":
     tb_logger = TensorBoardLogger(save_dir=log_dir, name="apex_ai_tft")
 
     trainer = pl.Trainer(
-        max_epochs=MAX_EPOCHS,
+        max_epochs=max_epochs,
+        min_epochs=1,
         accelerator="auto",          # auto-selects GPU / MPS / CPU
         devices=1,
         gradient_clip_val=GRADIENT_CLIP_VAL,   # CRITICAL for transformer stability
@@ -199,6 +201,7 @@ def build_trainer(log_dir: str = DEFAULT_LOG_DIR) -> "pl.Trainer":
         logger=tb_logger,
         enable_progress_bar=True,
         log_every_n_steps=LOG_INTERVAL,
+        check_val_every_n_epoch=1,
     )
 
     logger.info(
@@ -275,6 +278,7 @@ def train(
     period: str = "3y",
     run_lr_finder: bool = False,
     log_dir: str = DEFAULT_LOG_DIR,
+    max_epochs: int = MAX_EPOCHS,
 ) -> Tuple["TemporalFusionTransformer", str]:
     """Orchestrate the complete Apex AI TFT training pipeline.
 
@@ -355,7 +359,7 @@ def train(
     model = build_model(train_ds)
 
     # ── LR Finder (optional) ────────────────────────────────────────────
-    trainer = build_trainer(log_dir=log_dir)
+    trainer = build_trainer(log_dir=log_dir, max_epochs=max_epochs)
     if run_lr_finder:
         print(f"  [LR] Running LR Finder …")
         suggested_lr = lr_finder(model, trainer, train_dl, val_dl)

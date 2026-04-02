@@ -40,37 +40,45 @@ export const Topbar: React.FC = () => {
     const isMarketOpen = true;
 
     return (
-        <div className="h-[56px] bg-void border-b border-white/5 shrink-0 flex items-center justify-between px-6 z-50 relative">
-            <div className="flex items-center gap-4 min-w-[200px]">
-                <div className="flex flex-col">
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="font-display font-black text-xl text-white tracking-tight">APEX</span>
-                        <span className="font-display font-medium text-indigo-500 text-sm">AI</span>
-                    </div>
+        <div className="h-[64px] bg-void border-b border-white/5 shrink-0 flex items-center justify-between px-8 z-50 relative">
+            {/* Left: Branding */}
+            <div className="flex items-center gap-4 min-w-[240px]">
+                <div className="flex items-baseline gap-1.5 group cursor-pointer">
+                    <span className="font-display font-black text-xl text-white tracking-tighter transition-all group-hover:glow-cyan">APEX</span>
+                    <span className="font-display font-medium text-cyan text-sm tracking-widest">AI</span>
                 </div>
             </div>
 
+            {/* Center: Command Centre Title */}
             <div className="flex flex-col items-center">
-                <h1 className="font-display font-bold text-base text-white tracking-tight leading-none mb-1">{title}</h1>
-                <span className="text-[10px] text-slate-500 font-medium tracking-[0.1em] uppercase font-body">{breadcrumb.replace('// ', '')}</span>
+                <h1 className="font-display font-extrabold text-base text-white tracking-[0.05em] leading-none mb-1.5 uppercase">{title}</h1>
+                <div className="flex items-center gap-2">
+                    <div className="h-px w-4 bg-white/10" />
+                    <span className="text-[9px] text-slate-500 font-bold tracking-[0.3em] uppercase font-data">{breadcrumb.replace('// ', '')}</span>
+                    <div className="h-px w-4 bg-white/10" />
+                </div>
             </div>
 
-            <div className="flex items-center gap-6 min-w-[200px] justify-end h-full">
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.05]">
-                    <div className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)] animate-pulse' : 'bg-rose-500'}`} />
-                    <span className="text-[10px] font-bold text-slate-400 tracking-wider">
+            {/* Right: Status & Time */}
+            <div className="flex items-center gap-8 min-w-[240px] justify-end">
+                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-surface/40 border border-white/5 shadow-inner">
+                    <div className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-emerald shadow-[0_0_10px_rgba(16,185,129,0.6)] animate-pulse' : 'bg-rose'}`} />
+                    <span className="text-[9px] font-black text-slate-400 tracking-widest uppercase">
                         {isMarketOpen ? 'NSE LIVE' : 'OFFLINE'}
                     </span>
                 </div>
 
-                <span className="text-xs font-medium text-slate-300 w-[85px] text-right font-body">
-                    {time}
-                </span>
+                <div className="flex flex-col items-end">
+                    <span className="text-[11px] font-bold text-slate-200 font-data tracking-wider tabular-nums">
+                        {time}
+                    </span>
+                </div>
 
-                <button className="text-slate-500 hover:text-white transition-colors">
+                <button className="text-slate-500 hover:text-white transition-all hover:rotate-90 duration-500">
                     <Settings size={18} />
                 </button>
             </div>
         </div>
     );
+
 };

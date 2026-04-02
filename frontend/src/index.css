@@ -148,12 +148,63 @@
     font-family: 'Inter', monospace;
   }
 
+  .font-data-tiny {
+    font-family: 'Inter', monospace;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+  }
+
+  .font-data-small {
+    font-family: 'Inter', monospace;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+
   .glow-cyan { text-shadow: var(--cyan-glow); }
   .glow-emerald { text-shadow: var(--emerald-glow); }
   .glow-rose { text-shadow: var(--rose-glow); }
   .glow-amber { text-shadow: var(--amber-glow); }
   .glow-indigo { text-shadow: var(--indigo-glow); }
+
+  .neon-frame {
+    background: rgba(10, 17, 31, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .neon-frame::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  }
+
+  .neon-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 8px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .glow-border-cyan {
+    border: 1px solid rgba(0, 210, 255, 0.3);
+    box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);
+  }
+
+  .glow-border-red {
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.1);
+  }
 }
+
 
 @keyframes signal-reveal {
   0% {

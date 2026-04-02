@@ -9,25 +9,32 @@ import { HeatMapStrip } from '../components/dashboard/HeatMapStrip';
 import { PortfolioSnapshot } from '../components/dashboard/PortfolioSnapshot';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { HeroSignalCard } from '../components/dashboard/HeroSignalCard';
+import { TradeArchitect } from '../components/dashboard/TradeArchitect';
+import { TradeChat } from '../components/dashboard/TradeChat';
+import { TopMetricsBar } from '../components/dashboard/TopMetricsBar';
 
 export const DashboardPage: React.FC = () => {
     const nav = useNavigate();
     const [stats, setStats] = useState<any>(null);
     const [signals, setSignals] = useState<any[]>([]);
+    const [pulse, setPulse] = useState<any>(null);
     const { colorClass, glowClass, bgClass } = useAccentColor();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [statsRes, signalsRes] = await Promise.all([
+                const [statsRes, signalsRes, pulseRes] = await Promise.all([
                     fetch('/api/dashboard-stats'),
-                    fetch('/api/screener')
+                    fetch('/api/screener'),
+                    fetch('/api/market-pulse')
                 ]);
                 
                 const statsData = await statsRes.json();
                 const signalsData = await signalsRes.json();
+                const pulseData = await pulseRes.json();
                 
                 setStats(statsData);
+                setPulse(pulseData);
                 if (signalsData.results) {
                     setSignals(signalsData.results);
                 }
@@ -41,6 +48,8 @@ export const DashboardPage: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
+
+
     // Filter signals to exclude the top one for the grid
     const topSignal = stats?.top_signal;
     const gridSignals = signals
@@ -48,34 +57,39 @@ export const DashboardPage: React.FC = () => {
         .slice(0, 3);
 
     return (
-        <div className="flex flex-col h-full overflow-y-auto pb-12 animate-page-in gap-10 bg-void scrollbar-hide">
+        <div className="flex flex-col h-full overflow-y-auto pb-12 animate-page-in gap-6 bg-void scrollbar-hide">
             {/* 1. Live Market Pulse Bar */}
             <MarketPulseBar />
 
-            <div className="px-10 flex flex-col gap-10">
+            {/* 1.2. Top Metrics Grid (Figma Style) */}
+            <TopMetricsBar stats={stats} pulse={pulse} />
+
+
+            <div className="px-10 flex flex-col gap-8 mt-2">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-white/5 pb-6">
                     <div className="relative group">
-                        <div className={`absolute -inset-12 ${bgClass} rounded-full blur-[140px] opacity-20 group-hover:opacity-30 transition-opacity duration-1000`} />
-                        <h1 className={`font-display font-black ${colorClass} text-3xl md:text-4xl tracking-tighter ${glowClass} inline-block uppercase relative z-10`}>
+                        <div className={`absolute -inset-12 ${bgClass} rounded-full blur-[140px] opacity-10 group-hover:opacity-20 transition-opacity duration-1000`} />
+                        <h1 className={`font-display font-black ${colorClass} text-4xl tracking-tighter ${glowClass} inline-block uppercase relative z-10`}>
                             Mission Control
                         </h1>
-                        <p className="font-data text-[9px] text-slate-400 tracking-[0.4em] mt-2 uppercase font-bold relative z-10">
+                        <p className="font-data text-[9px] text-slate-500 tracking-[0.4em] mt-2 uppercase font-bold relative z-10">
                             // Unified Neural Strategic Command Terminal
                         </p>
                     </div>
 
-                    <div className="flex gap-3 relative z-10">
-                         <div className="px-5 py-3 bg-surface/40 border border-white/5 rounded-2xl flex flex-col items-center min-w-[100px]">
-                            <span className="text-[8px] font-data text-muted uppercase tracking-widest mb-1">Buy Breadth</span>
-                            <span className="text-xl font-display font-black text-emerald tabular-nums">{stats?.market_breadth?.buys || 0}</span>
+                    <div className="flex gap-4 relative z-10">
+                         <div className="px-6 py-3 neon-frame rounded-2xl flex flex-col items-center min-w-[120px]">
+                            <span className="neon-label mb-1">Buy Breadth</span>
+                            <span className="text-2xl font-display font-black text-emerald tabular-nums glow-emerald">{stats?.market_breadth?.buys || 0}</span>
                          </div>
-                         <div className="px-5 py-3 bg-surface/40 border border-white/5 rounded-2xl flex flex-col items-center min-w-[100px]">
-                            <span className="text-[8px] font-data text-muted uppercase tracking-widest mb-1">Sell Breadth</span>
-                            <span className="text-xl font-display font-black text-rose tabular-nums">{stats?.market_breadth?.sells || 0}</span>
+                         <div className="px-6 py-3 neon-frame rounded-2xl flex flex-col items-center min-w-[120px]">
+                            <span className="neon-label mb-1">Sell Breadth</span>
+                            <span className="text-2xl font-display font-black text-rose tabular-nums glow-rose">{stats?.market_breadth?.sells || 1}</span>
                          </div>
                     </div>
                 </div>
+
 
                 {/* Main Dashboard Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -125,37 +139,38 @@ export const DashboardPage: React.FC = () => {
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {gridSignals.map((sig, i) => (
                                     <div
                                         key={i}
                                         onClick={() => nav(`/swing?ticker=${sig.ticker}`)}
-                                        className={`group bg-surface/40 hover:bg-surface/60 border border-white/5 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:-translate-y-1 ${sig.action === 'BUY' ? 'glow-border-buy' : 'glow-border-sell'}`}
+                                        className={`group neon-frame hover:bg-surface/60 p-6 cursor-pointer transition-all duration-300 hover:-translate-y-1 rounded-3xl ${sig.action === 'BUY' ? 'glow-border-cyan' : 'glow-border-red'}`}
                                     >
-                                        <div className="flex justify-between items-start mb-4">
-                                            <span className="font-display font-black text-xl text-white tracking-widest truncate">{sig.ticker.split('.')[0]}</span>
-                                            <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${sig.action === 'BUY' ? 'bg-emerald text-void' : 'bg-rose text-white'}`}>
+                                        <div className="flex justify-between items-start mb-6">
+                                            <span className="font-display font-black text-2xl text-white tracking-widest truncate">{sig.ticker.split('.')[0]}</span>
+                                            <div className={`px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-widest ${sig.action === 'BUY' ? 'bg-cyan text-void' : 'bg-rose text-white'}`}>
                                                 {sig.action}
                                             </div>
                                         </div>
-                                        <div className="h-10 w-full mb-4 opacity-30">
-                                            <MiniSparkline data={sig.sparkline} color={sig.action === 'BUY' ? 'stroke-emerald' : 'stroke-rose'} />
+                                        <div className="h-10 w-full mb-6 opacity-40">
+                                            <MiniSparkline data={sig.sparkline} color={sig.action === 'BUY' ? 'stroke-cyan' : 'stroke-rose'} />
                                         </div>
                                         <div className="flex justify-between items-end">
                                             <div className="flex flex-col">
-                                                <span className="text-[8px] font-data text-muted uppercase">Confidence</span>
-                                                <span className={`text-base font-display font-black ${sig.action === 'BUY' ? 'text-emerald' : 'text-rose'}`}>
+                                                <span className="neon-label text-[7px] mb-1">Confidence</span>
+                                                <span className={`text-lg font-display font-black ${sig.action === 'BUY' ? 'text-cyan glow-cyan' : 'text-rose glow-rose'}`}>
                                                     {((sig.confidence || 0) * 100).toFixed(1)}%
                                                 </span>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-[8px] font-data text-muted uppercase">Current</span>
-                                                <span className="text-sm font-display font-bold text-white block">₹{(sig.current_price || sig.price || 0).toLocaleString('en-IN')}</span>
+                                                <span className="neon-label text-[7px] mb-1 block">Current Price</span>
+                                                <span className="text-sm font-display font-bold text-white block tracking-wide">₹{(sig.current_price || sig.price || 0).toLocaleString('en-IN')}</span>
                                             </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
+
                         </div>
                     </div>
 
@@ -179,6 +194,18 @@ export const DashboardPage: React.FC = () => {
                         {/* Market Status Summary */}
                         <MarketRegimeBanner />
                     </div>
+                </div>
+
+                {/* 7. New Trade Chat Section at the bottom */}
+                <div className="mt-10">
+                    <div className="flex items-center gap-3 px-2 mb-6">
+                        <div className="h-px flex-1 bg-white/5" />
+                        <h2 className="font-display font-black text-white/40 text-[10px] tracking-[0.5em] uppercase px-4 text-center">
+                            Secure Neural Chat Terminal
+                        </h2>
+                        <div className="h-px flex-1 bg-white/5" />
+                    </div>
+                    <TradeChat />
                 </div>
             </div>
         </div>

@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import time
+import threading
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import functools
@@ -33,6 +34,8 @@ from utils.yf_utils import get_ticker
 # ── SILENCE TENSORFLOW ────────────────────────────────────────────────────────
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"      # 0=all, 1=no INFO, 2=no INFO/WARN, 3=no INFO/WARN/ERROR
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"     # Disable oneDNN custom operations warnings
+os.environ["TRANSFORMERS_OFFLINE"] = "1"      # Force transformers to skip Hub checks
+os.environ["HF_HUB_OFFLINE"] = "1"           # Force HF Hub to skip network requests
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -56,6 +59,9 @@ _REDIS_CLIENT: Optional[redis.Redis] = None
 # Redis cache TTL: 4 hours = 14400 seconds
 CACHE_TTL = 4 * 3600
 
+# Global lock for pipeline initialization to prevent race conditions
+_pipeline_lock = threading.Lock()
+
 def _get_redis() -> Optional[redis.Redis]:
     """Lazy initialize the Redis client with a graceful fallback."""
     global _REDIS_CLIENT
@@ -78,19 +84,56 @@ def _get_redis() -> Optional[redis.Redis]:
 
 @functools.lru_cache(maxsize=1)
 def get_pipeline() -> Any:
-    """Load FinBERT once and cache it."""
-    from transformers import pipeline as hf_pipeline
-    import torch
-    logging.getLogger("transformers").setLevel(logging.ERROR)
-    device = 0 if torch.cuda.is_available() else -1
-    return hf_pipeline(
-        "sentiment-analysis", 
-        model="ProsusAI/finbert", 
-        device=device,
-        top_k=None,
-        truncation=True,
-        max_length=512
-    )
+    """Load FinBERT once and cache it. Thread-safe and offline-friendly."""
+    global _PIPELINE
+    if _PIPELINE is not None:
+        return _PIPELINE
+
+    with _pipeline_lock:
+        # Double-check pattern
+        if _PIPELINE is not None:
+            return _PIPELINE
+
+        from transformers import pipeline as hf_pipeline
+        import torch
+        logging.getLogger("transformers").setLevel(logging.ERROR)
+        
+        model_name = "ProsusAI/finbert"
+        device = 0 if torch.cuda.is_available() else -1
+        
+        # Strategy: Try loading with local_files_only=True first to avoid Hub hits.
+        # This is CRITICAL to prevent WinError 10055 (socket exhaustion) on Windows.
+        try:
+            logger.info("Attempting offline load of FinBERT...")
+            _PIPELINE = hf_pipeline(
+                "sentiment-analysis", 
+                model=model_name, 
+                device=device,
+                top_k=None,
+                truncation=True,
+                max_length=512,
+                local_files_only=True
+            )
+            logger.info("✅ FinBERT pipeline loaded successfully from LOCAL CACHE (Offline).")
+        except Exception as e:
+            logger.warning("FinBERT local load failed (%s). Attempting ONE-TIME network fetch...", e)
+            # Temporarily allow network for the very first load if cache is incomplete
+            os.environ["TRANSFORMERS_OFFLINE"] = "0"
+            os.environ["HF_HUB_OFFLINE"] = "0"
+            _PIPELINE = hf_pipeline(
+                "sentiment-analysis", 
+                model=model_name, 
+                device=device,
+                top_k=None,
+                truncation=True,
+                max_length=512,
+                local_files_only=False
+            )
+            os.environ["TRANSFORMERS_OFFLINE"] = "1"
+            os.environ["HF_HUB_OFFLINE"] = "1"
+            logger.info("FinBERT pipeline initialized from Hub and CACHED.")
+            
+        return _PIPELINE
 
 def score_text(text: str) -> Dict[str, float]:
     nlp = get_pipeline()

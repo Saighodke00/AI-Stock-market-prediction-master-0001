@@ -56,34 +56,34 @@ export const HyperTunerPage: React.FC = () => {
     );
 
     return (
-        <div className="p-8 md:p-12 max-w-6xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-700">
+        <div className="p-8 md:p-12 max-w-6xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-700 bg-void min-h-full">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
                 <div className="flex flex-col gap-3">
-                    <h1 className="text-4xl font-display font-black text-white tracking-wider inline-block uppercase bg-gradient-to-r from-indigo-400 to-cyan-500 bg-clip-text text-transparent">Hyper Tuner</h1>
-                    <p className="text-slate-500 font-data text-xs tracking-[0.3em] uppercase">// MODEL THRESHOLDS & INFERENCE CONFIGURATION</p>
+                    <h1 className="text-4xl font-display font-black text-cyan tracking-tighter inline-block uppercase glow-cyan">Hyper Tuner</h1>
+                    <p className="text-slate-500 font-data text-[10px] tracking-[0.4em] uppercase font-bold">// Neural Threshold & Engine Configuration</p>
                 </div>
                 <div className="flex gap-4 w-full md:w-auto">
-                    <button className="flex-1 md:flex-none p-4 bg-void/50 border border-white/10 rounded-2xl hover:text-indigo-400 transition-all backdrop-blur-md">
+                    <button className="flex-1 md:flex-none p-4 bg-void/50 border border-white/10 rounded-2xl hover:text-cyan transition-all backdrop-blur-md neon-frame">
                         <RefreshCw size={20} />
                     </button>
                     <button 
                         onClick={handleSave}
-                        className="flex-[2] md:flex-none flex items-center justify-center gap-3 px-10 py-4 bg-indigo-500 text-white rounded-2xl font-display font-black text-xs tracking-[0.2em] uppercase hover:bg-indigo-400 transition-all shadow-2xl shadow-indigo-500/30 active:scale-95"
+                        className="flex-[2] md:flex-none flex items-center justify-center gap-3 px-10 py-4 bg-cyan text-void rounded-2xl font-display font-black text-xs tracking-[0.2em] uppercase hover:bg-cyan-400 transition-all shadow-2xl shadow-cyan/20 active:scale-95"
                     >
-                        <Save size={18} /> COMMIT PROTOCOL
+                        <Save size={18} strokeWidth={3} /> COMMIT PROTOCOL
                     </button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
                 {/* Gate Thresholds */}
-                <div className="lg:col-span-7 glass-card p-10 flex flex-col gap-10 border-indigo-500/20 shadow-2xl overflow-hidden group">
+                <div className="lg:col-span-7 neon-frame p-10 flex flex-col gap-10 overflow-hidden group">
                      <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
                         <Shield size={120} className="text-white" />
                     </div>
                     
                     <div className="flex items-center gap-4 relative z-10">
-                        <div className="p-3 bg-amber-500/10 text-amber-400 rounded-2xl border border-amber-500/20">
+                        <div className="p-3 bg-cyan/10 text-cyan rounded-2xl border border-cyan/20">
                             <Shield size={24} />
                         </div>
                         <div>
@@ -96,13 +96,13 @@ export const HyperTunerPage: React.FC = () => {
                         {settings?.gate_thresholds && Object.entries(settings.gate_thresholds).map(([key, value]: [string, any]) => (
                             <div key={key} className="group/slider">
                                 <div className="flex justify-between items-end mb-4 px-1">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] group-hover/slider:text-indigo-400 transition-colors">{key.replace(/_/g, ' ')}</label>
-                                    <span className="text-sm font-mono font-bold text-white bg-void/50 px-3 py-1 rounded-lg border border-white/5">{value}</span>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] group-hover/slider:text-cyan transition-colors">{key.replace(/_/g, ' ')}</label>
+                                    <span className="text-sm font-data font-bold text-cyan bg-void/50 px-3 py-1 rounded-lg border border-cyan/20 glow-cyan">{value}</span>
                                 </div>
                                 <div className="relative h-2 flex items-center">
-                                    <div className="absolute inset-x-0 h-1 bg-void rounded-full overflow-hidden">
+                                    <div className="absolute inset-x-0 h-1 bg-void rounded-full overflow-hidden border border-white/5">
                                         <div 
-                                            className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.5)]" 
+                                            className="h-full bg-gradient-to-r from-cyan to-indigo shadow-[0_0_10px_rgba(0,210,255,0.5)]" 
                                             style={{ width: `${(value / (key.includes('rsi') ? 100 : 1)) * 100}%` }}
                                         />
                                     </div>
@@ -116,7 +116,7 @@ export const HyperTunerPage: React.FC = () => {
                                         className="absolute inset-x-0 w-full opacity-0 cursor-pointer h-full z-10"
                                     />
                                     <div 
-                                        className="absolute w-5 h-5 bg-white rounded-full border-4 border-indigo-500 shadow-xl transition-all duration-300 pointer-events-none"
+                                        className="absolute w-5 h-5 bg-white rounded-full border-4 border-cyan shadow-xl transition-all duration-300 pointer-events-none"
                                         style={{ left: `calc(${(value / (key.includes('rsi') ? 100 : 1)) * 100}% - 10px)` }}
                                     />
                                 </div>
@@ -127,9 +127,9 @@ export const HyperTunerPage: React.FC = () => {
 
                 {/* Model Params & System */}
                 <div className="lg:col-span-5 flex flex-col gap-8 relative z-10">
-                    <div className="glass-card p-8 flex flex-col gap-8 border-indigo-500/10">
+                    <div className="neon-frame p-8 flex flex-col gap-8">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-2xl border border-indigo-400/20">
+                            <div className="p-3 bg-cyan/10 text-cyan rounded-2xl border border-cyan/20">
                                 <Sliders size={24} />
                             </div>
                             <h2 className="font-display font-black text-xl text-white uppercase tracking-tight">Engine Specs</h2>
@@ -139,33 +139,33 @@ export const HyperTunerPage: React.FC = () => {
                             <div className="bg-void/40 p-5 rounded-2xl border border-white/5 space-y-4 shadow-inner">
                                 <div className="flex justify-between items-center group/item hover:translate-x-1 transition-transform">
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Temporal Window</span>
-                                    <span className="px-3 py-1 bg-indigo-500/10 text-indigo-400 text-xs font-mono font-bold rounded-lg border border-indigo-500/10">{settings?.model_params?.sequence_length} STEPS</span>
+                                    <span className="px-3 py-1 bg-cyan/10 text-cyan text-xs font-data font-bold rounded-lg border border-cyan/10">{settings?.model_params?.sequence_length} STEPS</span>
                                 </div>
                                 <div className="h-px bg-gradient-to-r from-transparent via-white/5 to-transparent" />
                                 <div className="flex justify-between items-center group/item hover:translate-x-1 transition-transform">
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Neuron Density</span>
-                                    <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold rounded-lg border border-emerald-500/10">{settings?.model_params?.features} CORES</span>
+                                    <span className="px-3 py-1 bg-emerald/10 text-emerald text-xs font-data font-bold rounded-lg border border-emerald/10">{settings?.model_params?.features} CORES</span>
                                 </div>
                             </div>
 
-                            <div className="p-5 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 flex items-start gap-4">
-                                <Info size={18} className="text-indigo-400 shrink-0 mt-0.5" />
-                                <p className="text-[10px] text-slate-400 font-bold leading-relaxed uppercase tracking-tight">
+                            <div className="p-5 bg-cyan/[0.03] rounded-2xl border border-cyan/10 flex items-start gap-4">
+                                <Info size={18} className="text-cyan shrink-0 mt-0.5" />
+                                <p className="text-[9px] text-slate-400 font-bold leading-relaxed uppercase tracking-tight">
                                     Ensemble weights are derived from GRU-TCN signal convergence. Dynamic weight shifting enabled for v4.0 architecture.
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="glass-card p-10 bg-void border-white/5 flex flex-col gap-6 relative overflow-hidden group">
+                    <div className="neon-frame p-10 flex flex-col gap-6 relative overflow-hidden group">
                         <div className="absolute -right-4 -bottom-4 p-8 opacity-5 group-hover:scale-125 transition-transform duration-1000">
                             <Zap size={140} className="text-white" />
                         </div>
-                        <div className="flex items-center gap-4 text-cyan-400 relative z-10">
+                        <div className="flex items-center gap-4 text-cyan relative z-10">
                             <Zap size={24} />
-                            <h2 className="font-display font-black text-xl uppercase tracking-tight">System ID</h2>
+                            <h2 className="font-display font-black text-xl uppercase tracking-tight font-display">System ID</h2>
                         </div>
-                        <div className="font-mono text-[10px] text-slate-500 bg-void/50 p-6 rounded-2xl border border-white/5 relative z-10 leading-loose uppercase tracking-[0.2em] shadow-inner">
+                        <div className="font-data text-[11px] text-slate-500 bg-void/50 p-6 rounded-2xl border border-white/5 relative z-10 leading-loose uppercase tracking-[0.3em] shadow-inner font-bold italic">
                             {`ID: APEX-PROTO-V3\nSYNC: OPERATIONAL\nREGION: DELTA-X\nKERN: VERIFIED`}
                         </div>
                     </div>
@@ -174,3 +174,4 @@ export const HyperTunerPage: React.FC = () => {
         </div>
     );
 };
+

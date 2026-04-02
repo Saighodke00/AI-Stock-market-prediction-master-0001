@@ -67,8 +67,8 @@ npm run dev
 ## 👥 The Team
 
 - **Sai Narendra Ghodke** - *Lead AI Architect*
-- **Siddhartha Vijay Bhosale** - *Quantitative Analyst*
-- **Sunraj Shetty** - *Full-Stack Engineer*
+- **Sunraj Shetty           ** - *Quantitative Analyst*
+- **Siddhartha Vijay Bhosale** - *Full-Stack Engineer*
 
 ## 📜 License
 Educational Purpose Only. Built with ❤️ for financial intelligence.

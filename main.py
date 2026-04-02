@@ -16,6 +16,10 @@ Improvements over v2.1:
 from __future__ import annotations
 import yfinance as yf
 
+import os
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import asyncio
 from datetime import datetime
 import logging
@@ -24,6 +28,7 @@ import os
 import pickle
 import pandas as pd
 import tensorflow as tf
+from utils.risk_manager import RiskManager
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
@@ -68,6 +73,7 @@ GATE3_RSI_SELL_HI    = 55
 class AppState:
     tflite_models: dict[str, Any] = field(default_factory=dict)
     keras_models:  dict[str, Any] = field(default_factory=dict)
+    tft_models:    dict[str, Any] = field(default_factory=dict)
     scaler:        Any             = None
     portfolio:     PaperPortfolio  = field(default_factory=PaperPortfolio)
     intel:         IndiaMarketIntelligence = field(default_factory=IndiaMarketIntelligence)
@@ -151,18 +157,33 @@ def _tflite_interp(path: str) -> Any:
     import tensorflow as tf
     """
     TFLite Interpreter setup with Flex ops support.
+    Uses OpResolverType.BUILTIN_REF as a fallback strategy for select ops.
     """
     try:
-        # Standard interpreter creation
+        # ATTEMPT 1: Standard
         interp = tf.lite.Interpreter(model_path=path)
         interp.allocate_tensors()
         return interp
     except Exception as e:
         err_msg = str(e)
-        if "Flex" in err_msg or "TensorList" in err_msg:
-            # Re-raise with a clear explanation that this is an environment limitation
-            raise Exception(f"Flex ops support missing in TFLite. This model requires a Flex-enabled interpreter.")
-        raise e
+        logger.debug(f"TFLite standard load fail: {err_msg}")
+        
+        try:
+            # ATTEMPT 2: Try with internal resolver that often includes more ops on Windows
+            # experimental_op_resolver_type might help find the Flex ops if they are present in the binary
+            interp = tf.lite.Interpreter(
+                model_path=path, 
+                experimental_op_resolver_type=tf.lite.OpResolverType.BUILTIN_REF
+            )
+            interp.allocate_tensors()
+            return interp
+        except Exception as e2:
+            if "Flex" in str(e2) or "TensorList" in str(e2):
+                raise Exception(f"Flex ops support missing in TFLite. This model requires a Flex-enabled interpreter.")
+            raise e2
+
+
+
 
 
 def _load_keras_folder(folder: str) -> dict[str, Any]:
@@ -192,6 +213,14 @@ def _load_all_models() -> None:
                 logger.info("TFLite loaded: %s", key)
             except Exception as exc:
                 logger.warning("TFLite skip (%s): %s", fname, exc)
+        elif fname.endswith(".ckpt"):
+            from train_tft import load_model, _HAS_PTF
+            if _HAS_PTF:
+                try:
+                    _state.tft_models[fname[:-5]] = load_model(fpath)
+                    logger.info("TFT loaded: %s", fname)
+                except Exception as exc:
+                    logger.warning("TFT skip (%s): %s", fname, exc)
         elif os.path.isdir(fpath):
             km = _load_keras_folder(fpath)
             if km:
@@ -324,48 +353,63 @@ def _prepare_chart_data(df: pd.DataFrame, p10: float, p50: float, p90: float) ->
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _get_active_scaler(X_raw: np.ndarray) -> Any:
-    """Returns the best available scaler. If no global scaler is present, 
-    returns a transient one fitted on the current sample.
-    CRITICAL: Does NOT modify _state.scaler to avoid thread-corruption.
-    """
+    """Ensures we have a calibrated scaler. Prioritizes global _state.scaler."""
+
     from sklearn.preprocessing import RobustScaler
 
-    if _state.scaler is not None:
-        return _state.scaler
+    # 1. Use existing scaler if possible
+    sc = _state.scaler
+    
+    # 2. Try loading if missing
+    if sc is None:
+        sc = _find_startup_scaler()
+        if sc is not None:
+            _state.scaler = sc
+            logger.info("Scaler recovered from models directory.")
 
-    # Check if we can find one on disk
-    sc = _find_startup_scaler()
-    if sc is not None:
-        # We can update global state ONCE here safely if we use a lock
-        # but for simplicity, we just return it.
-        return sc
-
-    # Last resort: Fit once if payload is large enough
-    if len(X_raw) > 200:
+    # 3. Last resort fit
+    if sc is None:
+        logger.warning("No global scaler found. Fitting emergency transient scaler.")
         sc = RobustScaler().fit(X_raw)
         return sc
-    else:
-        return RobustScaler().fit(X_raw)
 
-    # Validate shape
+    # 4. Shape validation
     try:
-        if hasattr(_state.scaler, "n_features_in_"):
-            if X_raw.shape[1] != _state.scaler.n_features_in_:
-                logger.warning("Scaler shape mismatch: expected %d, got %d. Refitting transient scaler.",
-                               _state.scaler.n_features_in_, X_raw.shape[1])
-                # Use a local transient scaler to allow this specific call to succeed
-                # but do NOT overwrite the global _state.scaler which is calibrated for the model.
-                return 
-
-        _state.scaler.transform(X_raw[:1])
+        if hasattr(sc, "n_features_in_") and X_raw.shape[1] != sc.n_features_in_:
+            logger.warning("Scaler mismatch: expected %d, got %d. Refitting transient.",
+                           sc.n_features_in_, X_raw.shape[1])
+            return RobustScaler().fit(X_raw)
     except Exception as exc:
         logger.error("Scaler validation error: %s", exc)
+        return RobustScaler().fit(X_raw)
+
+    return sc
+
+
 
 
 def _model_predict(
-    model_key: str, X: np.ndarray, mode: str
-) -> tuple[float, float, float, float, float]:
-    """Returns (gru_prob, tcn_prob, p10_raw, p50_raw, p90_raw)."""
+    model_key: str, X: np.ndarray, mode: str, ticker: str = ""
+) -> tuple[float, float, float, float, float, bool]:
+    """Returns (gru_prob, tcn_prob, p10_raw, p50_raw, p90_raw, is_tft)."""
+
+    # 1. TFT Priority
+    if ticker and model_key in _state.tft_models:
+        try:
+            from train_tft import fast_predict, get_quantile_prices
+            from utils.features import build_all_features
+            # For TFT, we need the multi-modal features
+            from utils.data_pipeline import fetch_multi_modal, add_static_metadata
+            from utils.denoising import apply_denoising_to_dataframe
+            from utils.frac_diff import apply_to_dataframe as frac_diff_apply
+            
+            # Since fast_predict needs the DF, we refetch or use the provided X
+            # However, fast_predict is designed for a DataFrame input.
+            # We'll implement a fallback or a way to pass the DF to _model_predict.
+            # For now, let's assume we use the provided X for Keras/TFLite 
+            # and if we have a TFT model, we trigger a specific TFT path.
+            pass 
+        except: pass
 
     def _tfl_run(interp, x: np.ndarray) -> np.ndarray:
         inp = interp.get_input_details()[0]
@@ -386,16 +430,16 @@ def _model_predict(
     for kkey, km in _state.keras_models.items():
         if mode in kkey:
             try:
-                if "gru_dir"   in km: gru_prob = float(km["gru_dir"].predict(X, verbose=0)[0][0])
-                if "tcn_dir"   in km: tcn_prob = float(km["tcn_dir"].predict(X, verbose=0)[0][0])
+                if "gru_dir"   in km: gru_prob = float(km["gru_dir"](X, training=False).numpy()[0][0])
+                if "tcn_dir"   in km: tcn_prob = float(km["tcn_dir"](X, training=False).numpy()[0][0])
                 if "mag_model" in km:
-                    q = km["mag_model"].predict(X, verbose=0)[0]
+                    q = km["mag_model"](X, training=False).numpy()[0]
                     p10_raw, p50_raw, p90_raw = float(q[0]), float(q[1]), float(q[2])
             except Exception as exc:
                 logger.warning("Keras error %s: %s", kkey, exc)
             break
 
-    return gru_prob, tcn_prob, p10_raw, p50_raw, p90_raw
+    return gru_prob, tcn_prob, p10_raw, p50_raw, p90_raw, False
 
 
 def _gates_and_confidence(
@@ -505,12 +549,38 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
 
     atr   = compute_atr(df, period=14)
     mkey  = f"{mode}_{ticker.replace('.', '_')}"
-    gru_p, tcn_p, p10r, p50r, p90r = _model_predict(mkey, X_input, mode)
+    
+    # ── 3a. TFT Inference (Phase 2) ──────────────────────────────────────────
+    is_tft = False
+    if mkey in _state.tft_models:
+        try:
+            from train_tft import fast_predict, get_quantile_prices
+            from utils.features import build_all_features
+            
+            # Enrich features specifically for TFT
+            df_tft = build_all_features(df, ticker=ticker)
+            
+            # Run TFT fast inference
+            raw_out = fast_predict(_state.tft_models[mkey], df_tft, None, tail_rows=60)
+            prices  = get_quantile_prices(raw_out)
+            
+            p10, p50, p90 = float(prices["p10"]), float(prices["p50"]), float(prices["p90"])
+            gru_p = tcn_p = 0.5 + ((p50 / cur - 1.0) * 2.0) # Heuristic conviction
+            gru_p = float(np.clip(gru_p, 0.4, 0.7))
+            tcn_p = gru_p
+            is_tft = True
+            logger.info("TFT inference successful for %s", ticker)
+        except Exception as exc:
+            logger.warning("TFT inference failed for %s, falling back to legacy: %s", ticker, exc)
 
-    p10 = _to_price(p10r, cur)
-    p50 = _to_price(p50r, cur)
-    p90 = _to_price(p90r, cur)
+    # ── 3b. Legacy Keras/TFLite Inference ────────────────────────────────────
+    if not is_tft:
+        gru_p, tcn_p, p10r, p50r, p90r, _ = _model_predict(mkey, X_input, mode, ticker)
+        p10 = _to_price(p10r, cur)
+        p50 = _to_price(p50r, cur)
+        p90 = _to_price(p90r, cur)
 
+    # ── 4. Fallbacks & Post-processing ───────────────────────────────────────
     if p50 <= 0 or abs(p50 - cur) / max(cur, 1) > 0.5:
         logger.warning("ATR fallback for %s (p50=%.2f cur=%.2f)", ticker, p50, cur)
         p10, p50, p90 = _atr_fallback(cur, atr)
@@ -529,6 +599,12 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
         sentiment_score=sentiment_score, ticker=ticker, market_regime="UNKNOWN",
     )
 
+    # ── 7. Risk Management ────────────────────────────────────────────────
+    risk_engine = RiskManager()
+    risk_report = risk_engine.analyze_risk(
+        ticker, direction, cur, p10, p50, p90, atr
+    )
+
     return {
         "ticker":           ticker,
         "action":           action,
@@ -544,6 +620,7 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
         "rsi":              round(rsi,  1),
         "atr":              round(atr,  2),
         "accuracy":         54.0,
+        "is_tft":           is_tft,
         "gate_results":     gates,
         "sentiment": {
             "score":    round(sentiment_score, 3),
@@ -553,9 +630,11 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
         "explanation": explanation,
         "importance":  importance,
         "regime":      _get_market_regime(df),
+        "risk_management": risk_report,
         "sparkline":   _generate_sparkline(df),
         **_prepare_chart_data(df, p10, p50, p90)
     }
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -990,11 +1069,19 @@ async def save_tuner_settings(settings: dict):
     global GATE3_RSI_BUY_LO, GATE3_RSI_BUY_HI
     
     thresholds = settings.get("gate_thresholds", {})
+    
+    # BUG FIX: Add validation for SENT_BUY_MIN
+    new_sent_buy_min = thresholds.get("sent_buy_min", GATE2_SENT_BUY_MIN)
+    if float(new_sent_buy_min) <= 0:
+        logger.warning("Rejected degenerate sent_buy_min: %s", new_sent_buy_min)
+        return {"status": "error", "message": "sent_buy_min must be > 0"}
+
     GATE1_CONE_MAX = thresholds.get("cone_max", GATE1_CONE_MAX)
-    GATE2_SENT_BUY_MIN = thresholds.get("sent_buy_min", GATE2_SENT_BUY_MIN)
+    GATE2_SENT_BUY_MIN = new_sent_buy_min
     GATE2_SENT_SELL_MAX = thresholds.get("sent_sell_max", GATE2_SENT_SELL_MAX)
     GATE3_RSI_BUY_LO = thresholds.get("rsi_buy_lo", GATE3_RSI_BUY_LO)
     GATE3_RSI_BUY_HI = thresholds.get("rsi_buy_hi", GATE3_RSI_BUY_HI)
+
     
     logger.info(f"Hyperparameters synchronized: {GATE1_CONE_MAX}, {GATE2_SENT_BUY_MIN}...")
     return {"status": "success", "synchronized": True}

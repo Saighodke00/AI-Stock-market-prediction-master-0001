@@ -41,11 +41,13 @@ def yf_retry(max_retries=3, initial_backoff=1.0):
                             logger.error(f"Function {func.__name__} failed after {retries} retries: {e}")
                         raise
                     
-                    if "possibly delisted" in err_msg or "401" in err_msg:
+                    if "possibly delisted" in err_msg or "401" in err_msg or "Unauthorized" in err_msg:
                         global _WARMED_UP
                         with _INIT_LOCK:
-                            _WARMED_UP = False # Force fresh warm-up on next try
-                            logger.info(f"Resetting YFinance session due to error: {err_msg}")
+                            if _WARMED_UP:
+                                _WARMED_UP = False # Force fresh warm-up on next try
+                                logger.info(f"Resetting YFinance session due to error: {err_msg}")
+                                time.sleep(2) # Cooldown before re-initialization
 
                     backoff = initial_backoff * (2 ** retries) + random.uniform(0, 0.5)
                     logger.warning(f"Transient error in {func.__name__} for {args[0] if args else 'unknown'}: {e}. Retrying in {backoff:.2f}s...")

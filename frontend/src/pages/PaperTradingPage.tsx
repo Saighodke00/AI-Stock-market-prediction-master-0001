@@ -26,39 +26,41 @@ function StatCard({
   label, value, sub, highlight, icon
 }: { label: string; value: string; sub?: string; highlight?: "green" | "red" | "amber"; icon?: React.ReactNode }) {
   const col =
-    highlight === "green" ? "text-emerald-400" :
-    highlight === "red"   ? "text-rose-400"     :
-    highlight === "amber" ? "text-amber-400"   :
+    highlight === "green" ? "text-emerald" :
+    highlight === "red"   ? "text-rose"     :
+    highlight === "amber" ? "text-gold"   :
     "text-white";
 
-  const bg =
-     highlight === "green" ? "bg-emerald-500/5 border-emerald-500/20" :
-     highlight === "red"   ? "bg-rose-500/5 border-rose-500/20" :
-     highlight === "amber" ? "bg-amber-500/5 border-amber-500/20" :
-     "bg-white/[0.03] border-white/10";
+  const glow = 
+    highlight === "green" ? "hover:glow-border-emerald" :
+    highlight === "red"   ? "hover:glow-border-red"     :
+    highlight === "amber" ? "hover:glow-border-gold"   :
+    "hover:glow-border-cyan";
 
   return (
-    <div className={`glass-card p-6 flex flex-col gap-1 transition-all duration-500 hover:scale-[1.02] ${bg}`}>
+    <div className={`neon-frame p-6 flex flex-col gap-1 transition-all duration-500 cursor-pointer ${glow}`}>
       <div className="flex items-center justify-between mb-2">
-          <span className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">{label}</span>
+          <span className="neon-label">{label}</span>
           <div className={`${col} opacity-40`}>{icon}</div>
       </div>
-      <div className={`text-2xl font-display font-black tracking-tight ${col}`}>{value}</div>
-      {sub && <div className="text-slate-500 text-[10px] font-bold tracking-tight mt-1">{sub}</div>}
+      <div className={`text-2xl font-display font-black tracking-tight ${col} ${highlight ? `glow-${highlight}` : 'glow-cyan'}`}>{value}</div>
+      {sub && <div className="text-slate-500 text-[9px] font-bold tracking-tight mt-1 uppercase opacity-60 font-data">{sub}</div>}
     </div>
   );
 }
 
+
 function PositionRow({ pos }: { pos: Position }) {
   const pnlPos = pos.unrealised_pnl >= 0;
   return (
-    <tr className="border-b border-white/5 hover:bg-white/[0.03] transition-all group">
+    <tr className="border-b border-white/5 hover:bg-cyan/[0.02] transition-all group">
       <td className="py-4 px-6">
         <div className="flex flex-col">
-          <span className="font-display font-black text-white text-sm group-hover:text-indigo-400 transition-colors uppercase">{pos.ticker}</span>
-          <span className="text-[9px] text-slate-600 font-bold tracking-widest uppercase">Open Position</span>
+          <span className="font-display font-black text-white text-sm group-hover:text-cyan transition-colors uppercase">{pos.ticker}</span>
+          <span className="text-[8px] text-slate-600 font-bold tracking-[0.2em] uppercase font-data">OPEN CLUSTER</span>
         </div>
       </td>
+
       <td className="py-4 px-6 font-mono text-white text-xs font-bold text-right">{pos.quantity}</td>
       <td className="py-4 px-6 font-mono text-slate-400 text-xs font-bold text-right">
         ₹{pos.avg_cost.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -169,8 +171,8 @@ function TradePanel({ onTradeSuccess }: { onTradeSuccess: () => void }) {
       </div>
 
       <div className="flex items-center gap-2 mb-6">
-          <TrendingUp size={16} className="text-indigo-400" />
-          <h3 className="text-white font-display font-black text-xs uppercase tracking-[0.2em]">
+          <TrendingUp size={16} className="text-cyan" />
+          <h3 className="text-white font-display font-black text-[10px] uppercase tracking-[0.3em] glow-cyan">
             Neural Order Entry
           </h3>
       </div>
@@ -178,39 +180,40 @@ function TradePanel({ onTradeSuccess }: { onTradeSuccess: () => void }) {
       <div className="grid grid-cols-1 gap-5 mb-6">
         {/* Ticker */}
         <div className="space-y-1.5">
-          <label className="text-slate-500 text-[10px] font-black tracking-widest uppercase ml-1">Instrument</label>
+          <label className="text-slate-500 text-[9px] font-bold tracking-widest uppercase ml-1 font-data">Instrument</label>
           <div className="relative">
               <input
                 type="text"
                 value={form.ticker}
                 onChange={e => setForm(f => ({ ...f, ticker: e.target.value.toUpperCase() }))}
                 placeholder="Ex. RELIANCE"
-                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-3 font-display font-black text-white text-sm focus:outline-none focus:border-indigo-500/50 placeholder-slate-600 transition-all"
+                className="w-full bg-void/50 border border-white/10 rounded-2xl px-5 py-3 font-display font-black text-white text-sm focus:outline-none focus:border-cyan/50 placeholder-slate-700 transition-all font-data"
               />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600">
-                  <Briefcase size={16} />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700">
+                  <Briefcase size={14} />
               </div>
           </div>
         </div>
 
         {/* Action Toggle */}
         <div className="space-y-1.5">
-           <label className="text-slate-500 text-[10px] font-black tracking-widest uppercase ml-1">Execution Side</label>
-           <div className="grid grid-cols-2 p-1 bg-white/[0.03] border border-white/10 rounded-2xl">
+           <label className="text-slate-500 text-[9px] font-bold tracking-widest uppercase ml-1 font-data">Execution Side</label>
+           <div className="grid grid-cols-2 p-1 bg-void/50 border border-white/10 rounded-2xl">
               <button
                 onClick={() => setForm(f => ({ ...f, action: 'BUY' }))}
-                className={`py-2 px-4 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase ${form.action === 'BUY' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                className={`py-2 px-4 rounded-xl text-[9px] font-black tracking-widest transition-all uppercase ${form.action === 'BUY' ? 'bg-emerald text-void shadow-lg glow-emerald' : 'text-slate-600 hover:text-white'}`}
               >
                 Buy <span className="opacity-50">/ Long</span>
               </button>
               <button
                 onClick={() => setForm(f => ({ ...f, action: 'SELL' }))}
-                className={`py-2 px-4 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase ${form.action === 'SELL' ? 'bg-rose-500 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                className={`py-2 px-4 rounded-xl text-[9px] font-black tracking-widest transition-all uppercase ${form.action === 'SELL' ? 'bg-rose text-white shadow-lg glow-red' : 'text-slate-600 hover:text-white'}`}
               >
                 Sell <span className="opacity-50">/ Short</span>
               </button>
            </div>
         </div>
+
 
         <div className="grid grid-cols-2 gap-4">
              {/* Quantity */}
@@ -265,13 +268,14 @@ function TradePanel({ onTradeSuccess }: { onTradeSuccess: () => void }) {
 
       {/* Total preview */}
       {form.quantity > 0 && form.price > 0 && (
-        <div className="mb-6 flex justify-between items-center bg-indigo-500/5 border border-indigo-500/10 rounded-2xl px-5 py-4 shadow-inner">
-          <span className="text-[10px] font-black tracking-widest text-indigo-400 uppercase">Gross Exposure</span>
-          <span className="text-white font-display font-black text-lg tracking-tight">
+        <div className="mb-6 flex justify-between items-center bg-cyan/5 border border-cyan/10 rounded-2xl px-5 py-4 shadow-inner">
+          <span className="text-[9px] font-black tracking-widest text-cyan uppercase font-data">Gross Exposure</span>
+          <span className="text-white font-display font-black text-lg tracking-tight glow-cyan">
             ₹{(form.quantity * form.price).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
           </span>
         </div>
       )}
+
 
       {error   && (
         <div className="mb-6 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 flex items-center gap-3 animate-in shake duration-500">
@@ -292,8 +296,8 @@ function TradePanel({ onTradeSuccess }: { onTradeSuccess: () => void }) {
         disabled={loading}
         className={`w-full py-4 rounded-2xl font-display font-black text-[11px] tracking-[0.2em] transition-all duration-500 shadow-2xl uppercase active:scale-95 group flex items-center justify-center gap-3 ${
           form.action === "BUY"
-            ? "bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-400"
-            : "bg-rose-500    text-white shadow-rose-500/20    hover:bg-rose-400"
+            ? "bg-emerald text-void shadow-emerald/20 hover:bg-emerald/80"
+            : "bg-rose    text-white shadow-rose/20    hover:bg-rose/80"
         } disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         {loading ? (
@@ -303,11 +307,12 @@ function TradePanel({ onTradeSuccess }: { onTradeSuccess: () => void }) {
             </>
         ) : (
             <>
-                <Zap size={14} className="fill-current group-hover:animate-pulse" />
-                Commit {form.action} Protocol
+                <Zap size={14} className="fill-current group-hover:animate-pulse" strokeWidth={3} />
+                COMMIT {form.action} PROTOCOL
             </>
         )}
       </button>
+
     </div>
   );
 }
@@ -365,15 +370,16 @@ export default function PaperTradingPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-1">
         <div>
           <div className="flex items-center gap-3 mb-3">
-             <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                <Wallet className="w-5 h-5 text-indigo-400" />
+             <div className="p-2 rounded-xl bg-cyan/10 border border-cyan/20">
+                <Wallet className="w-5 h-5 text-cyan" />
              </div>
-             <h1 className="text-3xl font-display font-black text-white tracking-tight uppercase">Quant Ledger <span className="text-slate-600 ml-1 font-normal italic">/ Paper</span></h1>
+             <h1 className="text-3xl font-display font-black text-white tracking-tighter uppercase">Quant Ledger <span className="text-slate-600 ml-1 font-normal italic font-data text-xl">/ SANDBOX</span></h1>
           </div>
-          <p className="text-slate-500 text-xs font-bold font-body tracking-[0.1em] uppercase max-w-xl leading-relaxed">
-            Real-time simulated execution environment &middot; <span className="text-indigo-400">₹10.0L Sandbox Credit</span> &middot; Zero-risk validation protocol
+          <p className="text-slate-500 text-[10px] font-bold font-data tracking-[0.2em] uppercase max-w-xl leading-relaxed">
+            Real-time simulated execution environment &middot; <span className="text-cyan">₹10.0L Sandbox Credit</span> &middot; Zero-risk validation protocol
           </p>
         </div>
+
         <button
           onClick={handleReset}
           disabled={resetting}
@@ -462,14 +468,15 @@ export default function PaperTradingPage() {
                 <TrendingUp size={120} className="text-indigo-500" />
              </div>
              <div className="flex justify-between items-center mb-6 relative z-10">
-                <div className="flex items-center gap-2 text-indigo-400">
+                <div className="flex items-center gap-2 text-cyan">
                     <Activity size={16} />
-                    <h3 className="text-white font-display font-black text-xs uppercase tracking-[0.2em]">Portfolio Trajectory</h3>
+                    <h3 className="text-white font-display font-black text-[10px] uppercase tracking-[0.3em] glow-cyan">Portfolio Trajectory</h3>
                 </div>
-                <div className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black tracking-widest uppercase">
+                <div className="px-3 py-1 rounded-full bg-cyan/10 border border-cyan/20 text-cyan text-[8px] font-black tracking-widest uppercase font-data">
                     Real-time Projection
                 </div>
              </div>
+
              <EquityCurveChart data={[
                  { date: 'T-10', value: 980000 },
                  { date: 'T-9', value: 995000 },
@@ -492,19 +499,20 @@ export default function PaperTradingPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-3 px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative ${
+                className={`flex items-center gap-3 px-8 py-5 text-[9px] font-black uppercase tracking-[0.2em] transition-all relative font-data ${
                   activeTab === tab
-                    ? "text-indigo-400"
-                    : "text-slate-500 hover:text-white"
+                    ? "text-cyan"
+                    : "text-slate-600 hover:text-white"
                 }`}
               >
-                {tab === "positions" ? <Briefcase size={14} /> : <History size={14} />}
+                {tab === "positions" ? <Briefcase size={12} /> : <History size={12} />}
                 {tab === "positions" ? `Live Clusters (${positions.length})` : `Protocol Archive (${history.length})`}
                 {activeTab === tab && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_10px_#6366f1]" />
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan shadow-[0_0_10px_#00d2ff]" />
                 )}
               </button>
             ))}
+
           </div>
 
           {/* Table */}

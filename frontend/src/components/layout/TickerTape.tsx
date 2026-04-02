@@ -19,22 +19,26 @@ export const TickerTape: React.FC = () => {
     const doubledTickers = [...mockTickers, ...mockTickers, ...mockTickers];
 
     return (
-        <div className="h-[36px] bg-void border-t border-white/5 shrink-0 flex items-center overflow-hidden w-full relative z-50">
-            <div className="flex items-center whitespace-nowrap animate-ticker hover:[webkit-animation-play-state:paused] hover:[animation-play-state:paused]">
+        <div className="h-[40px] bg-void border-t border-white/5 shrink-0 flex items-center overflow-hidden w-full relative z-50">
+            <div className="flex items-center whitespace-nowrap animate-ticker group-hover:[animation-play-state:paused]">
                 {doubledTickers.map((item, index) => {
                     const isPositive = item.change.startsWith('+');
-                    const colorClass = isPositive ? 'text-emerald-400' : 'text-rose-400';
+                    const colorClass = isPositive ? 'text-emerald glow-emerald' : 'text-rose glow-rose';
                     const symbolStr = isPositive ? '▲' : '▼';
+                    const baseSymbol = item.symbol.split('.')[0];
 
                     return (
-                        <div key={index} className="flex items-center px-6 shrink-0 border-r border-white/5">
-                            <span className="text-[10px] font-bold text-slate-400 tracking-wider mr-3 font-body">{item.symbol}</span>
-                            <span className="text-[10px] text-white font-mono font-bold mr-3">{item.price}</span>
-                            <span className={`text-[10px] font-bold ${colorClass}`}>{symbolStr} {item.change}</span>
+                        <div key={index} className="flex items-center px-10 shrink-0 border-r border-white-[0.02]">
+                            <span className="text-[11px] font-black text-white tracking-[0.1em] mr-4 uppercase">{baseSymbol}</span>
+                            <span className="text-[10px] text-slate-500 font-data font-bold mr-4 tabular-nums">{item.price}</span>
+                            <span className={`text-[10px] font-black ${colorClass} tracking-wider`}>
+                                {symbolStr} {item.change}
+                            </span>
                         </div>
                     );
                 })}
             </div>
         </div>
     );
+
 };
