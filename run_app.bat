@@ -61,18 +61,23 @@ echo %YLW%[STAGE 2: SERVICE ACTIVATION]%RST%
 echo ------------------------------------------------
 
 :: 2.1 Backend (FastAPI + Uvicorn)
-echo [*] Starting %CYA%FastAPI Backend%RST% on port 8000...
+echo [*] Starting %CYA%FastAPI Backend%RST% on port 9001...
 echo [INFO] Redirecting logs to separate window: "Apex AI - Backend"
-start "Apex AI - Backend" cmd /k "call venv\Scripts\activate.bat && echo [BACKEND] Starting Uvicorn Engine... && uvicorn main:app --host 0.0.0.0 --port 9001 --reload"
+start "Apex AI - Backend" cmd /k "call venv\Scripts\activate.bat && echo [BACKEND] Starting Uvicorn Engine... && uvicorn main:app --host 0.0.0.0 --port 9001 --reload --reload-exclude venv"
 
-:: 2.2 Frontend (React + Vite)
+:: 2.2 Streamlit Frontend
+echo [*] Starting %CYA%Streamlit UI%RST% on port 8501...
+echo [INFO] Redirecting logs to separate window: "Apex AI - Streamlit"
+start "Apex AI - Streamlit" cmd /k "call venv\Scripts\activate.bat && echo [STREAMLIT] Starting Streamlit App... && venv\Scripts\python -m streamlit run app.py"
+
+:: 2.3 React Frontend
 echo [*] Starting %CYA%React UI%RST% on port 3000...
 echo [INFO] Redirecting logs to separate window: "Apex AI - UI"
 start "Apex AI - UI" cmd /k "cd frontend && echo [FRONTEND] Starting Vite Dev Server... && npm run dev"
 
 echo.
-echo %GRN%[*] Services are warming up...%RST%
-timeout /t 6 /nobreak > nul
+echo %GRN%[*] Services are warming up (TF models loading — please wait ~18s)...%RST%
+timeout /t 18 /nobreak > nul
 
 :: --- Phase 3: Final Access ---
 echo.
@@ -80,19 +85,21 @@ echo %YLW%[STAGE 3: ACCESS SUMMARY]%RST%
 echo ------------------------------------------------
 echo %GRN%[SUCCESS] Intelligence Hub is online.%RST%
 echo.
-echo    Local Terminal:   http://localhost:3000
-echo    API Blueprint:    http://localhost:8000/docs
+echo    React UI:         http://localhost:3000
+echo    Streamlit UI:     http://localhost:8501
+echo    API Blueprint:    http://localhost:9001/docs
 echo.
 echo ------------------------------------------------
 echo %YLW%[TROUBLESHOOTING]%RST%
 echo  - If you see "MemoryError": Backend is optimized, check your RAM.
 echo  - If window closes: Check venv or npm installations.
-echo  - If blank screen: Ensure both windows say "Running".
+echo  - If blank screen: Ensure all windows say "Running".
 echo ------------------------------------------------
 echo.
 
-:: Launch Browser
+:: Launch Browsers
 start http://localhost:3000
+start http://localhost:8501
 
 echo Launch complete. Press any key to close this manager.
 pause > nul

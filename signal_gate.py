@@ -83,6 +83,29 @@ def evaluate_gate1_cone(p10: float, p50: float, p90: float, threshold: float = 0
     return bool((p90 - p10) / p50 < threshold)
 
 
+def evaluate_gate1_cone_adaptive(
+    p10: float, p50: float, p90: float, regime: str = "UNKNOWN"
+) -> bool:
+    """Regime-aware cone gate — uses dynamic threshold based on HMM regime.
+
+    BULL   → 0.18 (relaxed — signals are reliable in low-vol)
+    SIDEWAYS → 0.15
+    BEAR   → 0.12 (strict)
+    CRISIS → 0.08 (very strict — only tight cones pass)
+
+    Thresholds mirror market_regime.get_regime_thresholds().
+    Inlined here to avoid importing heavy dependencies (seaborn, hmmlearn).
+    """
+    _REGIME_CONE_THRESHOLDS = {
+        "BULL": 0.18,
+        "SIDEWAYS": 0.15,
+        "BEAR": 0.12,
+        "CRISIS": 0.08,
+    }
+    max_cone = _REGIME_CONE_THRESHOLDS.get(regime.upper(), 0.12)
+    return evaluate_gate1_cone(p10, p50, p90, threshold=max_cone)
+
+
 def evaluate_gate2_sentiment(direction: str, sentiment_score: float) -> bool:
     """FinBERT score must align with direction. BUY≥0, SELL≤0, HOLD always True."""
     if direction == "BUY":
@@ -172,9 +195,17 @@ def run_inference(
     # 5. Gating Logic
     direction = "BUY" if p50 > current_price else "SELL"
     
-    # Evaluate gates
+    # Detect current market regime from HMM for adaptive gating
+    try:
+        from market_regime import get_current_regime
+        regime_info = get_current_regime()
+        regime = regime_info.get("regime", "UNKNOWN")
+    except Exception:
+        regime = "UNKNOWN"
+
+    # Evaluate gates — Gate 1 uses regime-adaptive threshold
     cone_width = (p90 - p10) / p50 if p50 > 0 else 1.0
-    gate1 = evaluate_gate1_cone(p10, p50, p90)
+    gate1 = evaluate_gate1_cone_adaptive(p10, p50, p90, regime)
     gate2 = evaluate_gate2_sentiment(direction, sentiment_score)
     gate3 = evaluate_gate3_technical(direction, rsi)
     
@@ -206,6 +237,7 @@ def run_inference(
         rsi=rsi,
         atr=atr,
         cone_width=cone_width,
+        regime=regime,
         suggested_sl=risk_data["suggested_sl"],
         suggested_tp=risk_data["suggested_tp"],
         risk_reward_ratio=risk_data["risk_reward_ratio"],

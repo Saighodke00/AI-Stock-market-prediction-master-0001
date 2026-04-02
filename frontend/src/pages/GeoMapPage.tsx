@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import GeoSectorFilter, { SECTOR_COLORS } from '../components/geo/GeoSectorFilter';
 import GeoCompanyCard from '../components/geo/GeoCompanyCard';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+const API = import.meta.env.VITE_API_URL || '';
 
 /* ── Sector → marker color ─────────────────────────────────────────────── */
 const createMarkerIcon = (sector: string, isUp: boolean | null) => {

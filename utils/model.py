@@ -146,11 +146,15 @@ def create_magnitude_model(input_shape):
     x = Dropout(0.3)(x)
     
     # Quantile outputs: [Q10, Q50 (Median), Q90]
-    outputs = Dense(3)(x)
+    # Fix 1: tanh activation bounds output to [-1,1] (log-return scale)
+    # preventing unbounded gradients that cause NaN loss during training.
+    outputs = Dense(3, activation='tanh')(x)
     model = tf.keras.Model(inputs, outputs)
     # Use the module-level registered quantile_loss (not a local lambda)
     # so that model.save() / load_model() can resolve it by name.
-    model.compile(optimizer='adam', loss=quantile_loss)
+    # Gradient clipping prevents explosion even if input has outliers.
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3, clipnorm=1.0)
+    model.compile(optimizer=optimizer, loss=quantile_loss)
     return model
 
 # --- ENGINE WRAPPER ---
@@ -165,6 +169,15 @@ class CausalTradingEngine:
         self.history = {'loss': []}
 
     def train_ensemble(self, X, y_dir, y_mag, epochs=30):
+        # Fix 4: NaN-safe training — sanitize inputs before any training
+        nan_mask = np.isfinite(X).all(axis=(1, 2)) & np.isfinite(y_dir).ravel() & np.isfinite(y_mag).all(axis=1)
+        if not nan_mask.all():
+            n_bad = (~nan_mask).sum()
+            print(f"  ⚠️  Dropped {n_bad}/{len(X)} rows with NaN/Inf before training")
+            X, y_dir, y_mag = X[nan_mask], y_dir[nan_mask], y_mag[nan_mask]
+        if len(X) < 30:
+            raise ValueError(f"Too few clean samples ({len(X)}) after NaN removal. Check your feature pipeline.")
+
         # 1. Train GRU Direction
         h1 = self.gru_dir.fit(X, y_dir, epochs=epochs, batch_size=128, verbose=0, validation_split=0.1)
         

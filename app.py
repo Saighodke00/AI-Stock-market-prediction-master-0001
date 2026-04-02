@@ -1,7 +1,12 @@
 import os
 import sys
+import warnings
 import streamlit as st
 import numpy as np
+
+# Suppress urllib3 version mismatch warning (cosmetic, not an error)
+warnings.filterwarnings("ignore", category=UserWarning, module="requests")
+warnings.filterwarnings("ignore", message=".*urllib3.*", category=Warning)
 
 # Enable Keras 2 legacy support
 os.environ['TF_USE_LEGACY_KERAS'] = '1'

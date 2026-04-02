@@ -25,7 +25,7 @@ interface Props {
     onClose: () => void;
 }
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+const API = import.meta.env.VITE_API_URL || '';
 
 const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
     const [data, setData] = useState<CompanyData | null>(null);
