@@ -67,11 +67,32 @@ def inject_global_css():
         font-weight: 700 !important;
     }
 
-    /* ── Premium Scrollbar ────────────────────────────────────────────────── */
+    /* ── Premium Scrollbar (all containers) ─────────────────────────────── */
+    *, *::before, *::after {
+        scrollbar-width: thin;
+        scrollbar-color: #1a2b4d var(--bg);
+    }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: #1a2b4d; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+    ::-webkit-scrollbar-track { background: var(--bg) !important; }
+    ::-webkit-scrollbar-thumb { background: #1a2b4d !important; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--cyan) !important; }
+    ::-webkit-scrollbar-button { display: none; }
+    ::-webkit-scrollbar-corner { background: var(--bg) !important; }
+
+    [data-testid="stSidebar"] ::-webkit-scrollbar-track { background: var(--panel) !important; }
+    [data-testid="stSidebar"] * { scrollbar-color: #1a2b4d var(--panel); }
+
+    /* Streamlit main scroll container */
+    [data-testid="stAppViewContainer"] > section,
+    [data-testid="stAppViewContainer"] > section > div,
+    [data-testid="stVerticalBlock"],
+    .main .block-container,
+    iframe { scrollbar-color: #1a2b4d var(--bg); }
+
+    /* Streamlit slider/progress track */
+    [data-testid="stSlider"] [role="slider"] { background: var(--cyan) !important; }
+    [data-testid="stSlider"] [data-testid="stThumbValue"] { color: var(--cyan) !important; }
+    .stProgress > div > div { background-color: var(--cyan) !important; }
 
     /* ── Glow Effects ─────────────────────────────────────────────────────── */
     .glow-cyan  { color: var(--cyan);  text-shadow: 0 0 15px rgba(0,229,255,0.4); }
