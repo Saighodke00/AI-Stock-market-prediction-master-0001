@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, Zap, Search, Triangle, MessageSquare, BookOpen, Settings, Plus } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Zap, Search, Triangle, MessageSquare, BookOpen, Settings, Plus, MapPin } from 'lucide-react';
 
 const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -11,6 +11,7 @@ const navItems = [
     { path: '/sentiment', label: 'Sentiment', icon: MessageSquare },
     { path: '/paper', label: 'Paper Trading', icon: BookOpen },
     { path: '/tuner', label: 'Hyper Tuner', icon: Settings },
+    { path: '/geo', label: 'Geo Map', icon: MapPin },
 ];
 
 const mockWatchlist = [
