@@ -29,55 +29,70 @@ const mockMarketPulse = [
 export const LeftSidebar: React.FC = () => {
     return (
         <div className="w-[210px] bg-void border-r border-white/5 shrink-0 hidden lg:flex flex-col h-full z-40">
-
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto pt-6 pb-4 px-3 custom-scrollbar">
-                <div className="mb-4">
-                    <h3 className="text-[10px] font-bold text-slate-600 tracking-[0.1em] px-4 mb-2 uppercase font-body">Navigation</h3>
-                    <ul className="space-y-1">
+            <nav className="flex-1 overflow-y-auto pt-8 pb-4 px-4 custom-scrollbar">
+                <div className="mb-8">
+                    <h3 className="neon-label px-4 mb-4">Navigation</h3>
+                    <ul className="space-y-1.5">
                         {navItems.map((item) => (
                             <li key={item.path}>
                                 <NavLink
                                     to={item.path}
-                                    className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
+                                    className={({ isActive }) => `
+                                        flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 group
+                                        ${isActive 
+                                            ? 'bg-cyan/10 border border-cyan/20 text-white shadow-[0_0_15px_rgba(0,210,255,0.05)]' 
+                                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'}
+                                    `}
                                 >
-                                    <item.icon size={18} />
-                                    <span className="font-medium">{item.label}</span>
+                                    {({ isActive }) => (
+                                        <>
+                                            <item.icon size={18} className={isActive ? 'text-cyan' : 'group-hover:text-slate-300'} />
+                                            <span className="text-[13px] font-semibold tracking-tight">{item.label}</span>
+                                        </>
+                                    )}
                                 </NavLink>
                             </li>
                         ))}
+
                     </ul>
                 </div>
 
-                <div className="my-6 border-b border-white/5 mx-2" />
+                <div className="my-8 border-b border-white/5 mx-2" />
 
                 {/* Watchlist */}
                 <div className="px-1">
-                    <h3 className="text-[10px] font-bold text-slate-600 tracking-[0.1em] px-3 mb-4 uppercase font-body">Watchlist</h3>
-                    <ul className="space-y-1">
+                    <h3 className="neon-label px-3 mb-5">Watchlist</h3>
+                    <ul className="space-y-3">
                         {mockWatchlist.map((item) => {
-                            const indicatorColor = item.signal === 'BUY' ? 'bg-emerald-400' : item.signal === 'SELL' ? 'bg-rose-400' : 'bg-amber-400';
-                            const changeColor = item.change >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                            const isBuy = item.signal === 'BUY';
+                            const isSell = item.signal === 'SELL';
+                            const indicatorColor = isBuy ? 'bg-emerald' : isSell ? 'bg-rose' : 'bg-amber';
+                            const glowColor = isBuy ? 'shadow-[0_0_8px_rgba(16,185,129,0.5)]' : isSell ? 'shadow-[0_0_8px_rgba(244,63,94,0.5)]' : '';
+                            
                             return (
-                                <li key={item.symbol} className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-white/[0.03] transition-all cursor-pointer group">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className={`w-1.5 h-1.5 rounded-full ${indicatorColor} shadow-[0_0_8px_rgba(0,0,0,0.2)]`} title={item.signal} />
-                                        <span className="text-[12px] font-semibold text-slate-300 group-hover:text-white transition-colors">{item.symbol.split('.')[0]}</span>
+                                <li key={item.symbol} className="flex items-center justify-between px-3 py-1 group cursor-pointer">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-1.5 h-1.5 rounded-full ${indicatorColor} ${glowColor} animate-pulse-dot`} />
+                                        <span className="text-[11px] font-bold text-slate-300 group-hover:text-white transition-colors uppercase tracking-wider">{item.symbol.split('.')[0]}</span>
                                     </div>
                                     <div className="flex flex-col items-end">
-                                        <span className="text-[12px] font-mono font-bold text-white text-opacity-90">{item.price}</span>
-                                        <span className={`text-[10px] font-bold font-body ${changeColor}`}>{item.change > 0 ? '+' : ''}{item.change}%</span>
+                                        <span className="text-[10px] font-data font-bold text-white tracking-wider">{item.price}</span>
+                                        <span className={`text-[9px] font-black ${item.change >= 0 ? 'text-emerald' : 'text-rose'}`}>
+                                            {item.change >= 0 ? '▲' : '▼'} {Math.abs(item.change)}%
+                                        </span>
                                     </div>
                                 </li>
                             );
                         })}
                     </ul>
 
-                    <button className="w-[calc(100%-16px)] mx-2 mt-4 py-2 border border-dashed border-white/10 rounded-xl text-slate-500 hover:text-white hover:border-white/20 hover:bg-white/[0.02] transition-all flex items-center justify-center gap-2 font-body text-xs font-semibold">
-                        <Plus size={14} /> Add Ticker
+                    <button className="w-full mt-6 py-2.5 border border-dashed border-white/10 rounded-xl text-[10px] font-bold text-slate-600 hover:text-slate-300 hover:border-white/20 hover:bg-white/[0.01] transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
+                        <Plus size={12} /> Add Ticker
                     </button>
                 </div>
             </nav>
         </div>
     );
 };
+

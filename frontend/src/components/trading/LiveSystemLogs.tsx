@@ -32,26 +32,30 @@ export const LiveSystemLogs: React.FC = () => {
     }, [logs]);
 
     return (
-        <div className="relative group overflow-hidden rounded-xl border border-white/5 shadow-2xl">
-            {/* Scanline Effect Overlay */}
-            <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%] animate-pulse" />
+        <div className="relative group overflow-hidden rounded-3xl neon-frame">
+            {/* Scanline Effect Overlay - slightly more intense */}
+            <div className="absolute inset-0 pointer-events-none opacity-[0.05] z-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.3)_50%),linear-gradient(90deg,rgba(0,210,255,0.06),rgba(16,185,129,0.02),rgba(244,63,94,0.06))] bg-[length:100%_2px,3px_100%]" />
             
-            <div className="bg-void/80 backdrop-blur-sm border border-dim rounded-xl p-4 h-[400px] overflow-y-auto font-mono scrollbar-hide select-none transition-all relative z-10 flex flex-col-reverse">
+            <div className="bg-void/40 backdrop-blur-xl p-5 h-[420px] overflow-y-auto scrollbar-hide select-none transition-all relative z-10 flex flex-col-reverse">
                 <div ref={logEndRef} className="h-px" />
-                {logs.map((log, i) => {
+                {logs.slice(0, 50).map((log, i) => {
                     const isAlert = log.level === 'ERROR' || log.level === 'WARNING';
                     const isSuccess = log.level === 'SUCCESS';
                     
                     return (
-                        <div key={i} className="font-data text-[10px] mb-2 whitespace-pre-wrap flex gap-3 border-l-2 border-white/5 pl-3 hover:border-cyan/50 hover:bg-white/5 transition-all group/line animate-slide-in-right">
-                            <span className="text-muted shrink-0 opacity-50 font-bold">[{log.timestamp}]</span>
-                            <span className={`${isAlert ? 'text-rose glow-rose' : isSuccess ? 'text-emerald glow-emerald' : 'text-cyan'} tracking-tight`}>
+                        <div key={i} className="font-data text-[9px] mb-2.5 whitespace-pre-wrap flex gap-4 border-l border-white/5 pl-4 hover:border-cyan/40 hover:bg-white/[0.02] transition-all group/line animate-slide-in-right py-0.5">
+                            <span className="text-slate-600 shrink-0 font-bold tracking-tighter">[{log.timestamp}]</span>
+                            <span className={`${isAlert ? 'text-rose glow-rose' : isSuccess ? 'text-emerald glow-emerald' : 'text-cyan'} tracking-wide leading-relaxed`}>
                                 {log.message}
                             </span>
                         </div>
                     );
                 })}
             </div>
+            
+            {/* Bottom Glow */}
+            <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-void to-transparent z-20 pointer-events-none" />
         </div>
     );
+
 };
