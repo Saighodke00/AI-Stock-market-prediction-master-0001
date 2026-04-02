@@ -9,8 +9,6 @@ import { HeatMapStrip } from '../components/dashboard/HeatMapStrip';
 import { PortfolioSnapshot } from '../components/dashboard/PortfolioSnapshot';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { HeroSignalCard } from '../components/dashboard/HeroSignalCard';
-import { TradeArchitect } from '../components/dashboard/TradeArchitect';
-import { TradeChat } from '../components/dashboard/TradeChat';
 import { TopMetricsBar } from '../components/dashboard/TopMetricsBar';
 
 export const DashboardPage: React.FC = () => {
@@ -196,17 +194,7 @@ export const DashboardPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 7. New Trade Chat Section at the bottom */}
-                <div className="mt-10">
-                    <div className="flex items-center gap-3 px-2 mb-6">
-                        <div className="h-px flex-1 bg-white/5" />
-                        <h2 className="font-display font-black text-white/40 text-[10px] tracking-[0.5em] uppercase px-4 text-center">
-                            Secure Neural Chat Terminal
-                        </h2>
-                        <div className="h-px flex-1 bg-white/5" />
-                    </div>
-                    <TradeChat />
-                </div>
+
             </div>
         </div>
     );

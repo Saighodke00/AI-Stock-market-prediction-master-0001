@@ -14,6 +14,10 @@ Improvements over v2.1:
 """
 
 from __future__ import annotations
+import warnings
+warnings.filterwarnings("ignore", message=".*urllib3.*", category=Warning)
+warnings.filterwarnings("ignore", category=UserWarning, module="requests")
+
 import yfinance as yf
 
 import os
@@ -367,21 +371,30 @@ def _get_active_scaler(X_raw: np.ndarray) -> Any:
             _state.scaler = sc
             logger.info("Scaler recovered from models directory.")
 
-    # 3. Last resort fit
+    # 3. Last resort fit — persist so it's consistent across requests
     if sc is None:
-        logger.warning("No global scaler found. Fitting emergency transient scaler.")
+        logger.warning("No global scaler found. Fitting and persisting emergency scaler.")
         sc = RobustScaler().fit(X_raw)
+        _state.scaler = sc
+        _save_scaler(sc)
         return sc
 
-    # 4. Shape validation
+    # 4. Shape validation — persist on mismatch so we don't refit every request
     try:
         if hasattr(sc, "n_features_in_") and X_raw.shape[1] != sc.n_features_in_:
-            logger.warning("Scaler mismatch: expected %d, got %d. Refitting transient.",
+            logger.warning("Scaler mismatch: expected %d, got %d. Refitting and persisting.",
                            sc.n_features_in_, X_raw.shape[1])
-            return RobustScaler().fit(X_raw)
+            new_sc = RobustScaler().fit(X_raw)
+            _state.scaler = new_sc
+            _save_scaler(new_sc)
+            logger.info("Persisted re-fitted scaler (%d features)", X_raw.shape[1])
+            return new_sc
     except Exception as exc:
-        logger.error("Scaler validation error: %s", exc)
-        return RobustScaler().fit(X_raw)
+        logger.error("Scaler validation error: %s — refitting and persisting.", exc)
+        new_sc = RobustScaler().fit(X_raw)
+        _state.scaler = new_sc
+        _save_scaler(new_sc)
+        return new_sc
 
     return sc
 
