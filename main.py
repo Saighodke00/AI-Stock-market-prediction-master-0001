@@ -898,6 +898,104 @@ async def portfolio_stats():
         return {"pnl": 0, "return_pct": 0, "active_positions": 0}
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  Geo Dashboard — Company database + endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+import json as _json
+
+_GEO_DB_PATH = os.path.join(os.path.dirname(__file__), "companies_india.json")
+try:
+    with open(_GEO_DB_PATH, encoding="utf-8") as _fh:
+        _COMPANIES_DB: list[dict] = _json.load(_fh)
+    logger.info("Loaded %d companies for Geo Dashboard", len(_COMPANIES_DB))
+except Exception as _exc:
+    logger.warning("Could not load companies_india.json: %s", _exc)
+    _COMPANIES_DB = []
+
+
+@app.get("/api/geo/companies")
+async def geo_companies(sector: str | None = None, state: str | None = None):
+    """GeoJSON FeatureCollection of Indian listed companies (filterable)."""
+    companies = _COMPANIES_DB
+    if sector:
+        companies = [c for c in companies if c["sector"].lower() == sector.lower()]
+    if state:
+        companies = [c for c in companies if c["state"].lower() == state.lower()]
+
+    features = []
+    for c in companies:
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [c["lng"], c["lat"]]},
+            "properties": {
+                "id": c["id"],
+                "name": c["name"],
+                "ticker": c["ticker"],
+                "sector": c["sector"],
+                "city": c["city"],
+                "state": c["state"],
+                "description": c["description"],
+            },
+        })
+    return {"type": "FeatureCollection", "features": features}
+
+
+@app.get("/api/geo/stock/{ticker}")
+async def geo_stock(ticker: str):
+    """Live stock snapshot for a single ticker."""
+    loop = asyncio.get_event_loop()
+    try:
+        def _fetch():
+            t = get_ticker(ticker)
+            fi = t.fast_info
+            cur = fi.get("lastPrice", 0)
+            prev = fi.get("previousClose", cur)
+            chg = ((cur - prev) / prev * 100) if prev else 0
+            return {
+                "ticker": ticker,
+                "current_price": round(cur, 2),
+                "change_pct": round(chg, 2),
+                "market_cap": fi.get("marketCap", 0),
+                "volume": fi.get("lastVolume", 0),
+                "is_up": chg >= 0,
+                "color": "#00e676" if chg >= 0 else "#ff1744",
+            }
+        return await loop.run_in_executor(None, _fetch)
+    except Exception as exc:
+        return {"error": str(exc), "ticker": ticker}
+
+
+@app.get("/api/geo/company/{company_id}")
+async def geo_company_card(company_id: int):
+    """Full company card — info + live stock + news."""
+    company = next((c for c in _COMPANIES_DB if c["id"] == company_id), None)
+    if not company:
+        raise HTTPException(404, "Company not found")
+
+    stock = await geo_stock(company["ticker"])
+
+    # Fetch news
+    loop = asyncio.get_event_loop()
+    try:
+        def _news():
+            t = get_ticker(company["ticker"])
+            items = t.news or []
+            out = []
+            for item in items[:5]:
+                content = item.get("content", item)
+                out.append({
+                    "title": content.get("title", ""),
+                    "url": content.get("url") or content.get("link", ""),
+                    "publisher": content.get("publisher", "Yahoo Finance"),
+                })
+            return out
+        news = await loop.run_in_executor(None, _news)
+    except Exception:
+        news = []
+
+    return {**company, "stock": stock, "news": news}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  Routes — Health
 # ─────────────────────────────────────────────────────────────────────────────
 

@@ -16,6 +16,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 import { PatternsPage } from './pages/PatternsPage';
 import { HyperTunerPage } from './pages/HyperTunerPage';
+import { GeoMapPage } from './pages/GeoMapPage';
 
 function App() {
     return (
@@ -39,6 +40,7 @@ function App() {
                                 <Route path="/sentiment" element={<SentimentPage />} />
                                 <Route path="/paper" element={<PaperTradingPage />} />
                                 <Route path="/tuner" element={<HyperTunerPage />} />
+                                <Route path="/geo" element={<GeoMapPage />} />
                             </Routes>
                         </ErrorBoundary>
                     </main>
