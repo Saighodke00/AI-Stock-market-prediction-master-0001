@@ -63,7 +63,7 @@ echo ------------------------------------------------
 :: 2.1 Backend (FastAPI + Uvicorn)
 echo [*] Starting %CYA%FastAPI Backend%RST% on port 9001...
 echo [INFO] Redirecting logs to separate window: "Apex AI - Backend"
-start "Apex AI - Backend" cmd /k "call venv\Scripts\activate.bat && echo [BACKEND] Starting Uvicorn Engine... && uvicorn main:app --host 0.0.0.0 --port 9001 --reload --reload-exclude venv"
+start "Apex AI - Backend" cmd /k "call venv\Scripts\activate.bat && echo [BACKEND] Starting Uvicorn Engine... && uvicorn main:app --host 127.0.0.1 --port 9001 --reload --reload-exclude venv"
 
 :: 2.2 Streamlit Frontend
 echo [*] Starting %CYA%Streamlit UI%RST% on port 8501...
@@ -76,8 +76,8 @@ echo [INFO] Redirecting logs to separate window: "Apex AI - UI"
 start "Apex AI - UI" cmd /k "cd frontend && echo [FRONTEND] Starting Vite Dev Server... && npm run dev"
 
 echo.
-echo %GRN%[*] Services are warming up (TF models loading — please wait ~18s)...%RST%
-timeout /t 18 /nobreak > nul
+echo %GRN%[*] Services are warming up (TF models loading — please wait ~25s)...%RST%
+timeout /t 25 /nobreak > nul
 
 :: --- Phase 3: Final Access ---
 echo.

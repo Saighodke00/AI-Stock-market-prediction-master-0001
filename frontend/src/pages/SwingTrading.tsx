@@ -19,9 +19,15 @@ const TICKERS = [
     'TATAMOTORS.NS', 'NTPC.NS', 'KOTAKBANK.NS', 'TITAN.NS'
 ];
 
+const isBullish = (action: string): boolean => action === "BUY";
+const isBearish = (action: string): boolean => action === "SELL";
+const isActive  = (action: string): boolean => action === "BUY" || action === "SELL";
+
+
 export const SwingTradingPage: React.FC = () => {
     const [ticker, setTicker] = useState(TICKERS[0]);
     const [tf, setTf] = useState('1D');
+    const [isLive, setIsLive] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -60,6 +66,22 @@ export const SwingTradingPage: React.FC = () => {
         return () => { active = false; };
     }, [ticker, tf]);
 
+    // Live Polling (longer interval for swing as daily/hourly data is slower)
+    useEffect(() => {
+        if (!isLive) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const sigRes = await fetchSignal(ticker, 'swing');
+                if (sigRes) setSignal(sigRes);
+            } catch (e) {
+                console.error("Live poll failed", e);
+            }
+        }, 60000); // 1 minute
+
+        return () => clearInterval(interval);
+    }, [isLive, ticker]);
+
     const metrics = backtest ? [
         { label: 'Win Rate', value: backtest.win_rate ?? 0, format: 'percent' as const },
         { label: 'Profit Factor', value: backtest.profit_factor ?? 0, format: 'decimal' as const },
@@ -76,102 +98,127 @@ export const SwingTradingPage: React.FC = () => {
     ] : [];
 
     return (
-        <div className="flex flex-col h-full bg-[#030712] overflow-y-auto w-full p-6 animate-in fade-in duration-700 min-w-[320px]">
+        <div className="flex h-full w-full overflow-hidden animate-in fade-in duration-700 relative">
             {/* Background Grain/Noise */}
-            <div className="fixed inset-0 pointer-events-none opacity-[0.03] grain-noise z-50" />
+            <div className="fixed inset-0 pointer-events-none opacity-[0.03] grain-noise z-10" />
 
-            {/* Top Controls */}
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-4 px-1">
-                <div className="flex flex-wrap items-center gap-6">
-                    <div className="relative group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-indigo-400 transition-colors">
-                            <Search size={16} />
+            {/* MAIN CONTENT GRID */}
+            <div className="flex-1 flex overflow-hidden w-full relative z-20">
+                {/* CENTER PANEL (Chart & Main Pillar) */}
+                <div className="flex-1 center-scroll-panel p-6 pb-20">
+                    {loading ? (
+                        <div className="empty-state-container min-h-[60vh] border-none bg-transparent">
+                            <NeuralSpinner />
+                            <span className="font-data text-cyan tracking-[0.3em] text-[10px] mt-4 uppercase animate-pulse">NEURAL ENGINE CALIBRATING...</span>
                         </div>
-                        <select
-                            value={ticker}
-                            onChange={(e) => setTicker(e.target.value)}
-                            className="bg-white/[0.03] border border-white/10 text-white font-display font-bold text-lg pl-12 pr-10 py-3 rounded-2xl focus:border-indigo-500/50 outline-none w-64 shadow-2xl appearance-none cursor-pointer hover:bg-white/[0.05] transition-all"
-                        >
-                            {TICKERS.map(t => <option key={t} value={t} className="bg-slate-900">{t}</option>)}
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                             <ChevronDown size={16} />
-                        </div>
-                    </div>
-
-                    <div className="flex bg-white/[0.03] border border-white/10 rounded-2xl p-1.5 backdrop-blur-md">
-                        {['1D', '1W'].map(t => (
+                    ) : error ? (
+                        <div className="empty-state-container min-h-[60vh] border-rose-500/20 bg-rose-500/5">
+                            <div className="w-20 h-20 rounded-full bg-rose-500/10 flex items-center justify-center mb-6 animate-pulse">
+                                <AlertCircle className="w-10 h-10 text-rose-500" />
+                            </div>
+                            <h2 className="font-display font-black text-3xl text-white mb-4 tracking-tight">Neural Link Severed</h2>
+                            <p className="font-body text-slate-400 text-lg max-w-md leading-relaxed mb-8 font-medium">{error}</p>
                             <button
-                                key={t}
-                                onClick={() => setTf(t)}
-                                className={`px-6 py-2 font-display text-[10px] font-black tracking-widest rounded-xl transition-all duration-300 uppercase ${tf === t ? 'bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                onClick={() => window.location.reload()}
+                                className="flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-2xl font-display font-black text-xs tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-2xl shadow-rose-500/20 uppercase"
                             >
-                                {t}
+                                <RefreshCcw className="w-4 h-4" /> Reconnect Engine
                             </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3 px-4 py-2.5 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
-                         <Timer className="w-4 h-4 text-indigo-400" />
-                         <span className="text-[10px] font-bold text-indigo-400 tracking-[0.2em] uppercase">Neural Refresh: <span className="text-white">Daily</span></span>
-                    </div>
-                    <button className="group flex items-center gap-3 bg-white text-slate-900 px-6 py-3 rounded-2xl font-display font-black text-[11px] tracking-widest hover:bg-indigo-500 hover:text-white transition-all duration-500 shadow-2xl shadow-indigo-500/20 active:scale-95 uppercase">
-                        <Zap className="w-4 h-4 fill-current group-hover:animate-pulse" /> Execute Inference
-                    </button>
-                </div>
-            </div>
-
-            {loading ? (
-                <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
-                    <NeuralSpinner />
-                    <span className="font-data text-cyan tracking-[0.3em] text-[10px] mt-4 uppercase animate-pulse">NEURAL ENGINE CALIBRATING...</span>
-                </div>
-            ) : error ? (
-                <div className="flex-1 flex flex-col items-center justify-center min-h-[500px] glass-card border-rose-500/20 bg-rose-500/5 rounded-3xl p-12 text-center">
-                    <div className="w-20 h-20 rounded-full bg-rose-500/10 flex items-center justify-center mb-6 animate-pulse">
-                        <AlertCircle className="w-10 h-10 text-rose-500" />
-                    </div>
-                    <h2 className="font-display font-black text-3xl text-white mb-4 tracking-tight">Neural Link Severed</h2>
-                    <p className="font-body text-slate-400 text-lg max-w-md leading-relaxed mb-8 font-medium">
-                        {error}
-                    </p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-2xl font-display font-black text-xs tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-2xl shadow-rose-500/20 uppercase"
-                    >
-                        <RefreshCcw className="w-4 h-4" /> Reconnect Engine
-                    </button>
-                </div>
-            ) : !signal ? (
-                <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
-                    <span className="font-data text-gold tracking-widest text-sm uppercase">No Signal Data Found</span>
-                </div>
-            ) : (
-                <>
-                    <div className="flex flex-col xl:flex-row gap-6 items-start">
-                        {/* Main Pillar */}
-                        <div className="flex-1 flex flex-col gap-6 w-full">
-                            <SignalCard data={signal} isLoading={false} timeframe={`${tf} SWING`} />
-                            <CandlestickChart ohlcv={signal.ohlcv ?? []} forecast={signal.forecast ?? []} action={signal.action} />
                         </div>
+                    ) : !signal ? (
+                        <div className="empty-state-container min-h-[60vh]">
+                            <span className="font-data text-gold tracking-widest text-sm uppercase">No Signal Data Found — Execute Inference</span>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-8 max-w-[1400px] mx-auto">
+                            {/* TOP CONTROLS (Moved inside center panel for sticky header behavior if desired) */}
+                            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-4 px-1">
+                                <div className="flex flex-wrap items-center gap-6">
+                                    <div className="relative group">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-indigo-400 transition-colors">
+                                            <Search size={16} />
+                                        </div>
+                                        <select
+                                            value={ticker}
+                                            onChange={(e) => setTicker(e.target.value)}
+                                            className="bg-white/[0.03] border border-white/10 text-white font-display font-bold text-lg pl-12 pr-10 py-3 rounded-2xl focus:border-indigo-500/50 outline-none w-64 shadow-2xl appearance-none cursor-pointer hover:bg-white/[0.05] transition-all"
+                                        >
+                                            {TICKERS.map(t => <option key={t} value={t} className="bg-slate-900">{t}</option>)}
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                            <ChevronDown size={16} />
+                                        </div>
+                                    </div>
+                                    <div className="flex bg-white/[0.03] border border-white/10 rounded-2xl p-1.5 backdrop-blur-md">
+                                        {['1D', '1W'].map(t => (
+                                            <button
+                                                key={t}
+                                                onClick={() => setTf(t)}
+                                                className={`px-6 py-2 font-display text-[10px] font-black tracking-widest rounded-xl transition-all duration-300 uppercase ${tf === t ? 'bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                            >
+                                                {t}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <button 
+                                        onClick={() => setIsLive(!isLive)}
+                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-300 font-display text-[10px] font-black tracking-widest uppercase ${isLive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'bg-white/[0.03] border-white/10 text-slate-500 hover:border-white/20'}`}
+                                    >
+                                        <div className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`} />
+                                        {isLive ? 'Live Sync Active' : 'Enable Live Sync'}
+                                    </button>
+                                    <div className="w-px h-6 bg-white/5 mx-1" />
+                                    <div className="flex items-center gap-3 px-4 py-2.5 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
+                                        <Timer className="w-4 h-4 text-indigo-400" />
+                                        <span className="text-[10px] font-bold text-indigo-400 tracking-[0.2em] uppercase">Neural Refresh: <span className="text-white">Daily</span></span>
+                                    </div>
+                                    <button className="group flex items-center gap-3 bg-white text-slate-900 px-6 py-3 rounded-2xl font-display font-black text-[11px] tracking-widest hover:bg-indigo-500 hover:text-white transition-all duration-500 shadow-2xl shadow-indigo-500/20 active:scale-95 uppercase">
+                                        <Zap className="w-4 h-4 fill-current group-hover:animate-pulse" /> Execute Inference
+                                    </button>
+                                </div>
+                            </div>
 
-                        {/* Analysis Sidebar */}
-                        <div className="w-full xl:w-[350px] shrink-0 flex flex-col gap-8 glass-card border-white/5 p-6 shadow-2xl relative overflow-hidden">
-                             <div className="absolute top-0 right-0 p-4 opacity-50">
+                            {/* MAIN SIGNAL AREA */}
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="flex flex-col gap-6">
+                                    <SignalCard data={signal} isLoading={false} timeframe={`${tf} SWING`} />
+                                    <div className="h-[calc(100vh-420px)] min-h-[500px]">
+                                        <CandlestickChart 
+                                            ticker={ticker}
+                                            ohlcv={signal.ohlcv ?? []} 
+                                            forecast={signal.forecast ?? []} 
+                                            action={signal.action} 
+                                            isLive={isLive}
+                                            intervalMs={60000}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <PositionSizer data={signal} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* RIGHT ANALYSIS SIDEBAR */}
+                {signal && !loading && !error && (
+                    <div className="w-[360px] hidden 2xl:block border-l border-white/5 right-sidebar-sticky p-6 bg-void/20 backdrop-blur-sm">
+                        <div className="flex flex-col gap-8 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 opacity-50">
                                 <Activity className="w-4 h-4 text-indigo-500 animate-pulse" />
-                             </div>
+                            </div>
 
-                             {/* Pulsing Signal Badge */}
-                             <SignalBadge action={signal.action} />
-
-                             <div className="w-full h-px bg-white/5" />
+                            <SignalBadge action={signal.action} />
+                            
+                            <div className="w-full h-px bg-white/5" />
 
                             {/* Guardrail Gates */}
                             {gateDisplay.length > 0 && (
                                 <div className="flex flex-col gap-4">
-                                     <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2">
                                         <ShieldCheck className="w-4 h-4 text-slate-500" />
                                         <h3 className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Neural Guardrails</h3>
                                     </div>
@@ -194,11 +241,9 @@ export const SwingTradingPage: React.FC = () => {
                             </div>
 
                             <div className="w-full h-px bg-white/5" />
-
                             <XAIPanel report={xai} explanation={signal?.explanation || 'Neural explanation unavailable.'} />
 
                             <div className="w-full h-px bg-white/5" />
-
                             <SentimentPanel
                                 data={sentiment}
                                 gatePassed={signal?.gate_results?.gate2_sentiment ?? false}
@@ -206,12 +251,8 @@ export const SwingTradingPage: React.FC = () => {
                             />
                         </div>
                     </div>
-
-                    <div className="mt-4">
-                        <PositionSizer data={signal} />
-                    </div>
-                </>
-            )}
+                )}
+            </div>
         </div>
     );
 };

@@ -16,7 +16,7 @@ from utils.constants import TICKER_LIST, ALL_TICKERS, DEFAULT_SUGGESTIONS, TIMEF
 from utils.data_pipeline import validate_data
 from utils.india_market import IndiaMarketIntelligence
 from utils.technical_analysis import detect_support_resistance, calculate_position_size, calculate_multi_timeframe_confluence
-from utils.ui import metric_card, terminal_header, apply_chart_style, signal_card, show_loading
+from utils.ui import metric_card, terminal_header, apply_chart_style, signal_card, show_loading, inject_global_css
 from utils.backtest import run_backtest
 from utils.pattern_recognition import (
     detect_all_patterns,
@@ -85,6 +85,7 @@ def _suggest_ticker_fix(ticker: str):
         """)
 
 st.set_page_config(page_title="Swing Intelligence · Apex AI", page_icon="📈", layout="wide")
+inject_global_css()
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -337,6 +338,7 @@ if force_retrain:
     st.session_state["swing_results"] = {}
 
 if selected_tickers:
+    st.markdown('<div class="main-content-wrapper">', unsafe_allow_html=True)
     # 1. Run inference for each selected ticker
     progress_bar = st.progress(0, text="Initialising neural engine…")
     for i, t in enumerate(selected_tickers):
@@ -453,98 +455,127 @@ if selected_tickers:
 
             st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
             
-            # --- GAUGE & REASONING ---
-            c1, c2 = st.columns([1, 1.5])
-            with c1:
-                fig_gauge = go.Figure(go.Indicator(
-                    mode = "gauge+number", value = data['gauge_val'],
-                    domain = {'x': [0, 1], 'y': [0, 1]},
-                    title = {'text': "Strategic Score", 'font': {'size': 20, 'color': '#888'}},
-                    gauge = {
-                        'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "white"},
-                        'bar': {'color': data['color']}, 'bgcolor': "rgba(255,255,255,0.05)",
-                        'borderwidth': 2, 'bordercolor': "rgba(255,255,255,0.1)",
-                        'steps': [{'range': [0, 35], 'color': 'rgba(255,75,75,0.2)'}, {'range': [35, 65], 'color': 'rgba(255,204,0,0.2)'}, {'range': [65, 100], 'color': 'rgba(0,255,136,0.2)'}]
-                    }))
-                fig_gauge.update_layout(height=300, margin=dict(l=30, r=30, t=50, b=20), paper_bgcolor='rgba(0,0,0,0)', font={'color': "white", 'family': "Outfit"})
-                st.plotly_chart(fig_gauge, width='stretch')
+            # --- 3-PILLAR NEURAL ANALYSIS (v3.1) ---
+            st.markdown("<h3 style='margin-top:20px; font-size:18px; color:#7a8299;'>NEURAL ANALYSIS PILLARS</h3>", unsafe_allow_html=True)
+            
+            p1, p2, p3 = st.columns(3)
+            
+            with p1:
+                st.markdown("#### 🛡️ Neural Gates")
+                g1, g2, g3 = data['confluence'].get('gates', [True, True, True])
                 
-            with c2:
-                st.markdown("### 🤖 Neural Intelligence Report")
-                with st.container(border=True):
-                    st.markdown("**Execution Rationale:**")
-                    st.info(data['reason'])
-                    
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        st.markdown("**Strategic Vitals**")
-                        st.write(f"Sentiment Flux: {data['sentiment_val']:+.2f}")
-                        st.write(f"RSI: {data['rsi_val']:.1f}")
-                    with col_b:
-                        st.markdown("**XAI Driver Analysis**")
-                        for x in data['xai_report']: st.write(f"- {x['feature']}: {x['importance']*100:+.1f}%")
+                def gate_html(label, passed, detail):
+                    color = "#00e676" if passed else "#ff4b4b"
+                    icon = "✓" if passed else "✗"
+                    return f"""
+                    <div style="background:rgba(255,255,255,0.02); border-left:3px solid {color}; padding:10px; margin-bottom:8px; border-radius:0 4px 4px 0;">
+                        <div style="font-size:10px; color:{color}; font-weight:700; letter-spacing:1px;">{icon} {label}</div>
+                        <div style="font-size:11px; color:#aaa; margin-top:2px;">{detail}</div>
+                    </div>
+                    """
                 
-                st.markdown("### 🛡️ Position Sizing Calculator")
-                with st.container(border=True):
-                    # FIX 06: Advanced Position Sizing
-                    c_in1, c_in2 = st.columns(2)
-                    with c_in1:
-                        portfolio_value = st.number_input(f"Portfolio (₹) - {t}", value=500000, step=10000, key=f"port_{t}")
-                    with c_in2:
-                        risk_pct = st.slider(f"Risk per trade - {t}", 0.5, 3.0, 1.5, 0.5, format="%.1f%%", key=f"riskp_{t}")
-                    
-                    current_p = data['current_price']
-                    stop_loss_p10 = data['q10_p']
-                    atr = data['df']["ATR"].iloc[-1]
-                    atr_stop = current_p - (2.0 * atr)
-                    stop_price = min(stop_loss_p10, atr_stop)
-                    stop_distance = current_p - stop_price
-                    
-                    if stop_distance <= 0: stop_distance = 0.01  # Safe division
-                    
-                    # Method 1: Fixed Risk
-                    risk_amount = portfolio_value * (risk_pct / 100)
-                    shares_fixed = int(risk_amount / stop_distance)
-                    
-                    # Method 2: Kelly Criterion
-                    win_rate = data.get("win_rate", 0.54)
-                    pf = data.get("profit_factor", 1.2)
-                    # Infer avg win/loss ratio from PF (approx) if not explicit
-                    win_loss_ratio = pf if pf > 0 else 1.0 
-                    kelly_f = win_rate - ((1 - win_rate) / win_loss_ratio)
-                    kelly_f = max(0.0, min(kelly_f, 0.15))
-                    half_kelly = kelly_f / 2
-                    shares_kelly = int((portfolio_value * half_kelly) / current_p)
-                    
-                    # Final Conservative Choice
-                    shares_final = min(shares_fixed, shares_kelly)
-                    total_cost = shares_final * current_p
-                    max_loss = shares_final * stop_distance
-                    expected_gain = shares_final * (data['q50_p'] - current_p)
-                    
-                    st.markdown(textwrap.dedent(f"""
-                        <div style="background:rgba(255,193,7,0.05); padding:15px; border-radius:8px; border:1px solid rgba(255,193,7,0.3); font-family:'JetBrains Mono', monospace;">
-                            <div style="color:#ffc107; font-size:12px; font-weight:700; margin-bottom:10px; letter-spacing:1px;">EXECUTION BLUEPRINT</div>
-                            <div style="font-size:18px; color:#fff; font-weight:600; margin-bottom:10px;">Buy <span style="color:#00e5ff;">{shares_final}</span> shares of {t}</div>
-                            
-                            <table style="width:100%; font-size:13px; color:#c8d8f0; border-collapse: collapse;">
-                                <tr><td style="padding:4px 0;">Entry:</td><td style="text-align:right; font-weight:600;">₹{current_p:,.2f}</td></tr>
-                                <tr><td style="padding:4px 0;">Stop:</td><td style="text-align:right; color:#ff4b4b;">₹{stop_price:,.2f} <span style="font-size:10px; color:#888;">(ATR-based)</span></td></tr>
-                                <tr><td style="padding:4px 0;">Target:</td><td style="text-align:right; color:#00e676;">₹{data['q50_p']:,.2f} <span style="font-size:10px; color:#888;">(P50)</span></td></tr>
-                            </table>
-                            
-                            <div style="margin-top:10px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:10px;">
-                                <table style="width:100%; font-size:12px; color:#888;">
-                                    <tr><td>Max Loss:</td><td style="text-align:right; color:#ff4b4b;">₹{max_loss:,.0f} <span style="font-size:10px;">({risk_pct}% of portfolio)</span></td></tr>
-                                    <tr><td>Est. Gain:</td><td style="text-align:right; color:#00e676;">₹{expected_gain:,.0f}</td></tr>
-                                    <tr><td>Kelly Cap:</td><td style="text-align:right;">{half_kelly*100:.1f}% of portfolio</td></tr>
-                                </table>
+                st.markdown(gate_html("CONE WIDTH", g1, f"Spread {((data['q90_p']-data['q10_p'])/data['current_price']*100):.1f}% < 12% limit"), unsafe_allow_html=True)
+                st.markdown(gate_html("SENTIMENT", g2, f"Score {data['sentiment_val']:+.2f} aligns with signal"), unsafe_allow_html=True)
+                st.markdown(gate_html("RSI CONFIRM", g3, f"RSI {data['rsi_val']:.1f} in valid entry zone"), unsafe_allow_html=True)
+
+            with p2:
+                st.markdown("#### 📈 Forecast Engine")
+                st.markdown(f"""
+                <div style="background:rgba(0,229,255,0.05); border:1px solid rgba(0,229,255,0.1); border-radius:8px; padding:15px;">
+                    <div style="font-size:10px; color:#00e5ff; font-weight:700; margin-bottom:10px;">PROBABILITY DENSITY</div>
+                    <div style="font-size:24px; font-weight:900; color:#fff;">{data['final_confidence']*100:.1f}% <span style="font-size:14px; color:#aaa;">Prob</span></div>
+                    <div style="font-size:12px; color:#888; margin-top:8px;">
+                        Expected Move: <span style="color:#00e676;">{data['expected_return']:+.2f}%</span><br>
+                        Horizon: 14 Trading Days
+                    </div>
+                    <div style="margin-top:12px; height:4px; background:#1a3050; border-radius:2px; overflow:hidden;">
+                        <div style="width:{data['final_confidence']*100}%; height:100%; background:#00e5ff;"></div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with p3:
+                st.markdown("#### 🧬 Technical Pillars")
+                # XAI Driver Summary
+                for x in data['xai_report'][:3]:
+                    val = x.get('impact', x.get('importance', 0))
+                    st.markdown(f"""
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <span style="font-size:11px; color:#888;">{x['feature']}</span>
+                        <span style="font-size:11px; font-weight:700; color:{'#00e676' if val > 0 else '#ff4b4b'}">{val*100:+.1f}%</span>
+                    </div>
+                    <div style="height:2px; background:#1a3050; margin-bottom:8px;">
+                        <div style="width:{abs(val)*100}%; height:100%; background:{'#00e676' if val > 0 else '#ff4b4b'};"></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            # --- EXECUTION BLUEPRINT ---
+            st.markdown("<h3 style='margin-top:20px; font-size:18px; color:#7a8299;'>EXECUTION BLUEPRINT</h3>", unsafe_allow_html=True)
+            with st.container(border=True):
+                # Advanced Position Sizing
+                c_in1, c_in2 = st.columns(2)
+                with c_in1:
+                    portfolio_value = st.number_input(f"Portfolio (₹) - {t}", value=500000, step=10000, key=f"port_{t}")
+                with c_in2:
+                    risk_pct = st.slider(f"Risk per trade - {t}", 0.5, 3.0, 1.5, 0.5, format="%.1f%%", key=f"riskp_{t}")
+                
+                current_p = data['current_price']
+                stop_loss_p10 = data['q10_p']
+                atr = data['df']["ATR"].iloc[-1]
+                atr_stop = current_p - (2.0 * atr)
+                stop_price = min(stop_loss_p10, atr_stop)
+                stop_distance = current_p - stop_price
+                
+                if stop_distance <= 0: stop_distance = 0.01  # Safe division
+                
+                risk_amount = portfolio_value * (risk_pct / 100)
+                shares_fixed = int(risk_amount / stop_distance)
+                
+                win_rate = data.get("win_rate", 0.54)
+                pf = data.get("profit_factor", 1.2)
+                win_loss_ratio = pf if pf > 0 else 1.0 
+                kelly_f = win_rate - ((1 - win_rate) / win_loss_ratio)
+                kelly_f = max(0.0, min(kelly_f, 0.15))
+                half_kelly = kelly_f / 2
+                shares_kelly = int((portfolio_value * half_kelly) / current_p)
+                
+                shares_final = min(shares_fixed, shares_kelly)
+                total_cost = shares_final * current_p
+                max_loss = shares_final * stop_distance
+                expected_gain = shares_final * (data['q50_p'] - current_p)
+                
+                st.markdown(textwrap.dedent(f"""
+                    <div style="background:rgba(255,193,7,0.05); padding:20px; border-radius:12px; border:1px solid rgba(255,193,7,0.2); font-family:'JetBrains Mono', monospace;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <div style="font-size:20px; color:#fff; font-weight:700;">Buy <span style="color:#00e5ff;">{shares_final}</span> shares <span style="color:#888; font-size:14px;">@ ₹{current_p:,.2f}</span></div>
+                            <div style="background:#ffc107; color:#000; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900;">{data['final_signal']}</div>
+                        </div>
+                        
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px;">
+                            <div>
+                                <div style="font-size:9px; color:#888;">STOP LOSS</div>
+                                <div style="font-size:16px; color:#ff4b4b; font-weight:700;">₹{stop_price:,.2f}</div>
+                            </div>
+                            <div>
+                                <div style="font-size:9px; color:#888;">P50 TARGET</div>
+                                <div style="font-size:16px; color:#00e676; font-weight:700;">₹{data['q50_p']:,.2f}</div>
+                            </div>
+                            <div>
+                                <div style="font-size:9px; color:#888;">TOTAL COST</div>
+                                <div style="font-size:16px; color:#fff; font-weight:700;">₹{total_cost:,.0f}</div>
                             </div>
                         </div>
-                    """), unsafe_allow_html=True)
-                    
-                    if total_cost > (portfolio_value * 0.20):
-                        st.markdown(f"<div style='margin-top:8px; padding:8px; background:rgba(255,23,68,0.1); border-radius:4px; border:1px solid #ff1744; color:#ff1744; font-size:12px;'><span style='font-size:14px;'>⚠</span> Position ({total_cost/portfolio_value*100:.1f}%) exceeds 20% of portfolio. Consider reducing risk %.</div>", unsafe_allow_html=True)
+
+                        <div style="margin-top:15px; border-top:1px solid rgba(255,255,255,0.05); padding-top:15px; display:flex; justify-content:space-between; font-size:11px; color:#666;">
+                            <span>Max Risk: <span style="color:#ff4b4b;">₹{max_loss:,.0f} ({risk_pct}%)</span></span>
+                            <span>Est. Pnl: <span style="color:#00e676;">+₹{expected_gain:,.0f}</span></span>
+                            <span>Kelly Limit: {half_kelly*100:.1f}%</span>
+                        </div>
+                    </div>
+                """), unsafe_allow_html=True)
+                
+                if total_cost > (portfolio_value * 0.20):
+                    st.markdown(f"<div style='margin-top:12px; padding:10px; background:rgba(255,23,68,0.08); border-radius:8px; border:1px solid #ff1744; color:#ff1744; font-size:12px; display:flex; gap:10px; align-items:center;'><span style='font-size:18px;'>⚠</span> <b>EXPOSURE ALERT:</b> Position ({total_cost/portfolio_value*100:.1f}%) exceeds the 20% institutional guardrail.</div>", unsafe_allow_html=True)
 
             # --- MAIN CHART ---
             st.markdown("<h3 style='margin-top:20px; font-size:18px; color:#7a8299;'>TERMINAL VIEW</h3>", unsafe_allow_html=True)
@@ -732,4 +763,10 @@ if selected_tickers:
                     st.info("No active news pulses detected connecting to this asset.")
             
             st.info("The system uses multivariate backtracking to confirm that current neural weights align with established historical trends before issuing a signal.")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+else:
+    st.markdown('<div class="main-content-wrapper">', unsafe_allow_html=True)
+    st.info("Please select at least one ticker from the sidebar to begin analysis.")
+    st.markdown('</div>', unsafe_allow_html=True)
 

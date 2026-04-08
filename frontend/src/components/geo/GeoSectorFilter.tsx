@@ -23,30 +23,31 @@ const GeoSectorFilter: React.FC<Props> = ({ activeSectors, onToggle }) => {
 
     return (
         <div
+            className="neural-hud custom-scrollbar"
             style={{
                 position: 'absolute',
-                top: 80,
-                left: 16,
+                top: 90,
+                left: 10,
                 zIndex: 1000,
-                background: 'rgba(6, 11, 20, 0.92)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 14,
-                padding: '16px 18px',
-                minWidth: 170,
+                borderRadius: 12,
+                padding: '20px',
+                minWidth: 180,
+                maxHeight: 'calc(100vh - 120px)',
+                overflowY: 'auto',
             }}
         >
             <div
                 style={{
                     fontFamily: "'Share Tech Mono', monospace",
-                    fontSize: 10,
-                    color: '#5a75a0',
-                    letterSpacing: 2,
-                    marginBottom: 12,
+                    fontSize: 11,
+                    color: '#00e5ff',
+                    letterSpacing: 3,
+                    marginBottom: 16,
                     textTransform: 'uppercase',
+                    opacity: 0.8,
                 }}
             >
-                Sector Layers
+                // SECTOR LAYERS
             </div>
 
             {sectors.map((sector) => {
@@ -110,14 +111,16 @@ const GeoSectorFilter: React.FC<Props> = ({ activeSectors, onToggle }) => {
                         fontSize: 10,
                         fontFamily: "'Share Tech Mono', monospace",
                         color: '#00e5ff',
-                        background: 'rgba(0, 229, 255, 0.08)',
-                        border: '1px solid rgba(0, 229, 255, 0.2)',
+                        background: 'rgba(0, 210, 255, 0.12)',
+                        border: '1px solid rgba(0, 210, 255, 0.3)',
                         borderRadius: 6,
-                        padding: '5px 0',
+                        padding: '6px 0',
                         cursor: 'pointer',
+                        fontWeight: 700,
+                        letterSpacing: 1,
                     }}
                 >
-                    ALL
+                    ACTIVATE ALL
                 </button>
                 <button
                     onClick={() => sectors.forEach((s) => { if (activeSectors.includes(s)) onToggle(s); })}
@@ -126,14 +129,16 @@ const GeoSectorFilter: React.FC<Props> = ({ activeSectors, onToggle }) => {
                         fontSize: 10,
                         fontFamily: "'Share Tech Mono', monospace",
                         color: '#94a3b8',
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.15)',
                         borderRadius: 6,
-                        padding: '5px 0',
+                        padding: '6px 0',
                         cursor: 'pointer',
+                        fontWeight: 700,
+                        letterSpacing: 1,
                     }}
                 >
-                    NONE
+                    CLEAR
                 </button>
             </div>
         </div>

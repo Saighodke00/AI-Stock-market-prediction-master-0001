@@ -1,70 +1,72 @@
 """
-APEX AI — FastAPI Backend  v3.0
+APEX AI — FastAPI Backend  v3.0.2
 main.py
-
-Improvements over v2.1:
-  • Scaler persistence  — saved to models/scaler_fitted.pkl after first fit;
-    loaded on startup so restarts preserve calibration.
-  • Async screener      — asyncio.gather() runs all tickers concurrently;
-    worst-case latency drops from N×5s → ~5s regardless of list size.
-  • Paper trading       — /api/paper/* endpoints fully wired to paper_trading.py.
-  • SEBI Bulk Deals     — /api/sebi/bulk-deals endpoint via sebi_bulk_deals.py.
-  • Gate thresholds     — extracted as module-level constants, easy to tune.
-  • Confidence formula  — documented and bounded [0.50, 0.95].
+Triggered data reload: 2026-04-08 (Central India Expansion)
 """
 
 from __future__ import annotations
+import os
+import sys
+import time
+
+# --- Early Boot Diagnostics ---
+print(f"[{time.strftime('%H:%M:%S')}] APEX AI: Core import sequence initiated...")
+
 import warnings
 warnings.filterwarnings("ignore", message=".*urllib3.*", category=Warning)
 warnings.filterwarnings("ignore", category=UserWarning, module="requests")
 
-import yfinance as yf
-
-import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
+# --- Deferred Imports Helper ---
+tf = np = pd = yf = None
+
+def _import_ml_core():
+    """Lazily load heavy ML libraries to keep API startup fast."""
+    global tf, np, pd, yf
+    if tf is not None: return # Already loaded
+    
+    print(f"[{time.strftime('%H:%M:%S')}] APEX AI: Initializing ML Core (TF/NP/PD/YF)...")
+    start = time.time()
+    try:
+        import tensorflow as tf
+        import numpy as np
+        import pandas as pd
+        import yfinance as yf
+        print(f"[{time.strftime('%H:%M:%S')}] APEX AI: ML Core Ready ({time.time()-start:.2f}s)")
+    except Exception as e:
+        print(f"[{time.strftime('%H:%M:%S')}] APEX AI: ML Core Load Failed: {e}")
 
 import asyncio
 from datetime import datetime
 import logging
 import math
-import os
 import pickle
-import pandas as pd
-import tensorflow as tf
-from utils.risk_manager import RiskManager
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
-import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from utils.data_loader import fetch_data
-from utils.features import build_features
-from utils.indicators import compute_rsi, compute_atr
-from utils.sentiment import get_sentiment
-from utils.sebi_bulk_deals import fetch_bulk_deals
-from reasoning import get_explanation
-from paper_trading import PaperPortfolio
+# Light helpers for initial routing
 from utils.constants import NSE_SCREENER_TICKERS
-from utils.keras_fix import apply_keras_fix
+from paper_trading import PaperPortfolio
 from utils.india_market import IndiaMarketIntelligence
-from utils.yf_utils import download_yf, get_ticker
-# apply_keras_fix() # removed duplicate
 
 logger = logging.getLogger("apex")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
+print(f"[{time.strftime('%H:%M:%S')}] APEX AI: Framework initialized.")
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 FITTED_SCALER_PATH = os.path.join(MODELS_DIR, "scaler_fitted.pkl")
 
 # ── gate thresholds ────────────────────────────────────────────────────────────
-GATE1_CONE_MAX       = 0.12   # (P90-P10)/P50 must be below this
-GATE2_SENT_BUY_MIN   = 0.05   # FinBERT score >= this for BUY gate pass
-GATE2_SENT_SELL_MAX  = 0.05   # FinBERT score <= -this for SELL gate pass
+GATE1_CONE_MAX       = 0.16   # (P90-P10)/P50 must be below this (Relaxed from 0.12)
+GATE2_SENT_BUY_MIN   = 0.01   # FinBERT score >= this (Softened from 0.05 for neutral news)
+GATE2_SENT_SELL_MAX  = 0.01   # FinBERT score <= -this
 GATE3_RSI_BUY_LO     = 40
 GATE3_RSI_BUY_HI     = 70
 GATE3_RSI_SELL_HI    = 55
@@ -81,7 +83,8 @@ class AppState:
     scaler:        Any             = None
     portfolio:     PaperPortfolio  = field(default_factory=PaperPortfolio)
     intel:         IndiaMarketIntelligence = field(default_factory=IndiaMarketIntelligence)
-    sem:           asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(5))
+    sem:             asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(5))
+    inference_cache: dict[tuple[str, str], tuple[float, dict]] = field(default_factory=dict)
 
 
 _state = AppState()
@@ -174,13 +177,16 @@ def _tflite_interp(path: str) -> Any:
         
         try:
             # ATTEMPT 2: Try with internal resolver that often includes more ops on Windows
-            # experimental_op_resolver_type might help find the Flex ops if they are present in the binary
-            interp = tf.lite.Interpreter(
-                model_path=path, 
-                experimental_op_resolver_type=tf.lite.OpResolverType.BUILTIN_REF
-            )
-            interp.allocate_tensors()
-            return interp
+            # Check if OpResolverType exists to avoid AttributeErrors
+            if hasattr(tf.lite, "OpResolverType"):
+                interp = tf.lite.Interpreter(
+                    model_path=path, 
+                    experimental_op_resolver_type=tf.lite.OpResolverType.BUILTIN_REF
+                )
+                interp.allocate_tensors()
+                return interp
+            else:
+                raise Exception("OpResolverType not available in this TF version.")
         except Exception as e2:
             if "Flex" in str(e2) or "TensorList" in str(e2):
                 raise Exception(f"Flex ops support missing in TFLite. This model requires a Flex-enabled interpreter.")
@@ -239,11 +245,15 @@ async def _load_resources_bg():
     try:
         # Load in thread pool to avoid blocking the event loop
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, _load_all_models)
         sc = await loop.run_in_executor(None, _find_startup_scaler)
         if sc is not None:
             _state.scaler = sc
             logger.info("Background Model Load: Scaler recovered.")
+        
+        # Throttled load to prevent WinError 10055 socket exhaustion
+        await asyncio.sleep(2) 
+        await loop.run_in_executor(None, _load_all_models)
+        
         logger.info("Background Model Load: Complete.")
     except Exception as e:
         logger.error("Background Model Load: Failed: %s", e)
@@ -251,6 +261,9 @@ async def _load_resources_bg():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("APEX AI v3.0 starting (background resources load) …")
+    # 1. Warm up heavy libraries immediately but in background
+    asyncio.create_task(asyncio.to_thread(_import_ml_core))
+    # 2. Load models/scalers
     asyncio.create_task(_load_resources_bg())
     yield
     logger.info("APEX AI shutting down.")
@@ -294,6 +307,7 @@ def _atr_fallback(cur: float, atr: float) -> tuple[float, float, float]:
 
 def _get_market_regime(df: pd.DataFrame) -> str:
     """Detects market regime: BULLISH, BEARISH, or SIDEWAYS."""
+    from utils.indicators import compute_rsi
     try:
         ema_f = df["Close"].ewm(span=20).mean().iloc[-1]
         ema_s = df["Close"].ewm(span=50).mean().iloc[-1]
@@ -358,7 +372,6 @@ def _prepare_chart_data(df: pd.DataFrame, p10: float, p50: float, p90: float) ->
 
 def _get_active_scaler(X_raw: np.ndarray) -> Any:
     """Ensures we have a calibrated scaler. Prioritizes global _state.scaler."""
-
     from sklearn.preprocessing import RobustScaler
 
     # 1. Use existing scaler if possible
@@ -529,6 +542,24 @@ def _sentiment_label(score: float) -> str:
 
 
 def _run_inference(ticker: str, mode: str = "swing") -> dict:
+    import time
+    now = time.time()
+    cache_key = (ticker.upper(), mode.lower())
+    
+    # ── Check Cache (15s TTL) ────────────────────────────────────────────────
+    if cache_key in _state.inference_cache:
+        ts, cached_res = _state.inference_cache[cache_key]
+        if now - ts < 15:
+            # logger.info("Using cached inference for %s (%s)", ticker, mode)
+            return cached_res
+
+    from utils.data_loader import fetch_data
+    from utils.features import build_features
+    from utils.indicators import compute_rsi, compute_atr
+    from utils.sentiment import get_sentiment
+    from reasoning import get_explanation
+    from utils.risk_manager import RiskManager
+
     period   = "6mo" if mode == "swing" else "5d"
     interval = "1d"  if mode == "swing" else "15m"
 
@@ -604,13 +635,25 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
     rsi = compute_rsi(df["Close"], period=14)
 
     gates, confidence = _gates_and_confidence(direction, p10, p50, p90, sentiment_score, rsi)
-    action = direction if gates["gates_passed"] else "HOLD"
-
+    
+    if gates["gates_passed"]:
+        action = direction
+    else:
+        action = "HOLD"
     importance  = _importance_from_last_step(feature_cols, X_input)
     explanation = get_explanation(
         signal_output=action, top_features=importance,
         sentiment_score=sentiment_score, ticker=ticker, market_regime="UNKNOWN",
     )
+
+    if action == "HOLD":
+        # Generate specific reason for HOLD
+        reasons = []
+        if not gates["gate1_cone"]: reasons.append("High volatility (Wide prediction cone)")
+        if not gates["gate2_sentiment"]: reasons.append("Sentiment conflict or missing data")
+        if not gates["gate3_technical"]: reasons.append("Unfavorable RSI momentum")
+        if reasons:
+            explanation = f"HOLD: {', '.join(reasons)}. {explanation}"
 
     # ── 7. Risk Management ────────────────────────────────────────────────
     risk_engine = RiskManager()
@@ -618,7 +661,7 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
         ticker, direction, cur, p10, p50, p90, atr
     )
 
-    return {
+    res = {
         "ticker":           ticker,
         "action":           action,
         "direction":        direction,
@@ -647,6 +690,10 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
         "sparkline":   _generate_sparkline(df),
         **_prepare_chart_data(df, p10, p50, p90)
     }
+    
+    # ── Update Cache ──────────────────────────────────────────────────────────
+    _state.inference_cache[cache_key] = (now, res)
+    return res
 
 
 
@@ -694,6 +741,7 @@ async def screener(mode: str = "swing"):
     Runs all tickers concurrently via asyncio.gather().
     Latency: ~5s flat regardless of list length.
     """
+    from utils.data_loader import fetch_data # Ensure available if not pre-loaded
     tickers = NSE_SCREENER_TICKERS[:20]
     results = await asyncio.gather(*[_safe_infer(t, mode) for t in tickers])
     valid   = [r for r in results if r is not None]
@@ -710,6 +758,7 @@ async def screener(mode: str = "swing"):
 
 @app.get("/api/sentiment/{ticker}")
 async def sentiment_endpoint(ticker: str):
+    from utils.sentiment import get_sentiment
     loop  = asyncio.get_event_loop()
     score, articles = await loop.run_in_executor(None, get_sentiment, ticker.upper())
     return _json_sanitize({
@@ -730,6 +779,7 @@ async def sebi_bulk_deals(ticker: str | None = None, days: int = 7):
     NSE bulk/block deal data (replaces SEC Form 4 — that was US-only).
     Source: nseindia.com/market-data/block-deal
     """
+    from utils.sebi_bulk_deals import fetch_bulk_deals
     loop = asyncio.get_event_loop()
     try:
         deals = await loop.run_in_executor(None, fetch_bulk_deals, ticker, days)
@@ -919,9 +969,9 @@ _GEO_DB_PATH = os.path.join(os.path.dirname(__file__), "companies_india.json")
 try:
     with open(_GEO_DB_PATH, encoding="utf-8") as _fh:
         _COMPANIES_DB: list[dict] = _json.load(_fh)
-    logger.info("Loaded %d companies for Geo Dashboard", len(_COMPANIES_DB))
+    logger.info("Geo Load: Loaded %d companies from %s", len(_COMPANIES_DB), os.path.abspath(_GEO_DB_PATH))
 except Exception as _exc:
-    logger.warning("Could not load companies_india.json: %s", _exc)
+    logger.warning("Geo Load Failed: %s (Path: %s)", _exc, os.path.abspath(_GEO_DB_PATH))
     _COMPANIES_DB = []
 
 
@@ -955,6 +1005,7 @@ async def geo_companies(sector: str | None = None, state: str | None = None):
 @app.get("/api/geo/stock/{ticker}")
 async def geo_stock(ticker: str):
     """Live stock snapshot for a single ticker."""
+    from utils.yf_utils import get_ticker
     loop = asyncio.get_event_loop()
     try:
         def _fetch():
@@ -1016,6 +1067,8 @@ async def geo_company_card(company_id: int):
 async def health():
     return {
         "status":          "ok",
+        "version":         "3.0.2",
+        "geo_count":       len(_COMPANIES_DB),
         "scaler_loaded":   _state.scaler is not None,
         "tflite_models":   list(_state.tflite_models.keys()),
         "keras_models":    list(_state.keras_models.keys()),
@@ -1110,6 +1163,7 @@ async def get_patterns(ticker: str):
     """
     Detects technical candle patterns using recent data.
     """
+    from utils.data_loader import fetch_data
     loop = asyncio.get_event_loop()
     try:
         df = await loop.run_in_executor(None, fetch_data, ticker.upper(), "1mo", "1d")
@@ -1201,12 +1255,13 @@ async def save_tuner_settings(settings: dict):
 @app.get("/api/regime")
 async def global_regime():
     """Returns detected market regime for major index."""
+    from utils.data_loader import fetch_data
     try:
-        df = fetch_data("NSEI", period="1y", interval="1d")
-        if df is None: return {"regime": "SIDEWAYS", "ticker": "NSEI"}
-        return {"regime": _get_market_regime(df), "ticker": "NSEI"}
+        df = fetch_data("^NSEI", period="1y", interval="1d")
+        if df is None: return {"regime": "SIDEWAYS", "ticker": "^NSEI"}
+        return {"regime": _get_market_regime(df), "ticker": "^NSEI"}
     except:
-        return {"regime": "SIDEWAYS", "ticker": "NSEI"}
+        return {"regime": "SIDEWAYS", "ticker": "^NSEI"}
 
 
 @app.get("/api/logs")

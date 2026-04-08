@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { SignalResponse } from '../../api/api';
+import { SignalResponse, Action as SignalAction } from '../../api/api';
 import { CheckCircle2, XCircle, Info, TrendingUp, TrendingDown, Minus, Activity } from 'lucide-react';
 
 interface SignalCardProps {
@@ -8,32 +8,10 @@ interface SignalCardProps {
     timeframe: string;
 }
 
-const GatePill: React.FC<{ name: string, passed: boolean, reason: string }> = ({ name, passed, reason }) => {
-    const [showTooltip, setShowTooltip] = useState(false);
-    return (
-        <div
-            className={`relative flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all cursor-help ${
-                passed 
-                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' 
-                : 'bg-rose-500/5 border-rose-500/20 text-rose-400'
-            }`}
-            onMouseEnter={() => setShowTooltip(true)}
-            onMouseLeave={() => setShowTooltip(false)}
-        >
-            {passed ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-            <span className="font-body text-[10px] font-bold tracking-wider uppercase">{name}</span>
-
-            {showTooltip && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 p-3 glass-card border-white/10 shadow-2xl z-20 animate-in fade-in slide-in-from-bottom-2 duration-200 pointer-events-none">
-                    <div className="flex gap-2 items-start text-indigo-400 mb-1.5">
-                        <Info className="w-3.5 h-3.5 mt-0.5" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-white">Logic Trace</span>
-                    </div>
-                    <p className="font-body text-[11px] text-slate-400 leading-relaxed font-medium">{reason}</p>
-                </div>
-            )}
-        </div>
-    );
+const getSignalColor = (action: SignalAction): string => {
+    if (action === "BUY")  return "#00ff88";
+    if (action === "SELL") return "#ff4b4b";
+    return "#888888"; 
 };
 
 export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timeframe }) => {
@@ -65,8 +43,11 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
     const stateColor = isBuy ? 'text-emerald-400' : isSell ? 'text-rose-400' : 'text-amber-400';
     const stateBg = isBuy ? 'bg-emerald-500' : isSell ? 'bg-rose-500' : 'bg-amber-500';
     const stateBorder = isBuy ? 'border-emerald-500/30' : isSell ? 'border-rose-500/30' : 'border-amber-500/30';
-    const priceColor = data.price_change_pct >= 0 ? 'text-emerald-400' : 'text-rose-400';
-    const PriceIcon = data.price_change_pct >= 0 ? TrendingUp : TrendingDown;
+    
+    // Fallback for missing fields in API
+    const sentiment = data.sentiment_score ?? 0;
+    const priceColor = sentiment >= 0 ? 'text-emerald-400' : 'text-rose-400';
+    const PriceIcon = sentiment >= 0 ? TrendingUp : TrendingDown;
 
     return (
         <div className={`relative w-full glass-card overflow-hidden flex flex-col transition-all duration-500 border-t-2 ${stateBorder} shadow-2xl`}>
@@ -88,10 +69,10 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <span className="font-mono text-xl text-slate-200 font-bold tracking-tight">₹{(data?.current_price || data?.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            <span className="font-mono text-xl text-slate-200 font-bold tracking-tight">₹{data.current_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             <div className={`flex items-center gap-1 font-mono text-[11px] font-bold ${priceColor} bg-white/5 px-2 py-1 rounded-lg border border-white/5`}>
                                 <PriceIcon className="w-3 h-3" />
-                                {Math.abs(data?.price_change_pct ?? 0).toFixed(2)}%
+                                {Math.abs(sentiment * 100).toFixed(2)}%
                             </div>
                         </div>
                     </div>
@@ -155,16 +136,13 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                     </div>
                 </div>
 
-                {/* Gates Row — 3 real mathematical gates */}
-                <div className="p-5 flex items-center justify-between bg-black/20">
-                    <div className="flex items-center gap-4 w-full flex-wrap">
-                        <GatePill name="CONE WIDTH" passed={data?.gate_results?.gate1_cone ?? false} reason="Forecast cone width is below the 12% relative threshold, ensuring high predictive precision." />
-                        <GatePill name="SENTIMENT" passed={data?.gate_results?.gate2_sentiment ?? false} reason="Real-time FinBERT neural NLP alignment score confirms the predicted technical direction." />
-                        <GatePill name="RSI CONFIRM" passed={data?.gate_results?.gate3_technical ?? false} reason="Technical momentum via RSI (Relative Strength Index) aligns with the proposed entry/exit zone." />
-                    </div>
-                    <div className="hidden lg:flex items-center gap-2 text-slate-500 opacity-50">
-                        <Activity className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-bold tracking-widest uppercase">Verified Inference</span>
+                {/* Reasoning Row — Plain English explanation from backend */}
+                <div className="p-5 bg-black/20 border-t border-white/5">
+                    <div className="flex gap-3 items-start">
+                        <Info className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
+                        <p className="font-body text-xs text-slate-300 leading-relaxed italic">
+                            {data.reason || "Analyzing neural gates and market confluence..."}
+                        </p>
                     </div>
                 </div>
             </div>
