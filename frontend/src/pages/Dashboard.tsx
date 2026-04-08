@@ -197,35 +197,46 @@ function GateStatus({ gates }: { gates: SignalData["gate_results"] }) {
 
 // ── PRIMARY SIGNAL CARD ────────────────────────────────────────
 function PrimeSignalCard({ signal, loading }: { signal: SignalData | null; loading: boolean }) {
-  if (loading) return (
-    <div className="relative rounded-2xl border border-white/5 bg-white/[0.02] p-6 overflow-hidden min-h-[200px] flex items-center justify-center">
-      <div className="text-center">
+  if (loading && !signal) return (
+    <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] p-6 overflow-hidden min-h-[200px] flex items-center justify-center neural-hud">
+      <div className="absolute inset-0 scanline-effect opacity-[0.05] pointer-events-none" />
+      <div className="text-center relative z-10">
         <div className="w-8 h-8 border-2 border-cyan-500/40 border-t-cyan-500 rounded-full animate-spin mx-auto mb-3" />
         <div className="text-[11px] font-mono text-white/30 tracking-widest">NEURAL GENESIS IN PROGRESS</div>
-        <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent mx-auto mt-3 animate-pulse" />
       </div>
     </div>
   );
 
   if (!signal) return (
-    <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 min-h-[200px] flex items-center justify-center">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 min-h-[200px] flex items-center justify-center neural-hud">
       <div className="text-center text-white/30">
-        <AlertCircle className="w-6 h-6 mx-auto mb-2 opacity-50" />
-        <div className="text-xs font-mono">No signal data — check backend</div>
+        <AlertCircle className="w-6 h-6 mx-auto mb-2 opacity-30" />
+        <div className="text-xs font-mono tracking-widest">SIGNAL LINK FAILURE</div>
       </div>
     </div>
   );
 
-  const isUp = signal.price_change_pct >= 0;
+  const isUp = (signal.price_change_pct ?? 0) >= 0;
   const actionColor = signal.action === "BUY" ? "#10b981" : signal.action === "SELL" ? "#f43f5e" : "#f59e0b";
+  const glowClass = signal.action === "BUY" ? "shadow-[0_0_50px_rgba(16,185,129,0.12)]" : signal.action === "SELL" ? "shadow-[0_0_50px_rgba(244,63,94,0.12)]" : "";
 
   return (
     <div
-      className="relative rounded-2xl border overflow-hidden transition-all duration-300"
-      style={{ borderColor: `${actionColor}30`, background: `linear-gradient(135deg, ${actionColor}06 0%, transparent 60%)` }}
+      className={`relative rounded-2xl border overflow-hidden transition-all duration-700 neural-hud ${glowClass}`}
+      style={{ borderColor: `${actionColor}50` }}
     >
+      {/* Dynamic Radar Pulse for BUY signals */}
+      {signal.action === "BUY" && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+          <div className="w-[400px] h-[400px] rounded-full animate-pulse-radar opacity-[0.03]" style={{ backgroundColor: actionColor }} />
+        </div>
+      )}
+
       {/* Glow top bar */}
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${actionColor}60, transparent)` }} />
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${actionColor}80, transparent)` }} />
+      
+      {/* Scanline Overlay */}
+      <div className="absolute inset-0 scanline-effect opacity-[0.02] pointer-events-none" />
 
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
@@ -313,11 +324,11 @@ function SecondaryCard({ signal }: { signal: SignalData }) {
 
   return (
     <div
-      className="relative rounded-xl border p-4 transition-all duration-200 hover:scale-[1.02] cursor-pointer group overflow-hidden"
-      style={{ borderColor: `${actionColor}25`, background: `${actionColor}05` }}
+      className="relative rounded-xl border p-4 transition-all duration-300 hover:scale-[1.02] cursor-pointer group overflow-hidden neural-hud shadow-lg"
+      style={{ borderColor: `${actionColor}40`, backgroundColor: `${actionColor}05` }}
     >
       <div className="absolute top-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity"
-           style={{ background: `linear-gradient(90deg, transparent, ${actionColor}50, transparent)` }} />
+           style={{ background: `linear-gradient(90deg, transparent, ${actionColor}80, transparent)` }} />
 
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -361,7 +372,9 @@ function MetricCard({ label, value, sub, color, icon: Icon, sparkline }: {
   color: string; icon?: any; sparkline?: number[];
 }) {
   return (
-    <div className="relative rounded-xl border border-white/5 bg-white/[0.02] p-4 overflow-hidden">
+    <div className="relative rounded-xl border border-white/10 bg-white/[0.02] p-4 overflow-hidden neural-hud group">
+      {/* Ambient Glow */}
+      <div className="absolute -inset-1 opacity-0 group-hover:opacity-10 transition-opacity duration-500" style={{ background: `radial-gradient(circle at center, ${color}, transparent 70%)` }} />
       <div className="flex items-start justify-between mb-2">
         <div className="text-[10px] font-mono text-white/30 tracking-widest flex items-center gap-1.5">
           {Icon && <Icon className="w-3 h-3" />}
@@ -637,11 +650,12 @@ export const DashboardPage: React.FC = () => {
         {/* ── SECTION HEADER ─────────────────────────── */}
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-mono text-white/25 tracking-[0.3em] mb-1">
-              // UNIFIED NEURAL STRATEGIC COMMAND TERMINAL
+            <div className="text-[10px] font-mono text-cyan-400/40 tracking-[0.3em] mb-1 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-cyan-500/50 animate-pulse" />
+              // NEURAL INTELLIGENCE COMMAND
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-cyan-400 leading-none">
-              MISSION CONTROL
+            <h1 className="text-4xl font-black tracking-tighter text-white leading-none flex items-center gap-3">
+              MISSION <span className="text-cyan-400 scanline-effect px-2 py-0.5 rounded border border-cyan-500/20 bg-cyan-500/5">CONTROL</span>
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -733,19 +747,19 @@ export const DashboardPage: React.FC = () => {
               <><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></>
             ) : (
               <>
-                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-center neural-hud">
                   <div className="text-[9px] font-mono text-white/25 tracking-widest mb-1">BUY BREADTH</div>
-                  <div className="text-2xl font-black text-emerald-400">{stats?.today_buys ?? 0}</div>
+                  <div className="text-2xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">{stats?.today_buys ?? 0}</div>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-center neural-hud">
                   <div className="text-[9px] font-mono text-white/25 tracking-widest mb-1">SELL BREADTH</div>
-                  <div className="text-2xl font-black text-rose-400">{stats?.today_sells ?? 0}</div>
+                  <div className="text-2xl font-black text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]">{stats?.today_sells ?? 0}</div>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-center neural-hud">
                   <div className="text-[9px] font-mono text-white/25 tracking-widest mb-1">AVG CONFIDENCE</div>
-                  <div className="text-2xl font-black text-cyan-400">{stats?.avg_confidence ?? 0}%</div>
+                  <div className="text-2xl font-black text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]">{stats?.avg_confidence ?? 0}%</div>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center">
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-center neural-hud">
                   <div className="text-[9px] font-mono text-white/25 tracking-widest mb-1">TICKERS SCANNED</div>
                   <div className="text-2xl font-black text-white">{stats?.market_breadth?.total ?? 0}</div>
                 </div>
