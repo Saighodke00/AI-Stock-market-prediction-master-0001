@@ -62,6 +62,7 @@ print(f"[{time.strftime('%H:%M:%S')}] APEX AI: Framework initialized.")
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 FITTED_SCALER_PATH = os.path.join(MODELS_DIR, "scaler_fitted.pkl")
+PORTFOLIO_PATH = os.path.join(os.path.dirname(__file__), "paper_portfolio.json")
 
 # ── gate thresholds ────────────────────────────────────────────────────────────
 GATE1_CONE_MAX       = 0.16   # (P90-P10)/P50 must be below this (Relaxed from 0.12)
@@ -132,6 +133,25 @@ def _save_scaler(sc: Any) -> None:
         logger.info("Scaler persisted → %s", FITTED_SCALER_PATH)
     except Exception as exc:
         logger.warning("Scaler save failed: %s", exc)
+
+
+# ── portfolio persistence ──────────────────────────────────────────────────
+
+def _save_portfolio():
+    """Serialize the current paper portfolio to disk."""
+    try:
+        _state.portfolio.save_to_file(PORTFOLIO_PATH)
+        # logger.info("Paper portfolio persisted → %s", PORTFOLIO_PATH)
+    except Exception as exc:
+        logger.error("Portfolio save failed: %s", exc)
+
+def _load_portfolio():
+    """Restore paper portfolio from disk if available."""
+    if _state.portfolio.load_from_file(PORTFOLIO_PATH):
+        _add_log("Paper Portfolio Restored from Ledger", "SUCCESS")
+        logger.info("Paper portfolio loaded from %s", PORTFOLIO_PATH)
+    else:
+        logger.info("No existing portfolio found or load failed. Starting fresh.")
 
 
 def _find_startup_scaler() -> Any | None:
@@ -261,6 +281,8 @@ async def _load_resources_bg():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("APEX AI v3.0 starting (background resources load) …")
+    # 0. Restore Paper Portfolio from ledger
+    _load_portfolio()
     # 1. Warm up heavy libraries immediately but in background
     asyncio.create_task(asyncio.to_thread(_import_ml_core))
     # 2. Load models/scalers
@@ -819,10 +841,12 @@ async def paper_summary():
 @app.post("/api/paper/trade")
 async def paper_trade(req: TradeRequest):
     try:
-        return _state.portfolio.execute_trade(
+        res = _state.portfolio.execute_trade(
             ticker=req.ticker.upper(), action=req.action.upper(),
             quantity=req.quantity, price=req.price, notes=req.notes,
         )
+        _save_portfolio()  # ✅ Auto-save
+        return res
     except ValueError as exc:
         raise HTTPException(400, str(exc))
 
@@ -830,6 +854,7 @@ async def paper_trade(req: TradeRequest):
 @app.delete("/api/paper/reset")
 async def paper_reset():
     _state.portfolio.reset()
+    _save_portfolio()  # ✅ Auto-save
     return {"status": "reset"}
 
 

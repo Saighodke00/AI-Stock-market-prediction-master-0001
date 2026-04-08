@@ -1,18 +1,5 @@
-"""
-paper_trading.py  v2.0
-
-Full paper portfolio engine — wired to /api/paper/* in main.py.
-
-Features:
-  - In-memory positions with FIFO cost basis
-  - Realised + unrealised P&L
-  - Full trade history
-  - Portfolio summary with win-rate and total return
-  - reset() for clean-slate testing
-"""
-
-from __future__ import annotations
-
+import json
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -51,13 +38,18 @@ class _Position:
         return {
             "ticker":           self.ticker,
             "quantity":         self.quantity,
-            "avg_cost":         round(self.avg_cost, 2),
-            "current_price":    round(cp, 2),
-            "market_value":     round(self.market_value(cp), 2),
-            "unrealised_pnl":   round(self.unrealised_pnl(cp), 2),
-            "unrealised_pct":   round(self.unrealised_pct(cp), 2),
+            "avg_cost":         self.avg_cost,
             "opened_at":        self.opened_at,
         }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> _Position:
+        return cls(
+            ticker=d["ticker"],
+            quantity=d["quantity"],
+            avg_cost=d["avg_cost"],
+            opened_at=d["opened_at"],
+        )
 
 
 @dataclass
@@ -78,16 +70,25 @@ class _Trade:
             "ticker":        self.ticker,
             "action":        self.action,
             "quantity":      self.quantity,
-            "price":         round(self.price, 2),
-            "total":         round(self.total, 2),
-            "realised_pnl":  round(self.realised_pnl, 2),
+            "price":         self.price,
+            "total":         self.total,
+            "realised_pnl":  self.realised_pnl,
             "notes":         self.notes,
             "executed_at":   self.executed_at,
         }
 
+    @classmethod
+    def from_dict(cls, d: dict) -> _Trade:
+        return cls(
+            id=d["id"], ticker=d["ticker"], action=d["action"],
+            quantity=d["quantity"], price=d["price"], total=d["total"],
+            realised_pnl=d["realised_pnl"], notes=d["notes"],
+            executed_at=d["executed_at"]
+        )
+
 
 class PaperPortfolio:
-    """Thread-safe (GIL level) paper trading engine."""
+    """Thread-safe (GIL level) paper trading engine with persistence."""
 
     def __init__(self) -> None:
         self._positions: dict[str, _Position] = {}
@@ -105,15 +106,6 @@ class PaperPortfolio:
         price:    float,
         notes:    str = "",
     ) -> dict:
-        """
-        Execute a BUY or SELL trade.
-
-        Raises ValueError on:
-          - Invalid action
-          - Insufficient cash (BUY)
-          - Insufficient shares (SELL)
-          - Non-positive quantity or price
-        """
         if quantity <= 0:
             raise ValueError(f"Quantity must be positive, got {quantity}")
         if price <= 0:
@@ -168,23 +160,23 @@ class PaperPortfolio:
         }
 
     def get_positions(self, live_prices: dict[str, float] | None = None) -> list[dict]:
-        """Return all open positions. Pass live_prices dict for mark-to-market."""
         lp = live_prices or {}
-        return [p.to_dict(lp.get(t)) for t, p in self._positions.items()]
+        # We use a custom to_dict helper for the frontend that includes MTM fields
+        return [
+            {
+                **p.to_dict(),
+                "current_price":  round(lp.get(t, p.avg_cost), 2),
+                "market_value":   round(p.market_value(lp.get(t, p.avg_cost)), 2),
+                "unrealised_pnl": round(p.unrealised_pnl(lp.get(t, p.avg_cost)), 2),
+                "unrealised_pct": round(p.unrealised_pct(lp.get(t, p.avg_cost)), 2),
+            } 
+            for t, p in self._positions.items()
+        ]
 
     def get_history(self) -> list[dict]:
         return [t.to_dict() for t in reversed(self._history)]
 
     def get_summary(self, live_prices: dict[str, float] | None = None) -> dict:
-        """
-        Portfolio summary:
-          - cash_balance
-          - unrealised_pnl (mark-to-market if live_prices provided)
-          - realised_pnl
-          - total_return_pct (vs INITIAL_CASH)
-          - win_rate (profitable SELL trades / total SELL trades)
-          - trade_count
-        """
         lp = live_prices or {}
         unrealised = sum(
             p.unrealised_pnl(lp.get(t, p.avg_cost))
@@ -215,11 +207,44 @@ class PaperPortfolio:
         }
 
     def reset(self) -> None:
-        """Wipe all positions, history, and return to starting capital."""
         self._positions.clear()
         self._history.clear()
         self._cash     = INITIAL_CASH
         self._realised = 0.0
+
+    # ─── Persistence ──────────────────────────────────────────────────────────
+
+    def save_to_file(self, filepath: str) -> None:
+        """Serialize entire state to JSON."""
+        data = {
+            "positions": {t: p.to_dict() for t, p in self._positions.items()},
+            "history":   [t.to_dict() for t in self._history],
+            "cash":      self._cash,
+            "realised":  self._realised
+        }
+        with open(filepath, "w") as f:
+            json.dump(data, f, indent=2)
+
+    def load_from_file(self, filepath: str) -> bool:
+        """Load state from JSON. Return True if successful."""
+        if not os.path.exists(filepath):
+            return False
+        try:
+            with open(filepath, "r") as f:
+                data = json.load(f)
+            self._cash     = data.get("cash", INITIAL_CASH)
+            self._realised = data.get("realised", 0.0)
+            self._positions = {
+                t: _Position.from_dict(d) 
+                for t, d in data.get("positions", {}).items()
+            }
+            self._history = [
+                _Trade.from_dict(d)
+                for d in data.get("history", [])
+            ]
+            return True
+        except Exception:
+            return False
 
     # ─── Internal ────────────────────────────────────────────────────────────
 
