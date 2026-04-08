@@ -34,8 +34,8 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
 //  Types — Signal
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type Action    = "BUY" | "SELL" | "HOLD";
-export type Direction = "BUY" | "SELL";
+export type Action    = "BUY" | "SELL" | "HOLD" | "NEUTRAL";
+export type Direction = "BUY" | "SELL" | "NEUTRAL";
 
 export interface GateResults {
   gate1_cone:      boolean;   // (P90-P10)/P50 < 12%
@@ -77,11 +77,14 @@ export interface SignalResponse {
   p50:              number;
   p90:              number;
   rsi:              number;
+  adx:              number;         // added in v3.1
   atr:              number;
   accuracy:         number;         // 54.0 honest in-sample
   gate_results:     GateResults;
   sentiment:        SentimentData;
+  sentiment_score:  number;         // added in v3.1 (alias for sentiment.score)
   explanation:      string;
+  reason:           string;         // added in v3.1 (plain english from backend)
   importance:       FeatureImportance;
 }
 

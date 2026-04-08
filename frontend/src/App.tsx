@@ -29,20 +29,22 @@ function App() {
                 <div className="flex flex-1 overflow-hidden">
                     <LeftSidebar />
 
-                    <main className="flex-1 overflow-y-auto relative bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-void via-base to-base">
-                        <ErrorBoundary>
-                            <Routes>
-                                <Route path="/" element={<DashboardPage />} />
-                                <Route path="/swing" element={<SwingTradingPage />} />
-                                <Route path="/intraday" element={<IntradayTradingPage />} />
-                                <Route path="/screener" element={<ScreenerPage />} />
-                                <Route path="/patterns" element={<PatternsPage />} />
-                                <Route path="/sentiment" element={<SentimentPage />} />
-                                <Route path="/paper" element={<PaperTradingPage />} />
-                                <Route path="/tuner" element={<HyperTunerPage />} />
-                                <Route path="/geo" element={<GeoMapPage />} />
-                            </Routes>
-                        </ErrorBoundary>
+                    <main className="flex-1 relative bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-void via-base to-base overflow-y-auto custom-scrollbar">
+                        <div className="h-full w-full">
+                            <ErrorBoundary>
+                                <Routes>
+                                    <Route path="/" element={<DashboardPage />} />
+                                    <Route path="/swing" element={<SwingTradingPage />} />
+                                    <Route path="/intraday" element={<IntradayTradingPage />} />
+                                    <Route path="/screener" element={<ScreenerPage />} />
+                                    <Route path="/patterns" element={<PatternsPage />} />
+                                    <Route path="/sentiment" element={<SentimentPage />} />
+                                    <Route path="/paper" element={<PaperTradingPage />} />
+                                    <Route path="/tuner" element={<HyperTunerPage />} />
+                                    <Route path="/geo" element={<GeoMapPage />} />
+                                </Routes>
+                            </ErrorBoundary>
+                        </div>
                     </main>
 
                 </div>

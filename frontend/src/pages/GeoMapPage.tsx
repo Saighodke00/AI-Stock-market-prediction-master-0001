@@ -23,7 +23,8 @@ const createMarkerIcon = (sector: string, isUp: boolean | null) => {
                 background:${base}; border:3px solid ${ring};
                 box-shadow: 0 0 10px ${base}80, 0 0 20px ${base}40;
                 cursor:pointer; transition: transform 0.2s;
-            " onmouseenter="this.style.transform='scale(1.3)'"
+            " class="animate-pulse-radar"
+               onmouseenter="this.style.transform='scale(1.3)'"
                onmouseleave="this.style.transform='scale(1)'" />
         `,
     });
@@ -79,8 +80,9 @@ export const GeoMapPage: React.FC = () => {
 
     /* ── 1. Fetch GeoJSON ─────────────────────────────────────────────── */
     useEffect(() => {
+        // Cache busting with timestamp to force fresh data from backend
         axios
-            .get(`${API}/api/geo/companies`)
+            .get(`${API}/api/geo/companies?t=${Date.now()}`)
             .then((r) => setFeatures(r.data.features || []))
             .catch(() => {});
     }, []);
@@ -155,27 +157,34 @@ export const GeoMapPage: React.FC = () => {
             } else {
                 /* individual markers */
                 group.forEach((f, idx) => {
-                    const [lng, lat] = f.geometry.coordinates;
-                    const offset = idx * 0.004; // slight offset so overlapping markers separate
-                    const isUp = stockColors[f.properties.ticker] ?? null;
-                    const marker = L.marker([lat + offset, lng + offset], {
-                        icon: createMarkerIcon(f.properties.sector, isUp),
-                    });
+                    try {
+                        const coords = f.geometry.coordinates;
+                        if (!coords || coords.length < 2) return;
+                        
+                        const [lng, lat] = coords;
+                        const offset = idx * 0.004; // slight offset so overlapping markers separate
+                        const isUp = stockColors[f.properties.ticker] ?? null;
+                        const marker = L.marker([lat + offset, lng + offset], {
+                            icon: createMarkerIcon(f.properties.sector, isUp),
+                        });
 
-                    marker.bindTooltip(
-                        `<div style="background:#0a0f1a;border:1px solid #1a2b4d;border-radius:8px;padding:8px 12px;font-family:'Rajdhani',sans-serif;min-width:120px;">
-                            <div style="color:#fff;font-weight:700;font-size:13px;">${f.properties.name}</div>
-                            <div style="display:flex;gap:8px;margin-top:4px;align-items:center;">
-                                <span style="font-size:10px;padding:1px 8px;border-radius:50px;background:${SECTOR_COLORS[f.properties.sector]}18;color:${SECTOR_COLORS[f.properties.sector]};border:1px solid ${SECTOR_COLORS[f.properties.sector]}30;">${f.properties.sector}</span>
-                                <span style="color:#5a75a0;font-size:10px;">📍 ${f.properties.city}</span>
-                            </div>
-                            <div style="color:#00e5ff;font-size:10px;margin-top:4px;font-family:'Share Tech Mono',monospace;">${f.properties.ticker}</div>
-                        </div>`,
-                        { direction: 'top', offset: [0, -10], className: 'geo-tooltip' }
-                    );
+                        marker.bindTooltip(
+                            `<div style="background:#0a0f1a;border:1px solid #1a2b4d;border-radius:8px;padding:8px 12px;font-family:'Rajdhani',sans-serif;min-width:120px;">
+                                <div style="color:#fff;font-weight:700;font-size:13px;">${f.properties.name}</div>
+                                <div style="display:flex;gap:8px;margin-top:4px;align-items:center;">
+                                    <span style="font-size:10px;padding:1px 8px;border-radius:50px;background:${SECTOR_COLORS[f.properties.sector] || '#666'}18;color:${SECTOR_COLORS[f.properties.sector] || '#666'};border:1px solid ${SECTOR_COLORS[f.properties.sector] || '#666'}30;">${f.properties.sector}</span>
+                                    <span style="color:#5a75a0;font-size:10px;">📍 ${f.properties.city}</span>
+                                </div>
+                                <div style="color:#00e5ff;font-size:10px;margin-top:4px;font-family:'Share Tech Mono',monospace;">${f.properties.ticker}</div>
+                            </div>`,
+                            { direction: 'top', offset: [0, -10], className: 'geo-tooltip' }
+                        );
 
-                    marker.on('click', () => setSelectedCompanyId(f.properties.id));
-                    markersLayerRef.current!.addLayer(marker);
+                        marker.on('click', () => setSelectedCompanyId(f.properties.id));
+                        markersLayerRef.current!.addLayer(marker);
+                    } catch (err) {
+                        console.error("Error rendering marker for company:", f.properties.name, err);
+                    }
                 });
             }
         });
@@ -249,19 +258,18 @@ export const GeoMapPage: React.FC = () => {
 
             {/* Top bar */}
             <div
+                className="neural-hud scanline-effect"
                 style={{
                     position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
+                    top: 10,
+                    left: 10,
+                    right: 10,
                     zIndex: 1000,
-                    background: 'rgba(6, 11, 20, 0.88)',
-                    backdropFilter: 'blur(12px)',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: 12,
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '10px 20px',
-                    gap: 18,
+                    padding: '12px 24px',
+                    gap: 20,
                 }}
             >
                 <span style={{ fontSize: 22 }}>🗺️</span>
@@ -269,10 +277,11 @@ export const GeoMapPage: React.FC = () => {
                     <div
                         style={{
                             fontFamily: "'Orbitron', sans-serif",
-                            fontSize: 14,
-                            fontWeight: 700,
+                            fontSize: 16,
+                            fontWeight: 900,
                             color: '#fff',
-                            letterSpacing: 2,
+                            letterSpacing: 4,
+                            textShadow: '0 0 10px rgba(0, 210, 255, 0.5)',
                         }}
                     >
                         GEO STOCK MAP
@@ -307,13 +316,17 @@ export const GeoMapPage: React.FC = () => {
                         >
                             <div
                                 style={{
-                                    width: 8,
-                                    height: 8,
+                                    width: 10,
+                                    height: 10,
                                     borderRadius: '50%',
                                     background: SECTOR_COLORS[s],
+                                    boxShadow: `0 0 8px ${SECTOR_COLORS[s]}`,
                                 }}
                             />
-                            {features.filter((f) => f.properties.sector === s).length} {s}
+                            <span style={{ color: '#fff', fontWeight: 600 }}>
+                                {features.filter((f) => f.properties.sector === s).length}
+                            </span>
+                            <span style={{ opacity: 0.6 }}>{s}</span>
                         </div>
                     ))}
                 </div>

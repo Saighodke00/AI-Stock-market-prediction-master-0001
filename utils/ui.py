@@ -145,3 +145,124 @@ def show_loading():
     }
     </style>
     """, unsafe_allow_html=True)
+
+def inject_global_css():
+    """
+    Injects the core "Neural Terminal V2" design system into the Streamlit app.
+    """
+    st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;500;600&family=Share+Tech+Mono&family=JetBrains+Mono&display=swap');
+
+    /* ── Core Terminal Aesthetics ─────────────────────────────────────────── */
+    :root {
+        --bg:        #020409;
+        --panel:     #060b14;
+        --border:    #0e2040;
+        --cyan:      #00e5ff;
+        --green:     #00e676;
+        --red:       #ff1744;
+        --gold:      #ffc107;
+        --txt:       #c8d8f0;
+    }
+
+    [data-testid="stAppViewContainer"] {
+        background: var(--bg) !important;
+        color: var(--txt) !important;
+        font-family: 'Rajdhani', sans-serif !important;
+    }
+
+    [data-testid="stSidebar"] {
+        background: var(--panel) !important;
+        border-right: 1px solid var(--border) !important;
+    }
+
+    h1, h2, h3 {
+        font-family: 'Orbitron', sans-serif !important;
+        color: var(--cyan) !important;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: 700 !important;
+    }
+
+    /* ── Responsive Main Container ────────────────────────────────────────── */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 2rem !important;
+    }
+
+    /* Custom Wrapper for Trading Pages */
+    .main-content-wrapper {
+        padding: 0 5% 50px 5%;
+        max-width: 1800px;
+        margin: 0 auto;
+    }
+    
+    @media (max-width: 1200px) {
+        .main-content-wrapper {
+            padding: 0 2% 50px 2%;
+        }
+    }
+
+    /* ── Premium Scrollbar ────────────────────────────────────────────────── */
+    *, *::before, *::after {
+        scrollbar-width: thin;
+        scrollbar-color: #1a2b4d var(--bg);
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg) !important; }
+    ::-webkit-scrollbar-thumb { background: #1a2b4d !important; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--cyan) !important; }
+
+    /* ── Glow Effects ─────────────────────────────────────────────────────── */
+    .glow-cyan  { color: var(--cyan);  text-shadow: 0 0 15px rgba(0,229,255,0.4); }
+    .glow-green { color: var(--green); text-shadow: 0 0 15px rgba(0,230,118,0.4); }
+    .glow-red   { color: var(--red);   text-shadow: 0 0 15px rgba(255,23,68,0.4); }
+    .glow-gold  { color: var(--gold);  text-shadow: 0 0 15px rgba(255,193,7,0.4); }
+
+    /* ── Custom Metric Cards ──────────────────────────────────────────────── */
+    .metric-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 18px;
+        text-align: left;
+        transition: 0.3s;
+        margin-bottom: 10px;
+    }
+    .metric-card:hover {
+        border-color: var(--cyan);
+        box-shadow: 0 0 15px rgba(0,229,255,0.1);
+    }
+    .m-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 11px;
+        color: #5a75a0;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+    .m-val {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    /* ── Terminal Styles ─────────────────────────────────────────────────── */
+    .terminal-analysis {
+        background: rgba(6, 11, 20, 0.8);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #d0d8ef;
+        margin-bottom: 20px;
+    }
+
+    /* ── Hide Streamlit Overlays ─────────────────────────────────────────── */
+    #MainMenu, header, footer { visibility: hidden; }
+    </style>
+    """, unsafe_allow_html=True)
+

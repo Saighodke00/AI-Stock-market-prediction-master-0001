@@ -632,7 +632,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      <div className="max-w-[1600px] mx-auto px-6 py-6 space-y-6">
+      <div className="space-y-6">
 
         {/* ── SECTION HEADER ─────────────────────────── */}
         <div className="flex items-center justify-between">

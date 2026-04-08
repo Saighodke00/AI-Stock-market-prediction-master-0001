@@ -12,6 +12,10 @@ def normalize_ticker(ticker: str) -> str:
     """Normalize ticker symbols for yfinance."""
     t = ticker.upper().strip()
     
+    # 0. Handle Indices (Nifty / Sensex)
+    if t == "NSEI" or t == "BSESN":
+        return f"^{t}"
+    
     # 1. Handle common Indian stocks missing .NS suffix
     # Strip .NS if it exists to normalize search
     clean_t = t.replace(".NS", "").replace(".BO", "")

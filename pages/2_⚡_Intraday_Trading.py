@@ -17,7 +17,7 @@ from utils.constants import TICKER_LIST, ALL_TICKERS, DEFAULT_SUGGESTIONS, TIMEF
 from utils.data_pipeline import validate_data
 from utils.india_market import IndiaMarketIntelligence
 from utils.technical_analysis import detect_support_resistance, calculate_position_size, calculate_multi_timeframe_confluence
-from utils.ui import metric_card, terminal_header, apply_chart_style, signal_card, show_loading
+from utils.ui import metric_card, terminal_header, apply_chart_style, signal_card, show_loading, inject_global_css
 from utils.pattern_recognition import (
     detect_all_patterns,
     draw_patterns_on_chart,
@@ -72,6 +72,7 @@ def _suggest_ticker_fix(ticker: str):
         """)
 
 st.set_page_config(page_title="Intraday Precision · Apex AI", page_icon="⚡", layout="wide")
+inject_global_css()
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -304,6 +305,7 @@ if force_retrain or f"intraday_{selected_tf}" not in st.session_state:
     st.session_state[f"intraday_{selected_tf}"] = True
 
 if selected_tickers:
+    st.markdown('<div class="main-content-wrapper">', unsafe_allow_html=True)
     progress_bar = st.progress(0, text="Initialising neural engine…")
     for i, t in enumerate(selected_tickers):
         cache_key = f"{t}_{selected_tf}"
@@ -614,3 +616,9 @@ if selected_tickers:
             st.sidebar.markdown("---")
             st.sidebar.success(f"WF Sharpe: {data['wf_sharpe']:.2f}")
             st.sidebar.info(f"Profit Factor: {data['profit_factor']:.2f} | Win Rate: {data['win_rate']*100:.1f}%")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+else:
+    st.markdown('<div class="main-content-wrapper">', unsafe_allow_html=True)
+    st.info("Please select at least one ticker from the sidebar to begin analysis.")
+    st.markdown('</div>', unsafe_allow_html=True)
