@@ -52,6 +52,16 @@ class PaperTrade(Base):
     closed_at = Column(DateTime, nullable=True)
     
     portfolio = relationship("PaperPortfolio", back_populates="trades")
+    
+class SentimentHistory(Base):
+    __tablename__ = "sentiment_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String, index=True)
+    source = Column(String)  # NEWS, SOCIAL, STATEMENT, BULK_DEAL, AGGREGATE
+    score = Column(Float)
+    label = Column(String)   # BULLISH, BEARISH, NEUTRAL
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
 # ── DATABASE INITIALIZATION ───────────────────────────────────────────────────
 

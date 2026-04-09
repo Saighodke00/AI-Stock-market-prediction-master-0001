@@ -29,13 +29,11 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import functools
 import redis
-from utils.yf_utils import get_ticker
+from utils.yf_utils import get_ticker, fetch_news_fallback
 
 # ── SILENCE TENSORFLOW ────────────────────────────────────────────────────────
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"      # 0=all, 1=no INFO, 2=no INFO/WARN, 3=no INFO/WARN/ERROR
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"     # Disable oneDNN custom operations warnings
-os.environ["TRANSFORMERS_OFFLINE"] = "1"      # Force transformers to skip Hub checks
-os.environ["HF_HUB_OFFLINE"] = "1"           # Force HF Hub to skip network requests
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -90,7 +88,6 @@ def get_pipeline() -> Any:
         return _PIPELINE
 
     with _pipeline_lock:
-        # Double-check pattern
         if _PIPELINE is not None:
             return _PIPELINE
 
@@ -102,9 +99,9 @@ def get_pipeline() -> Any:
         device = 0 if torch.cuda.is_available() else -1
         
         # Strategy: Try loading with local_files_only=True first to avoid Hub hits.
-        # This is CRITICAL to prevent WinError 10055 (socket exhaustion) on Windows.
+        # If that fails, temporarily enable network to fetch it.
         try:
-            logger.info("Attempting offline load of FinBERT...")
+            logger.info("Attempting offline load of FinBERT from local cache...")
             _PIPELINE = hf_pipeline(
                 "sentiment-analysis", 
                 model=model_name, 
@@ -114,24 +111,29 @@ def get_pipeline() -> Any:
                 max_length=512,
                 local_files_only=True
             )
-            logger.info("✅ FinBERT pipeline loaded successfully from LOCAL CACHE (Offline).")
+            logger.info("✅ FinBERT pipeline loaded successfully from LOCAL CACHE.")
         except Exception as e:
-            logger.warning("FinBERT local load failed (%s). Attempting ONE-TIME network fetch...", e)
-            # Temporarily allow network for the very first load if cache is incomplete
-            os.environ["TRANSFORMERS_OFFLINE"] = "0"
-            os.environ["HF_HUB_OFFLINE"] = "0"
-            _PIPELINE = hf_pipeline(
-                "sentiment-analysis", 
-                model=model_name, 
-                device=device,
-                top_k=None,
-                truncation=True,
-                max_length=512,
-                local_files_only=False
-            )
-            os.environ["TRANSFORMERS_OFFLINE"] = "1"
-            os.environ["HF_HUB_OFFLINE"] = "1"
-            logger.info("FinBERT pipeline initialized from Hub and CACHED.")
+            logger.warning("FinBERT local load failed or model not found locally (%s). Attempting online fetch...", e)
+            try:
+                # Temporarily allow network for the very first load if cache is incomplete
+                os.environ["TRANSFORMERS_OFFLINE"] = "0"
+                os.environ["HF_HUB_OFFLINE"] = "0"
+                _PIPELINE = hf_pipeline(
+                    "sentiment-analysis", 
+                    model=model_name, 
+                    device=device,
+                    top_k=None,
+                    truncation=True,
+                    max_length=512,
+                    local_files_only=False
+                )
+                # Re-enable offline mode after successful fetch to prevent socket exhaustion later
+                os.environ["TRANSFORMERS_OFFLINE"] = "1"
+                os.environ["HF_HUB_OFFLINE"] = "1"
+                logger.info("✅ FinBERT pipeline initialized from Hub and CACHED.")
+            except Exception as e2:
+                logger.error("❌ Critical: FinBERT could not be initialized even with network permissions: %s", e2)
+                raise
             
         return _PIPELINE
 
@@ -179,8 +181,12 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
         if cached_data:
             try:
                 parsed = json.loads(cached_data)
-                parsed["cached"] = True
-                return parsed
+                # Bypass cache if it contains 0 articles to allow recovery from transient Yahoo failures
+                if parsed.get("article_count", 0) > 0:
+                    parsed["cached"] = True
+                    return parsed
+                else:
+                    logger.info(f"Bypassing empty cached result for {ticker} to attempt fresh fetch.")
             except: pass
 
     _NEUTRAL_FALLBACK = {
@@ -188,28 +194,70 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
         "emoji": "🟡", "article_count": 0, "articles": [], "cached": False,
     }
     try:
-        stock = get_ticker(ticker, use_session=True)
+        stock = get_ticker(ticker)
         news_items = stock.news
+        logger.info(f"[Diagnostic] yf.news found {len(news_items) if news_items else 0} items for {ticker}")
+        if news_items and len(news_items) > 0:
+            logger.info(f"[Diagnostic] First item keys: {list(news_items[0].keys())}")
     except Exception as e:
         logger.warning("Error fetching news for %s: %s", ticker, e)
         return _NEUTRAL_FALLBACK
 
-    if not news_items: return _NEUTRAL_FALLBACK
+    if not news_items: 
+        logger.info(f"YFinance primary news empty for {ticker}. Attempting RSS fallback...")
+        news_items = fetch_news_fallback(ticker)
+
+    if not news_items:
+        logger.warning(f"No news found for {ticker} (Primary & RSS empty). Returning fallback.")
+        return _NEUTRAL_FALLBACK
 
     headlines_to_score = []
     articles_meta = []
+    
+    # ── Robust News Parsing ──────────────────────────────────────────────────
     for item in news_items[:10]:
+        # Handle new yfinance format where data is nested under 'content'
         content = item.get('content', item)
+        
+        # Deep extract title
         title = content.get('title', '').strip()
-        summary = content.get('summary', '').strip()
+        if not title and isinstance(item, dict) and 'title' in item:
+            title = item['title'].strip()
+            
         if not title: continue
+        
+        # Deep extract summary/description
+        summary = content.get('summary') or content.get('description') or content.get('desc', '')
+        
+        # Deep extract URL
+        url = content.get('url') or content.get('link')
+        if not url and 'clickThroughUrl' in content:
+            url = content['clickThroughUrl'].get('url')
+        if not url: url = ""
+
         combined_text = f"{title}. {summary}" if summary else title
         headlines_to_score.append(combined_text)
-        pub_time = datetime.fromtimestamp(content.get('providerPublishTime', time.time())).isoformat()
+        
+        # Handle providerPublishTime vs pubDate
+        raw_ts = content.get('providerPublishTime') or content.get('pubDate') or time.time()
+        try:
+            if isinstance(raw_ts, str):
+                # If it's an ISO string already
+                pub_time = raw_ts
+            else:
+                pub_time = datetime.fromtimestamp(float(raw_ts)).isoformat()
+        except:
+            pub_time = datetime.now().isoformat()
+
         articles_meta.append({
-            "title": title, "published": pub_time,
-            "url": content.get('url') or content.get('link') or ""
+            "title": title, "published": pub_time, "url": url
         })
+
+    if headlines_to_score:
+        logger.info(f"Analyzing {len(headlines_to_score)} headlines for {ticker}...")
+        for i, h in enumerate(headlines_to_score):
+            # Log first 60 chars of each headline for backend audit
+            logger.info(f"  [{i+1}] {h[:60]}...")
 
     individual_scores, agg_score = score_headlines(headlines_to_score)
     for i, meta in enumerate(articles_meta):
@@ -222,7 +270,8 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
         "articles": articles_meta, "cached": False
     }
 
-    if redis_client:
+    # ONLY cache if we actually found news to prevent persisting transient "Neutral" states
+    if redis_client and len(articles_meta) > 0:
         try:
             redis_client.setex(cache_key, CACHE_TTL, json.dumps(result_payload))
         except: pass
@@ -231,11 +280,15 @@ def fetch_and_score_ticker(ticker: str) -> Dict[str, Any]:
 def get_market_sentiment(ticker: str) -> Tuple[float, List[Dict[str, Any]]]:
     try:
         result = fetch_and_score_ticker(ticker)
-        legacy_articles = [{
-            "title": art.get("title", ""), "link": art.get("url", ""),
-            "publisher": "Yahoo Finance", "score": art.get("score", 0.0)
+        # Unified keys for all pages: url (not link), source (not publisher), published
+        articles = [{
+            "title": art.get("title", ""), 
+            "url": art.get("url", ""),
+            "source": "Yahoo Finance", 
+            "published": art.get("published", ""),
+            "score": art.get("score", 0.0)
         } for art in result.get("articles", [])]
-        return result.get("aggregate_score", 0.0), legacy_articles
+        return result.get("aggregate_score", 0.0), articles
     except:
         return 0.0, []
 

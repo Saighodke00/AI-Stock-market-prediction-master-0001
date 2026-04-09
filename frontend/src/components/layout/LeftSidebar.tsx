@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, Zap, Search, Triangle, MessageSquare, BookOpen, Settings, Plus, MapPin } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Zap, Search, Triangle, MessageSquare, BookOpen, Settings, Plus, MapPin, Activity } from 'lucide-react';
+import { fetchTickerMetadata, TickerMetadata } from '../../api/api';
 
 const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,20 +15,25 @@ const navItems = [
     { path: '/geo', label: 'Geo Map', icon: MapPin },
 ];
 
-const mockWatchlist = [
-    { symbol: 'RELIANCE.NS', price: '2,987.50', change: 1.2, signal: 'BUY' },
-    { symbol: 'INFY.NS', price: '1,643.20', change: -0.8, signal: 'SELL' },
-    { symbol: 'HDFCBANK.NS', price: '1,452.90', change: 0.1, signal: 'HOLD' },
-    { symbol: 'TCS.NS', price: '4,102.00', change: 2.4, signal: 'BUY' },
-];
-
-const mockMarketPulse = [
-    { symbol: 'NIFTY 50', value: '22,147', change: -0.4 },
-    { symbol: 'SENSEX', value: '73,058', change: 0.1 },
-    { symbol: 'VIX', value: '14.2', change: 2.1 },
-];
-
 export const LeftSidebar: React.FC = () => {
+    const [tickerMetadata, setTickerMetadata] = useState<TickerMetadata | null>(null);
+
+    useEffect(() => {
+        fetchTickerMetadata()
+            .then(setTickerMetadata)
+            .catch(err => console.error("Sidebar metadata load failed", err));
+    }, []);
+
+    // Pick top ticker from each sector for the sidebar "Market Pulse" or watchlist
+    const watchlist = tickerMetadata ? 
+        tickerMetadata.sectors.slice(0, 5).map(sector => ({
+            symbol: tickerMetadata.ticker_list[sector][0],
+            sector: sector,
+            price: '...', // Prices would need another API call, keeping as placeholders or just symbols
+            change: 0.0,
+            signal: 'NEUTRAL'
+        })) : [];
+
     return (
         <div className="w-[210px] bg-void border-r border-white/5 shrink-0 hidden lg:flex flex-col h-full z-40">
             {/* Navigation */}
@@ -55,32 +61,26 @@ export const LeftSidebar: React.FC = () => {
                                 </NavLink>
                             </li>
                         ))}
-
                     </ul>
                 </div>
 
                 <div className="my-8 border-b border-white/5 mx-2" />
 
-                {/* Watchlist */}
+                {/* Market Pulse / Sector List */}
                 <div className="px-1">
-                    <h3 className="neon-label px-3 mb-5">Watchlist</h3>
-                    <ul className="space-y-3">
-                        {mockWatchlist.map((item) => {
-                            const isBuy = item.signal === 'BUY';
-                            const isSell = item.signal === 'SELL';
-                            const indicatorColor = isBuy ? 'bg-emerald' : isSell ? 'bg-rose' : 'bg-amber';
-                            const glowColor = isBuy ? 'shadow-[0_0_8px_rgba(16,185,129,0.5)]' : isSell ? 'shadow-[0_0_8px_rgba(244,63,94,0.5)]' : '';
-                            
+                    <h3 className="neon-label px-3 mb-5 uppercase tracking-[0.2em] text-[10px]">Market Sectors</h3>
+                    <ul className="space-y-4">
+                        {tickerMetadata?.sectors.map((sector) => {
+                            const firstTicker = tickerMetadata.ticker_list[sector][0];
                             return (
-                                <li key={item.symbol} className="flex items-center justify-between px-3 py-1 group cursor-pointer">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-1.5 h-1.5 rounded-full ${indicatorColor} ${glowColor} animate-pulse-dot`} />
-                                        <span className="text-[11px] font-bold text-slate-300 group-hover:text-white transition-colors uppercase tracking-wider">{item.symbol.split('.')[0]}</span>
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-[10px] font-data font-bold text-white tracking-wider">{item.price}</span>
-                                        <span className={`text-[9px] font-black ${item.change >= 0 ? 'text-emerald' : 'text-rose'}`}>
-                                            {item.change >= 0 ? '▲' : '▼'} {Math.abs(item.change)}%
+                                <li key={sector} className="px-3 py-1 group cursor-pointer">
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black text-cyan tracking-wider uppercase">{sector}</span>
+                                            <Activity size={10} className="text-slate-600 group-hover:text-cyan transition-colors" />
+                                        </div>
+                                        <span className="text-[11px] font-bold text-slate-300 group-hover:text-white transition-colors uppercase tracking-wider">
+                                            {firstTicker.split('.')[0]}
                                         </span>
                                     </div>
                                 </li>
@@ -88,8 +88,8 @@ export const LeftSidebar: React.FC = () => {
                         })}
                     </ul>
 
-                    <button className="w-full mt-6 py-2.5 border border-dashed border-white/10 rounded-xl text-[10px] font-bold text-slate-600 hover:text-slate-300 hover:border-white/20 hover:bg-white/[0.01] transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
-                        <Plus size={12} /> Add Ticker
+                    <button className="w-full mt-8 py-2.5 border border-dashed border-white/10 rounded-xl text-[10px] font-bold text-slate-600 hover:text-slate-300 hover:border-white/20 hover:bg-white/[0.01] transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
+                        <Search size={12} /> Explore All
                     </button>
                 </div>
             </nav>

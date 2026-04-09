@@ -244,7 +244,8 @@ class PaperPortfolio:
                 for d in data.get("history", [])
             ]
             return True
-        except Exception:
+        except Exception as e:
+            print(f"[ERROR] Portfolio load failed: {e}")
             return False
 
     # ─── Internal ────────────────────────────────────────────────────────────

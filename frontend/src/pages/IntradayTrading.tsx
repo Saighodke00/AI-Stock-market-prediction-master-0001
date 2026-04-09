@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchSignal, fetchSentiment, fetchBacktest, fetchExplainability, SignalResponse, SentimentData, BacktestMetrics, XAIReport } from '../api/api';
+import { fetchSignal, fetchSentiment, fetchBacktest, fetchExplainability, fetchTickerMetadata, SignalResponse, SentimentData, BacktestMetrics, XAIReport, TickerMetadata } from '../api/api';
 import { SignalCard } from '../components/trading/SignalCard';
 import { CandlestickChart } from '../components/trading/CandlestickChart';
 import { MetricGrid } from '../components/trading/MetricGrid';
@@ -12,20 +12,10 @@ import { Search, Timer, Zap, AlertCircle, RefreshCcw, ChevronDown, Activity, Shi
 import { SignalBadge } from '../components/trading/SignalBadge';
 import { GateCard } from '../components/trading/GateCard';
 
-const TICKERS = [
-    'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'BHARTIARTL.NS',
-    'SBIN.NS', 'INFY.NS', 'LICI.NS', 'ITC.NS', 'HINDUNILVR.NS', 'LT.NS',
-    'BAJFINANCE.NS', 'HCLTECH.NS', 'MARUTI.NS', 'SUNPHARMA.NS', 'ONGC.NS',
-    'TATAMOTORS.NS', 'NTPC.NS', 'KOTAKBANK.NS', 'TITAN.NS'
-];
-
-const isBullish = (action: string): boolean => action === "BUY";
-const isBearish = (action: string): boolean => action === "SELL";
-const isActive  = (action: string): boolean => action === "BUY" || action === "SELL";
-
-
 export const IntradayTradingPage: React.FC = () => {
-    const [ticker, setTicker] = useState(TICKERS[0]);
+    const [tickerMetadata, setTickerMetadata] = useState<TickerMetadata | null>(null);
+    const [selectedSector, setSelectedSector] = useState<string>('All');
+    const [ticker, setTicker] = useState('RELIANCE.NS');
     const [tf, setTf] = useState('15m'); // Default to 15m for intraday
     const [isLive, setIsLive] = useState(false);
 
@@ -36,6 +26,17 @@ export const IntradayTradingPage: React.FC = () => {
     const [backtest, setBacktest] = useState<BacktestMetrics | null>(null);
     const [xai, setXai] = useState<XAIReport[]>([]);
 
+    // 1. Initial Metadata Load
+    useEffect(() => {
+        fetchTickerMetadata().then((meta: TickerMetadata) => {
+          setTickerMetadata(meta);
+          if (meta.all_tickers.length > 0 && !meta.all_tickers.includes(ticker)) {
+            setTicker(meta.all_tickers[0]);
+          }
+        }).catch((err: any) => console.error("Metadata load failed", err));
+    }, []);
+
+    // 2. Data Load on Ticker/TF change
     useEffect(() => {
         let active = true;
         const loadData = async () => {
@@ -54,7 +55,7 @@ export const IntradayTradingPage: React.FC = () => {
                 if (sigRes) setSignal(sigRes);
                 if (senRes) setSentiment(senRes);
                 if (btRes) setBacktest(btRes);
-                if (xaiRes) setXai(xaiRes);
+                if (xaiRes && Array.isArray(xaiRes)) setXai(xaiRes);
             } catch (err: any) {
                 console.error(err);
                 if (active) setError(err.message || 'Failed to fetch signal data');
@@ -137,16 +138,30 @@ export const IntradayTradingPage: React.FC = () => {
                             {/* TOP CONTROLS */}
                             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-4 px-1">
                                 <div className="flex flex-wrap items-center gap-6">
+                                    <div className="flex items-center gap-3 bg-white/[0.03] border border-white/10 p-1.5 rounded-2xl backdrop-blur-md">
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-3">Sector:</span>
+                                        <select
+                                            value={selectedSector}
+                                            onChange={(e) => setSelectedSector(e.target.value)}
+                                            className="bg-transparent border-none text-white font-display font-bold text-xs pr-8 py-1.5 outline-none cursor-pointer hover:text-cyan transition-colors appearance-none"
+                                        >
+                                            <option value="All" className="bg-slate-900">All Markets</option>
+                                            {tickerMetadata?.sectors.map((s: string) => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
+                                        </select>
+                                    </div>
+
                                     <div className="relative group">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-indigo-400 transition-colors">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-cyan transition-colors">
                                             <Search size={16} />
                                         </div>
                                         <select
                                             value={ticker}
                                             onChange={(e) => setTicker(e.target.value)}
-                                            className="bg-white/[0.03] border border-white/10 text-white font-display font-bold text-lg pl-12 pr-10 py-3 rounded-2xl focus:border-indigo-500/50 outline-none w-64 shadow-2xl appearance-none cursor-pointer hover:bg-white/[0.05] transition-all"
+                                            className="bg-white/[0.03] border border-white/10 text-white font-display font-bold text-lg pl-12 pr-10 py-3 rounded-2xl focus:border-cyan/50 outline-none w-64 shadow-2xl appearance-none cursor-pointer hover:bg-white/[0.05] transition-all"
                                         >
-                                            {TICKERS.map(t => <option key={t} value={t} className="bg-slate-900">{t}</option>)}
+                                            {(selectedSector === 'All' ? tickerMetadata?.all_tickers : tickerMetadata?.ticker_list[selectedSector])?.map((t: string) => (
+                                                <option key={t} value={t} className="bg-slate-900">{t}</option>
+                                            ))}
                                         </select>
                                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                                             <ChevronDown size={16} />

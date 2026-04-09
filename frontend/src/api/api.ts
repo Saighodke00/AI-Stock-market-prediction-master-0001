@@ -27,7 +27,11 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
     }
     throw new Error(errorMsg);
   }
-  return res.json() as Promise<T>;
+  const data = await res.json();
+  if (path.includes('signal') || path.includes('sentiment')) {
+    console.log(`[Diagnostic] Data from ${path}:`, data);
+  }
+  return data as T;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,6 +65,54 @@ export interface SentimentData {
   ticker?:          string;               // echoed back from /api/sentiment
 }
 
+export interface SentimentMatrixResponse {
+  ticker: string;
+  timestamp: string;
+  aggregate: {
+    score: number;
+    label: string;
+    emoji: string;
+    confidence: number;
+  };
+  layers: {
+    news: {
+      score: number;
+      article_count: number;
+      items: NewsArticle[];
+    };
+    bulk_deals: {
+      score: number;
+      signal: "BULLISH" | "BEARISH" | "NEUTRAL" | "MIXED";
+      summary: string;
+      deals: any[];
+    };
+    statements: {
+      score: number;
+      items: any[];
+      status: string;
+    };
+    social: {
+      score: number;
+      buzz: number;
+      reddit?: any;
+      stocktwits?: any;
+      status: string;
+    };
+  };
+  summary_ai: string;
+}
+
+export interface SentimentHistoryItem {
+  date: string;
+  score: number;
+  label: string;
+}
+
+export interface SentimentHistoryResponse {
+  ticker: string;
+  history: SentimentHistoryItem[];
+}
+
 export interface FeatureImportance {
   [feature: string]: number;  // feature name → normalised importance [0,1]
 }
@@ -71,6 +123,7 @@ export interface SignalResponse {
   direction:        Direction;
   confidence:       number;         // [0.50, 0.95]
   current_price:    number;
+  price:            number;         // alias for current_price used by legacy components
   price_change_pct: number;
   pct_change:       number;         // legacy alias — same as price_change_pct
   p10:              number;
@@ -191,6 +244,12 @@ export interface HealthResponse {
   paper_positions: number;
 }
 
+export interface TickerMetadata {
+  ticker_list: Record<string, string[]>;
+  all_tickers: string[];
+  sectors:     string[];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  API functions — Signal
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,11 +267,40 @@ export function fetchScreener(mode: "swing" | "intraday" = "swing") {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  API functions — Sentiment
+//  API functions — Sentiment Intelligence (Matrix V3.1)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function fetchSentiment(ticker: string) {
   return apiFetch<SentimentData>(`/api/sentiment/${encodeURIComponent(ticker)}`);
+}
+
+export function fetchSentimentMatrix(ticker: string) {
+  return apiFetch<SentimentMatrixResponse>(`/api/sentiment/${encodeURIComponent(ticker)}`);
+}
+
+export function fetchSentimentNews(ticker: string, page = 1) {
+  return apiFetch<{ news: any[]; total: number; page: number }>(`/api/sentiment/${encodeURIComponent(ticker)}/news?page=${page}`);
+}
+
+export function fetchSentimentTimeline(ticker: string, days = 7) {
+  return apiFetch<{ history: any[] }>(`/api/sentiment/${encodeURIComponent(ticker)}/timeline?days=${days}`);
+}
+
+export function fetchSentimentSocial(ticker: string) {
+  return apiFetch<{ social: any }>(`/api/sentiment/${encodeURIComponent(ticker)}/social`);
+}
+
+export function fetchSentimentBulkDeals(ticker: string) {
+  return apiFetch<{ deals: any }>(`/api/sentiment/${encodeURIComponent(ticker)}/bulk-deals`);
+}
+
+export function refreshSentiment(ticker: string) {
+  return apiFetch<{ status: string; matrix: SentimentMatrixResponse }>(`/api/sentiment/${encodeURIComponent(ticker)}/refresh`, { method: 'POST' });
+}
+
+export function fetchSentimentHistory(ticker: string) {
+  /** Legacy alias for fetchSentimentTimeline */
+  return fetchSentimentTimeline(ticker, 7);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -259,6 +347,10 @@ export function resetPortfolio() {
 
 export function fetchHealth() {
   return apiFetch<HealthResponse>("/api/health");
+}
+
+export function fetchTickerMetadata() {
+  return apiFetch<TickerMetadata>("/api/metadata/tickers");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

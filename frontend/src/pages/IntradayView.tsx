@@ -90,7 +90,7 @@ export default function IntradayView() {
   const p10 = +(currentPrice * 0.990).toFixed(2);
   const p50 = +(currentPrice * 1.021).toFixed(2);
   const p90 = +(currentPrice * 1.045).toFixed(2);
-  const action = 'HOLD'; // from API in real usage
+  const action: string = 'HOLD'; // from API in real usage
   const confidence = 71;
 
   const gates = [

@@ -81,7 +81,7 @@ export default function SwingTradingView() {
   const p10 = +(cur * 0.987).toFixed(2);
   const p50 = +(cur * 1.021).toFixed(2);
   const p90 = +(cur * 1.048).toFixed(2);
-  const action = 'HOLD';
+  const action: any = 'HOLD';
   const confidence = 90;
   const signalColor = action === 'BUY' ? '#00f5a0' : action === 'SELL' ? '#ff4560' : '#f59e0b';
 
