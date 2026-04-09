@@ -91,7 +91,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-slate-500 tracking-[0.3em] uppercase mb-1">Recommended Action</span>
                             <span className={`font-display font-black text-6xl tracking-tighter leading-none uppercase ${stateColor} italic`}>
-                                {data?.action || 'HOLD'}
+                                {(data?.action as string) || 'HOLD'}
                             </span>
                         </div>
                     </div>

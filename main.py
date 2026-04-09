@@ -10,7 +10,11 @@ import sys
 import time
 
 # --- Early Boot Diagnostics ---
-print(f"[{time.strftime('%H:%M:%S')}] APEX AI: Core import sequence initiated...")
+from rich.console import Console
+from rich.logging import RichHandler
+
+console = Console()
+console.print("\n[bold cyan]^ APEX AI: Core import sequence initiated...[/bold cyan]", style="none")
 
 import warnings
 warnings.filterwarnings("ignore", message=".*urllib3.*", category=Warning)
@@ -27,16 +31,16 @@ def _import_ml_core():
     global tf, np, pd, yf
     if tf is not None: return # Already loaded
     
-    print(f"[{time.strftime('%H:%M:%S')}] APEX AI: Initializing ML Core (TF/NP/PD/YF)...")
+    console.print("[bold yellow]!! Initializing ML Core (TF/NP/PD/YF)...[/bold yellow]")
     start = time.time()
     try:
         import tensorflow as tf
         import numpy as np
         import pandas as pd
         import yfinance as yf
-        print(f"[{time.strftime('%H:%M:%S')}] APEX AI: ML Core Ready ({time.time()-start:.2f}s)")
+        console.print(f"[bold green]** ML Core Ready ({time.time()-start:.2f}s)[/bold green]")
     except Exception as e:
-        print(f"[{time.strftime('%H:%M:%S')}] APEX AI: ML Core Load Failed: {e}")
+        console.print(f"[bold red][X] ML Core Load Failed: {e}[/bold red]")
 
 import asyncio
 from datetime import datetime
@@ -52,13 +56,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Light helpers for initial routing
-from utils.constants import NSE_SCREENER_TICKERS
+from utils.constants import NSE_SCREENER_TICKERS, TICKER_LIST, ALL_TICKERS
 from paper_trading import PaperPortfolio
 from utils.india_market import IndiaMarketIntelligence
+from utils.yf_utils import download_yf, get_ticker
+from utils.data_loader import fetch_data
+from utils.features import build_features
+from utils.indicators import compute_rsi, compute_atr
+from utils.sentiment import get_sentiment
+from utils.risk_manager import RiskManager
+from reasoning import get_explanation
 
+# Setup high-fidelity logging with Rich
+logging.basicConfig(
+    level="INFO",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True, markup=True)]
+)
 logger = logging.getLogger("apex")
-logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
-print(f"[{time.strftime('%H:%M:%S')}] APEX AI: Framework initialized.")
+console.print("[bold green][OK] Framework initialized.[/bold green]")
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 FITTED_SCALER_PATH = os.path.join(MODELS_DIR, "scaler_fitted.pkl")
@@ -184,7 +201,7 @@ def _tflite_interp(path: str) -> Any:
     import tensorflow as tf
     """
     TFLite Interpreter setup with Flex ops support.
-    Uses OpResolverType.BUILTIN_REF as a fallback strategy for select ops.
+    Uses OpResolverType.BUILTIN_REF (or experimental equivalent) as a fallback strategy.
     """
     try:
         # ATTEMPT 1: Standard
@@ -197,11 +214,17 @@ def _tflite_interp(path: str) -> Any:
         
         try:
             # ATTEMPT 2: Try with internal resolver that often includes more ops on Windows
-            # Check if OpResolverType exists to avoid AttributeErrors
+            # Check for OpResolverType in experimental namespace (TF 2.15+)
+            resolver_type = None
             if hasattr(tf.lite, "OpResolverType"):
+                resolver_type = tf.lite.OpResolverType.BUILTIN_REF
+            elif hasattr(tf.lite, "experimental") and hasattr(tf.lite.experimental, "OpResolverType"):
+                resolver_type = tf.lite.experimental.OpResolverType.BUILTIN_REF
+            
+            if resolver_type is not None:
                 interp = tf.lite.Interpreter(
                     model_path=path, 
-                    experimental_op_resolver_type=tf.lite.OpResolverType.BUILTIN_REF
+                    experimental_op_resolver_type=resolver_type
                 )
                 interp.allocate_tensors()
                 return interp
@@ -356,9 +379,11 @@ def _generate_sparkline(df: pd.DataFrame, n: int = 20) -> list[float]:
 
 
 def _prepare_chart_data(df: pd.DataFrame, p10: float, p50: float, p90: float) -> dict:
-    """Formats OHLCV and Forecast for CandlestickChart.tsx.
-    Uses realistic interpolation between last close and target.
-    """
+    """Formats OHLCV and Forecast for CandlestickChart.tsx."""
+    if df.empty:
+        return {"ohlcv": [], "forecast": []}
+        
+    logger.info(f"Formatting chart data: {len(df)} rows available.")
     ohlcv = []
     for idx, row in df.tail(100).iterrows():
         ohlcv.append({
@@ -575,19 +600,22 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
             # logger.info("Using cached inference for %s (%s)", ticker, mode)
             return cached_res
 
-    from utils.data_loader import fetch_data
-    from utils.features import build_features
-    from utils.indicators import compute_rsi, compute_atr
-    from utils.sentiment import get_sentiment
-    from reasoning import get_explanation
-    from utils.risk_manager import RiskManager
-
     period   = "6mo" if mode == "swing" else "5d"
     interval = "1d"  if mode == "swing" else "15m"
 
     df = fetch_data(ticker, period=period, interval=interval)
-    if df is None or len(df) < 70:
+    if df is None or df.empty:
+        logger.error(f"DataFrame is EMPTY for {ticker}. Check YFinance connection.")
         raise HTTPException(422, f"Insufficient data for {ticker}")
+
+    # CLEANUP: Ensure no NaNs at the end (common in off-hours or delayed feeds)
+    df.dropna(subset=["Close", "Open", "High", "Low"], inplace=True)
+    if df.empty:
+        logger.error(f"DataFrame became EMPTY after dropping NaNs for {ticker}")
+        raise HTTPException(422, f"No valid price bars for {ticker}")
+    
+    _add_log(f"Inference started for {ticker} ({len(df)} bars)")
+    logger.info(f"Analyzing {ticker}: {len(df)} historical data points found.")
 
     # Robustly get last two close prices
     def _get_scalar(series_or_df, idx):
@@ -728,7 +756,9 @@ async def get_signal(ticker: str, mode: str = "swing"):
     loop = asyncio.get_event_loop()
     try:
         res = await loop.run_in_executor(None, _run_inference, ticker.upper(), mode)
-        return _json_sanitize(res)
+        sanitized = _json_sanitize(res)
+        logger.info(f"Signal generated for {ticker}: {sanitized.get('action', 'N/A')}")
+        return sanitized
     except HTTPException:
         raise
     except Exception as exc:
@@ -775,20 +805,85 @@ async def screener(mode: str = "swing"):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Routes — Sentiment
+#  Routes — Sentiment Deep-Dive (Matrix V3)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/sentiment/{ticker}")
-async def sentiment_endpoint(ticker: str):
-    from utils.sentiment import get_sentiment
-    loop  = asyncio.get_event_loop()
-    score, articles = await loop.run_in_executor(None, get_sentiment, ticker.upper())
+async def get_sentiment_summary(ticker: str):
+    """Component 5: Overall weighted sentiment score + breakdown."""
+    from utils.sentiment_aggregator import SentimentAggregator
+    loop = asyncio.get_event_loop()
+    matrix = await loop.run_in_executor(None, SentimentAggregator.get_matrix_v3, ticker.upper())
+    return _json_sanitize(matrix)
+
+@app.get("/api/sentiment/{ticker}/news")
+async def get_sentiment_news(ticker: str, page: int = 1, limit: int = 10):
+    """Component 2: Paginated news list with FinBERT scores."""
+    from utils.sentiment_aggregator import SentimentAggregator
+    loop = asyncio.get_event_loop()
+    matrix = await loop.run_in_executor(None, SentimentAggregator.get_matrix_v3, ticker.upper())
+    news = matrix["layers"]["news"]["items"]
+    # Simple pagination
+    start = (page - 1) * limit
+    end = start + limit
     return _json_sanitize({
         "ticker": ticker.upper(),
-        "score":  round(score, 3),
-        "label":  _sentiment_label(score),
-        "articles": articles,
+        "news": news[start:end],
+        "total": len(news),
+        "page": page
     })
+
+@app.get("/api/sentiment/{ticker}/timeline")
+async def get_sentiment_timeline(ticker: str, days: int = 7):
+    """Component 3: Historical scores for Recharts charting (7D/30D/90D)."""
+    from utils.sentiment_aggregator import SentimentAggregator
+    loop = asyncio.get_event_loop()
+    history = await loop.run_in_executor(None, SentimentAggregator.get_history, ticker.upper(), days)
+    return _json_sanitize({"ticker": ticker.upper(), "history": history})
+
+@app.get("/api/sentiment/{ticker}/social")
+async def get_sentiment_social(ticker: str):
+    """Component 4: Reddit + StockTwits + Twitter breakdown."""
+    from utils.sentiment_aggregator import SentimentAggregator
+    loop = asyncio.get_event_loop()
+    matrix = await loop.run_in_executor(None, SentimentAggregator.get_matrix_v3, ticker.upper())
+    return _json_sanitize({
+        "ticker": ticker.upper(),
+        "social": matrix["layers"]["social"]
+    })
+
+@app.get("/api/sentiment/{ticker}/bulk-deals")
+async def get_sentiment_bulk_deals(ticker: str):
+    """Component 6: SEBI bulk deal data for the ticker."""
+    from utils.sentiment_aggregator import SentimentAggregator
+    loop = asyncio.get_event_loop()
+    matrix = await loop.run_in_executor(None, SentimentAggregator.get_matrix_v3, ticker.upper())
+    return _json_sanitize({
+        "ticker": ticker.upper(),
+        "deals": matrix["layers"]["bulk_deals"]
+    })
+
+@app.post("/api/sentiment/{ticker}/refresh")
+async def force_sentiment_refresh(ticker: str):
+    """Force re-fetch of all layers and re-calculate scores."""
+    from utils.sentiment_aggregator import SentimentAggregator
+    loop = asyncio.get_event_loop()
+    # We pass force=True to the aggregator if we implement cache bypassing
+    matrix = await loop.run_in_executor(None, SentimentAggregator.get_matrix_v3, ticker.upper())
+    return _json_sanitize({"status": "refreshed", "ticker": ticker.upper(), "matrix": matrix})
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Routes — Metadata
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/metadata/tickers")
+async def get_ticker_metadata():
+    """Returns the categorized ticker list and full ticker array."""
+    return {
+        "ticker_list": TICKER_LIST,
+        "all_tickers": ALL_TICKERS,
+        "sectors": list(TICKER_LIST.keys())
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -864,11 +959,16 @@ async def paper_reset():
 
 @app.get("/api/market-pulse")
 async def market_pulse():
-    """Returns top-level market health metrics."""
+    # 1. Fetch NIFTY and VIX (Core Market Health)
     try:
-        # 1. Fetch NIFTY and VIX (with more history for sparklines)
-        nifty = download_yf("^NSEI", period="5d", interval="15m", progress=False)
-        vix = download_yf("^INDIAVIX", period="5d", interval="15m", progress=False)
+        try:
+            # Short history for pulse to keep it fast
+            nifty = download_yf("^NSEI", period="1d", progress=False)
+            vix = download_yf("^INDIAVIX", period="1d", progress=False)
+        except Exception as e:
+            logger.warning(f"Market Pulse fetch failed: {e}. Using placeholders.")
+            nifty = pd.DataFrame()
+            vix = pd.DataFrame()
         
         def _get_last_price(df: pd.DataFrame) -> float:
             if df.empty: return 0.0
@@ -920,8 +1020,19 @@ async def market_pulse():
             "timestamp": now.isoformat()
         })
     except Exception as e:
-        logger.error(f"Market pulse error: {e}")
-        return {"status": "ERROR", "message": str(e)}
+        logger.error(f"Critical error in market-pulse: {e}")
+        return _json_sanitize({
+            "nifty": {"price": 0.0, "change_pct": 0.0, "sparkline": []},
+            "vix": {"price": 0.0, "color": "yellow"},
+            "fii_flow": None,
+            "status": "COOLDOWN",
+            "message": "Market Data Interrupted"
+        })
+
+@app.get("/api/health")
+async def health_check():
+    """System health anchor."""
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}
 
 
 @app.get("/api/dashboard-stats")
@@ -1030,7 +1141,6 @@ async def geo_companies(sector: str | None = None, state: str | None = None):
 @app.get("/api/geo/stock/{ticker}")
 async def geo_stock(ticker: str):
     """Live stock snapshot for a single ticker."""
-    from utils.yf_utils import get_ticker
     loop = asyncio.get_event_loop()
     try:
         def _fetch():
@@ -1188,7 +1298,6 @@ async def get_patterns(ticker: str):
     """
     Detects technical candle patterns using recent data.
     """
-    from utils.data_loader import fetch_data
     loop = asyncio.get_event_loop()
     try:
         df = await loop.run_in_executor(None, fetch_data, ticker.upper(), "1mo", "1d")
@@ -1228,6 +1337,32 @@ async def get_patterns(ticker: str):
 # ─────────────────────────────────────────────────────────────────────────────
 #  Routes — Hyper Tuner
 # ─────────────────────────────────────────────────────────────────────────────
+
+from utils.tuner_engine import run_tuner_backtest, run_neural_optimization
+
+@app.get("/api/tuner/backtest")
+async def tuner_backtest(ticker: str = "RELIANCE"):
+    """
+    Evaluates currently active thresholds against historical data for a ticker.
+    """
+    thresholds = {
+        "cone_max": GATE1_CONE_MAX,
+        "sent_buy_min": GATE2_SENT_BUY_MIN,
+        "sent_sell_max": GATE2_SENT_SELL_MAX,
+        "rsi_buy_lo": GATE3_RSI_BUY_LO,
+        "rsi_buy_hi": GATE3_RSI_BUY_HI
+    }
+    results = run_tuner_backtest(ticker, thresholds)
+    return results
+
+@app.get("/api/tuner/optimize")
+async def tuner_optimize(ticker: str = "RELIANCE"):
+    """
+    Runs a search for the best thresholds for a given ticker.
+    """
+    results = run_neural_optimization(ticker)
+    return results
+
 
 @app.get("/api/tuner")
 async def get_tuner_settings():

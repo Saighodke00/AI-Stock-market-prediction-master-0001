@@ -30,3 +30,6 @@ openai>=1.12.0
 psutil
 optuna
 beautifulsoup4
+praw
+feedparser
+transformers

@@ -116,23 +116,33 @@ with st.sidebar:
 
     st.markdown("---")
     
-    sector = st.radio("Sector Filter", ["All"] + list(TICKER_LIST.keys()))
+    # Sector-based selection
+    st.markdown("### 🔍 Security Selection")
     
-    available_tickers = list(ALL_TICKERS) if sector == "All" else list(TICKER_LIST[sector])
-    available_tickers = list(set(available_tickers + st.session_state["custom_tickers"]))
+    # Get sector list and sort it nicely
+    sector_options = ["All"] + list(TICKER_LIST.keys())
+    selected_sector = st.selectbox("Market Sector", options=sector_options, index=0)
+    
+    # Filter available tickers based on sector
+    if selected_sector == "All":
+        available_tickers = list(ALL_TICKERS)
+    else:
+        available_tickers = list(TICKER_LIST[selected_sector])
+    
+    # Add custom tickers to the pool
+    available_tickers = list(set(available_tickers + st.session_state.get("custom_tickers", [])))
     available_tickers.sort()
 
     if "active_tickers" not in st.session_state:
-        st.session_state["active_tickers"] = [available_tickers[0]] if available_tickers else []
+        st.session_state["active_tickers"] = ["RELIANCE.NS"] if "RELIANCE.NS" in ALL_TICKERS else []
     
-    # Ensure active_tickers are in available_tickers
-    for t in st.session_state["active_tickers"]:
-        if t not in available_tickers:
-            available_tickers.append(t)
+    # Ensure active_tickers are always available in the options even if sector changes
+    display_options = list(set(available_tickers + st.session_state["active_tickers"]))
+    display_options.sort()
 
     selected_tickers = st.multiselect(
-        "Select Securities (max 5)", 
-        options=available_tickers, 
+        f"Select from {selected_sector}", 
+        options=display_options, 
         default=st.session_state["active_tickers"], 
         max_selections=5
     )
