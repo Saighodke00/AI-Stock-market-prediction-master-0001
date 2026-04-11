@@ -143,6 +143,24 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({ data, patterns, is
                         <Line type="monotone" dataKey="p50" stroke="var(--green)" strokeWidth={2} dot={false} strokeDasharray="5 5" connectNulls />
                         <Line type="monotone" dataKey="p90" stroke="var(--cyan)" strokeWidth={1} strokeDasharray="3 3" dot={false} opacity={0.5} connectNulls />
                         <Line type="monotone" dataKey="p10" stroke="var(--red)" strokeWidth={1} strokeDasharray="3 3" dot={false} opacity={0.5} connectNulls />
+
+                        {/* Pattern Targets */}
+                        {patterns?.map((p, idx) => p.target && (
+                            <ReferenceLine
+                                key={`target-${idx}`}
+                                y={p.target}
+                                stroke={p.type === 'Bullish' ? 'var(--green)' : (p.type === 'Bearish' ? 'var(--red)' : 'var(--cyan)')}
+                                strokeDasharray="3 3"
+                                opacity={0.4}
+                                label={{ 
+                                    value: `${p.name} Target`, 
+                                    position: 'right', 
+                                    fill: p.type === 'Bullish' ? 'var(--green)' : (p.type === 'Bearish' ? 'var(--red)' : 'var(--cyan)'),
+                                    fontSize: 8,
+                                    fontFamily: 'Share Tech Mono'
+                                }}
+                            />
+                        ))}
                     </ComposedChart>
                 </ResponsiveContainer>
             </div>

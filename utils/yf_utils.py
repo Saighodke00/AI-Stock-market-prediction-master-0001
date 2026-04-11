@@ -8,22 +8,45 @@ from functools import wraps
 from typing import Optional
 
 # ---------------------------------------------------------------------------
-# Logging & Globals
-# ---------------------------------------------------------------------------
 logger = logging.getLogger("apex_ai.yf_utils")
 _INIT_LOCK = threading.Lock()
 _WARMED_UP = False
+_SESSION: Optional[requests.Session] = None
+
+# ── SILENCE YFINANCE INTERNAL LOGS ───────────────────────────────────────────
+# yfinance (and multitasking) can be very noisy with internal ERROR logs 
+# when network is unstable. We redirect them to CRITICAL to keep logs clean.
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
+logging.getLogger("multitasking").setLevel(logging.CRITICAL)
 
 # Note: yfinance v0.2.40+ often requires curl_cffi for obfuscation.
 # Manual session injection (requests) is now explicitly rejected by Yahoo.
 # We are removing session-based downloads to let yf handle it natively.
 
+def _get_session():
+    """Singleton session with optimal pooling for high-frequency dashboard usage."""
+    global _SESSION
+    if _SESSION is None:
+        with _INIT_LOCK:
+            if _SESSION is None:
+                _SESSION = requests.Session()
+                # Increase connection pool size
+                adapter = requests.adapters.HTTPAdapter(
+                    pool_connections=20, 
+                    pool_maxsize=50,
+                    max_retries=2
+                )
+                _SESSION.mount("https://", adapter)
+                _SESSION.mount("http://", adapter)
+                _SESSION.headers.update({
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                    "Accept-Language": "en-US,en;q=0.9",
+                })
+    return _SESSION
+
 def _get_headers():
-    return {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
+    return _get_session().headers
 
 # ---------------------------------------------------------------------------
 # Robust Retry Decorator
@@ -92,7 +115,7 @@ def fetch_news_fallback(ticker: str) -> list:
     from bs4 import BeautifulSoup
     try:
         url = f"https://finance.yahoo.com/rss/headline?s={ticker}"
-        resp = requests.get(url, headers=_get_headers(), timeout=5)
+        resp = _get_session().get(url, timeout=5)
         if resp.status_code != 200: return []
         
         soup = BeautifulSoup(resp.content, "xml")
@@ -117,5 +140,22 @@ def get_ticker(ticker, use_session=True):
     _ensure_warm_up()
     # Note: use_session is now ignored
     return yf.Ticker(ticker)
+
+
+def check_connectivity() -> dict:
+    """Checks if critical financial sites are reachable."""
+    targets = {
+        "Yahoo Finance": "https://finance.yahoo.com",
+        "NSE India": "https://www.nseindia.com",
+        "Google News": "https://news.google.com"
+    }
+    status = {}
+    for name, url in targets.items():
+        try:
+            resp = _get_session().get(url, timeout=3)
+            status[name] = "ONLINE" if resp.status_code == 200 else f"ERROR {resp.status_code}"
+        except Exception as e:
+            status[name] = "OFFLINE"
+    return status
 
 _ensure_warm_up()

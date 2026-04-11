@@ -249,11 +249,32 @@ def build_all_features(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
 
     rows_before = len(df)
 
+    # ── 1. Safe Fill for Static/Macro columns before dropna ─────────────────
+    # If a ticker is missing beta or sector, we shouldn't drop the whole history.
+    static_macro_defaults = {
+        "beta": 1.0,
+        "log_market_cap": df["log_market_cap"].median() if "log_market_cap" in df.columns else 25.0,
+        "sector": "Unknown",
+        "industry": "Unknown",
+        "VIX": 15.0,     # Typical calm VIX
+        "SP500": df["SP500"].median() if "SP500" in df.columns else 4000.0,
+        "NSEI": df["NSEI"].median() if "NSEI" in df.columns else 20000.0,
+    }
+    for col, default in static_macro_defaults.items():
+        if col in df.columns:
+            df[col] = df[col].fillna(default)
+
+    # ── 2. Add features in order ───────────────────────────────────────────
     df = add_technical_indicators(df)
     df = add_lagged_features(df)
     df = add_time_features(df)
     df = add_integer_time_index(df, ticker)
-    df = df.dropna()
+
+    # ── 3. Selective dropna ───────────────────────────────────────────────
+    # We only drop rows that have NaNs in core price/technical columns.
+    # We allow some columns to have NaNs if they are non-critical.
+    critical_cols = ["Close", "RSI_14", "MACD_12_26_9", "ATR_14"]
+    df = df.dropna(subset=[c for c in critical_cols if c in df.columns])
 
     rows_after = len(df)
     n_features = len(df.columns)

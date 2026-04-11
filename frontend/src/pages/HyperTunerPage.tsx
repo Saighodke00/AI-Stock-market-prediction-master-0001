@@ -1,6 +1,129 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Save, RefreshCw, Sliders, Shield, Zap, Info, Play, Target, Activity, Search } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  RefreshCw, Sliders, Shield, Zap, Info, 
+  Target, Activity, Search, Box, Binary,
+  Cpu, AlertTriangle, Terminal, LayoutGrid
+} from 'lucide-react';
 import { NeuralSpinner } from '../components/ui/LoadingStates';
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Intelligence Mapping & Localization
+// ─────────────────────────────────────────────────────────────────────────────
+
+const GATE_INTEL: Record<string, { title: string; logic: string; impact: string }> = {
+  cone_max: {
+    title: "Stability Horizon",
+    logic: "Controls the AI's tolerance for price divergence (uncertainty).",
+    impact: "Lowering this makes the AI extremely picky, only trading when price action is precise and predictable."
+  },
+  sent_buy_min: {
+    title: "Sentiment Catalyst",
+    logic: "Minimum neural sentiment score required for a LONG signal.",
+    impact: "Increase this to ensure the AI only buys when news, social buzz, and institutional volume provide strong confirmation."
+  },
+  sent_sell_max: {
+    title: "Pessimism Ceiling",
+    logic: "The threshold of negative sentiment that triggers a distribution exit.",
+    impact: "Lower values result in faster exits when the news cycle turns bearish."
+  },
+  rsi_buy_lo: {
+    title: "Momentum Floor",
+    logic: "The minimum RSI value required to prove underlying buying pressure.",
+    impact: "Prevents entries on dead instruments by ensuring a baseline level of investor interest."
+  },
+  rsi_buy_hi: {
+    title: "Momentum Ceiling",
+    logic: "Protective RSI boundary that prevents entries into exhaustion zones.",
+    impact: "The 'Don't Chase' gate. Prevents buying into overbought blow-offs where a reversal is imminent."
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Sub-components
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LogicCard = ({ id, label, value, onChange }: { id: string; label: string; value: number; onChange: (v: number) => void }) => {
+  const intel = GATE_INTEL[id] || { title: label, logic: "Neural Weight Configuration", impact: "Modifies core signal confluence." };
+  const [showIntel, setShowIntel] = useState(false);
+
+  const max = id.includes('rsi') ? 100 : 1;
+  const pct = (value / max) * 100;
+
+  return (
+    <div className="group/gate relative p-6 rounded-3xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-500 overflow-hidden">
+      <div className="relative z-10 flex flex-col gap-6">
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-black text-cyan-500/50 uppercase tracking-[0.3em] font-mono leading-none">
+              Gate_{id.slice(0, 3).toUpperCase()}
+            </span>
+            <h3 className="text-lg font-display font-black text-white uppercase tracking-tight group-hover/gate:text-cyan-400 transition-colors">
+              {intel.title}
+            </h3>
+          </div>
+          <div className="flex items-center gap-3">
+             <button 
+                onClick={() => setShowIntel(!showIntel)}
+                className={`p-2 rounded-xl border transition-all ${showIntel ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : 'border-white/5 text-slate-600 hover:text-white'}`}
+             >
+                <Info size={14} />
+             </button>
+             <div className="px-4 py-2 bg-void/50 border border-white/10 rounded-xl font-mono font-black text-cyan-400 text-sm shadow-inner glow-cyan">
+                {value}
+             </div>
+          </div>
+        </div>
+
+        {showIntel && (
+          <div className="p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 space-y-2 animate-in slide-in-from-top-2 duration-300">
+             <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">{intel.logic}</p>
+             <p className="text-slate-400 text-[10px] font-bold leading-relaxed uppercase opacity-80">{intel.impact}</p>
+          </div>
+        )}
+
+        <div className="relative h-2 flex items-center">
+            <div className="absolute inset-x-0 h-1.5 bg-void rounded-full border border-white/5 overflow-hidden">
+                <div 
+                    className="h-full bg-gradient-to-r from-cyan-600 via-cyan-400 to-indigo-500 transition-all duration-500" 
+                    style={{ width: `${pct}%` }}
+                />
+            </div>
+            <input 
+                type="range" 
+                min={id.includes('rsi') ? "0" : "0"} 
+                max={max} 
+                step="0.01" 
+                value={value}
+                onChange={(e) => onChange(parseFloat(e.target.value))}
+                className="absolute inset-x-0 w-full opacity-0 cursor-pointer h-full z-10"
+            />
+            <div 
+                className="absolute w-6 h-6 bg-white rounded-full border-[6px] border-cyan-500 shadow-xl transition-all duration-100 pointer-events-none group-hover/gate:scale-110"
+                style={{ left: `calc(${pct}% - 12px)` }}
+            />
+        </div>
+      </div>
+
+      {/* Decorative pulse when gate is 'active' */}
+      <div className={`absolute -bottom-16 -right-16 w-32 h-32 blur-3xl opacity-5 transition-opacity group-hover/gate:opacity-20 pointer-events-none bg-cyan-500`} />
+    </div>
+  );
+};
+
+const MetricHub = ({ label, value, sub, color, loading }: { label: string; value: string | number; sub: string; color: string; loading?: boolean }) => (
+    <div className={`p-6 rounded-3xl border border-white/10 bg-void shadow-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform ${loading ? 'opacity-50 grayscale' : ''}`}>
+        <div className="relative z-10 flex flex-col gap-1">
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">{label}</span>
+            <div className={`text-3xl font-display font-black tracking-tighter ${color}`}>{value}</div>
+            <span className="text-[9px] font-bold text-slate-700 uppercase tracking-widest mt-1 italic">{sub}</span>
+        </div>
+        <div className={`absolute -top-10 -right-10 w-24 h-24 rounded-full blur-3xl opacity-10 pointer-events-none ${color.replace('text-', 'bg-')}`} />
+    </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Main Page
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const HyperTunerPage: React.FC = () => {
     const [settings, setSettings] = useState<any>(null);
@@ -8,10 +131,9 @@ export const HyperTunerPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [optimizing, setOptimizing] = useState(false);
     const [ticker, setTicker] = useState('RELIANCE');
+    const [syncing, setSyncing] = useState(false);
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
         setLoading(true);
@@ -20,10 +142,8 @@ export const HyperTunerPage: React.FC = () => {
                 fetch('/api/tuner'),
                 fetch(`/api/tuner/backtest?ticker=${ticker}`)
             ]);
-            const sett = await settRes.json();
-            const st = await statsRes.json();
-            setSettings(sett);
-            setStats(st);
+            setSettings(await settRes.json());
+            setStats(await statsRes.json());
         } catch (err) {
             console.error(err);
         } finally {
@@ -31,17 +151,7 @@ export const HyperTunerPage: React.FC = () => {
         }
     };
 
-    const runBacktest = async () => {
-        try {
-            const res = await fetch(`/api/tuner/backtest?ticker=${ticker}`);
-            const data = await res.json();
-            setStats(data);
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    const runOptimize = async () => {
+    const runOptimization = async () => {
         setOptimizing(true);
         try {
             const res = await fetch(`/api/tuner/optimize?ticker=${ticker}`);
@@ -49,249 +159,173 @@ export const HyperTunerPage: React.FC = () => {
             if (data.status === "OPTIMIZED") {
                 setSettings({
                     ...settings,
-                    gate_thresholds: {
-                        ...settings.gate_thresholds,
-                        ...data.best_config
-                    }
+                    gate_thresholds: { ...settings.gate_thresholds, ...data.best_config }
                 });
-                // Auto-run backtest for new settings
-                setTimeout(runBacktest, 500);
+                // Re-backtest
+                const bRes = await fetch(`/api/tuner/backtest?ticker=${ticker}`);
+                setStats(await bRes.json());
             }
-        } catch (err) {
-            console.error(err);
         } finally {
             setOptimizing(false);
         }
     };
 
     const handleSave = async () => {
-        setLoading(true);
+        setSyncing(true);
         try {
             await fetch('/api/tuner', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings)
             });
-            alert('PROTOCOL UPDATED: Neural weights synchronized.');
-        } catch (err) {
-            console.error(err);
         } finally {
-            setLoading(false);
+            setTimeout(() => setSyncing(false), 800);
         }
     };
 
     const updateGate = (key: string, val: number) => {
         setSettings({
             ...settings,
-            gate_thresholds: {
-                ...settings.gate_thresholds,
-                [key]: val
-            }
+            gate_thresholds: { ...settings.gate_thresholds, [key]: val }
         });
     };
 
     if (loading) return (
-        <div className="h-full flex flex-col items-center justify-center gap-8">
-            <div className="relative">
-                <NeuralSpinner />
-                <div className="absolute -inset-4 bg-indigo-500/20 blur-2xl animate-pulse -z-10" />
-            </div>
-            <p className="text-indigo-400/60 font-data text-[10px] tracking-[0.4em] uppercase animate-pulse">Accessing Core Logic Streams...</p>
+        <div className="h-full flex flex-col items-center justify-center gap-6">
+            <NeuralSpinner />
+            <span className="text-[10px] font-black tracking-[0.4em] text-cyan-500/60 uppercase animate-pulse">Initializing Neural Interface</span>
         </div>
     );
 
     return (
-        <div className="p-8 md:p-12 max-w-6xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-700 bg-void min-h-full">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
-                <div className="flex flex-col gap-3">
-                    <div className="text-[10px] font-mono text-cyan-400/40 tracking-[0.3em] mb-1 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-cyan-500/50 animate-pulse" />
-                        // NEURAL ENGINE TUNING TERMINAL
-                    </div>
-                    <h1 className="text-5xl font-black text-white tracking-tighter uppercase leading-none">
-                        HYPER <span className="text-cyan-400 scanline-effect px-2 py-0.5 rounded border border-cyan-500/20 bg-cyan-500/5">TUNER</span>
-                    </h1>
-                </div>
-                <div className="flex gap-4 w-full md:w-auto">
-                    <div className="relative group">
-                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-cyan-400/50">
-                            <Target size={14} />
+        <div className="p-8 max-w-[1600px] mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            {/* Header Terminal */}
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 border-b border-white/5 pb-8">
+                <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-2xl shadow-indigo-500/5 group hover:border-indigo-500/50 transition-all">
+                            <Cpu className="text-indigo-400 group-hover:rotate-90 transition-transform duration-700" size={28} />
                         </div>
+                        <div>
+                            <h1 className="text-5xl font-display font-black text-white tracking-tighter uppercase leading-none">
+                                Hyper <span className="text-cyan-400 italic">Tuner</span>
+                            </h1>
+                            <p className="text-slate-600 text-[10px] font-black uppercase tracking-[0.4em] mt-2 flex items-center gap-2">
+                                <Terminal size={12} className="text-indigo-500" />
+                                Apex_AI // Parametric_Strategy_Synthesizer
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 p-2 bg-void/50 border border-white/5 rounded-3xl backdrop-blur-3xl shadow-inner">
+                    <div className="relative">
+                        <Target size={14} className="absolute left-6 top-1/2 -translate-y-1/2 text-cyan-400 opacity-50" />
                         <input 
                             type="text"
                             value={ticker}
                             onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                            className="bg-white/[0.03] border border-white/10 rounded-xl py-3 pl-11 pr-4 text-xs font-mono text-cyan-400 focus:outline-none focus:border-cyan-500/50 transition-all w-32"
-                            placeholder="TICKER"
+                            onBlur={loadData}
+                            className="bg-void/50 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-xs font-mono font-black text-white focus:outline-none focus:border-cyan-500/30 transition-all w-48 uppercase"
+                            placeholder="LOAD_TICKER"
                         />
                     </div>
+                    
                     <button 
-                        onClick={runOptimize}
+                        onClick={runOptimization}
                         disabled={optimizing}
-                        className={`flex items-center gap-2 px-6 py-3 border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 rounded-xl text-[10px] font-black tracking-widest uppercase hover:bg-indigo-500/20 transition-all ${optimizing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className="flex items-center gap-3 px-8 py-4 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-2xl text-[10px] font-black tracking-widest uppercase hover:bg-indigo-500/20 transition-all active:scale-95 disabled:opacity-50"
                     >
-                        <Search size={14} className={optimizing ? "animate-spin" : ""} />
-                        {optimizing ? 'OPTIMIZING...' : 'NEURAL SEARCH'}
+                        {optimizing ? <RefreshCw className="animate-spin" size={14} /> : <Search size={14} />}
+                        {optimizing ? 'Neural Search Active' : 'Neural Optimization'}
                     </button>
+
                     <button 
                         onClick={handleSave}
-                        className="flex items-center gap-2 px-8 py-3 bg-cyan-500 text-void rounded-xl font-black text-[10px] tracking-widest uppercase hover:bg-cyan-400 transition-all shadow-lg shadow-cyan-500/20 active:scale-95"
+                        disabled={syncing}
+                        className="flex items-center gap-3 px-10 py-4 bg-cyan-500 text-void rounded-2xl font-black text-[11px] tracking-[0.2em] uppercase hover:bg-cyan-400 transition-all shadow-xl shadow-cyan-500/20 active:scale-95 group"
                     >
-                        <Save size={14} strokeWidth={3} /> COMMIT PROTOCOL
+                        {syncing ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} className="group-hover:animate-pulse fill-current" />}
+                        {syncing ? 'Syncing...' : 'Commit Protocol'}
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
-                {/* Gate Thresholds */}
-                <div className="lg:col-span-7 rounded-2xl border border-white/10 bg-white/[0.01] p-10 flex flex-col gap-10 overflow-hidden group neural-hud relative">
-                     <div className="absolute inset-0 scanline-effect opacity-[0.01] pointer-events-none" />
-                     <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                        <Shield size={120} className="text-white" />
-                    </div>
-                    
-                    <div className="flex items-center gap-4 relative z-10">
-                        <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
-                            <Sliders size={24} />
-                        </div>
-                        <div>
-                            <h2 className="font-black text-xl text-white uppercase tracking-tight">Confluence Guardrails</h2>
-                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">Adjusting sensitivity for neural trade gates</p>
-                        </div>
+            {/* Performance Modules */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <MetricHub label="Simulation Success" value={`${stats?.win_rate || 0}%`} sub="Backtested Win Rate" color="text-emerald-400" />
+                <MetricHub label="Total Alpha" value={`${stats?.total_return_pct || 0}%`} sub="Net Cumulative Return" color="text-cyan-400" />
+                <MetricHub label="Signal Density" value={stats?.total_trades || 0} sub="Ops per 30D Window" color="text-indigo-400" />
+                <MetricHub label="Execution Logic" value="GRIT_V4" sub="Ensemble Confluence" color="text-slate-400" />
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch pt-4">
+                {/* Neural Gates Panel */}
+                <div className="xl:col-span-8 flex flex-col gap-6">
+                    <div className="p-8 pb-4">
+                       <h2 className="text-white font-display font-black text-xl uppercase tracking-tight flex items-center gap-4">
+                          <Sliders className="text-cyan-400" size={20} />
+                          Intelligence Gates
+                       </h2>
+                       <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-2 px-1 text-center lg:text-left">
+                          Adjusting these thresholds will modify the signal confluence criteria in real-time across the entire Apex AI platform.
+                       </p>
                     </div>
 
-                    <div className="space-y-12 relative z-10">
-                        {settings?.gate_thresholds && Object.entries(settings.gate_thresholds).map(([key, value]: [string, any]) => (
-                            <div key={key} className="group/slider">
-                                <div className="flex justify-between items-end mb-4 px-1">
-                                    <label className="text-[10px] font-mono font-black text-white/30 uppercase tracking-[0.2em] group-hover/slider:text-cyan-400 transition-colors">{key.replace(/_/g, ' ')}</label>
-                                    <span className="text-sm font-mono font-bold text-cyan-400 bg-void/50 px-3 py-1 rounded-lg border border-cyan-500/20 glow-cyan">{value}</span>
-                                </div>
-                                <div className="relative h-2 flex items-center">
-                                    <div className="absolute inset-x-0 h-1 bg-white/5 rounded-full overflow-hidden">
-                                        <div 
-                                            className="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 shadow-[0_0_15px_rgba(34,211,238,0.3)]" 
-                                            style={{ width: `${(value / (key.includes('rsi') ? 100 : 1)) * 100}%` }}
-                                        />
-                                    </div>
-                                    <input 
-                                        type="range" 
-                                        min="0" 
-                                        max={key.includes('rsi') ? "100" : "1"} 
-                                        step="0.01" 
-                                        value={value}
-                                        onChange={(e) => updateGate(key, parseFloat(e.target.value))}
-                                        className="absolute inset-x-0 w-full opacity-0 cursor-pointer h-full z-10"
-                                    />
-                                    <div 
-                                        className="absolute w-5 h-5 bg-white rounded-full border-[6px] border-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all duration-300 pointer-events-none"
-                                        style={{ left: `calc(${(value / (key.includes('rsi') ? 100 : 1)) * 100}% - 10px)` }}
-                                    />
-                                </div>
-                            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {settings?.gate_thresholds && Object.entries(settings.gate_thresholds).map(([key, val]: [string, any]) => (
+                            <LogicCard key={key} id={key} label={key} value={val} onChange={(v) => updateGate(key, v)} />
                         ))}
+                    </div>
+
+                    <div className="mt-4 p-8 rounded-3xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col lg:flex-row items-center gap-8 group">
+                         <div className="w-20 h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                            <Activity className="text-indigo-400 group-hover:scale-110 transition-transform" size={32} />
+                         </div>
+                         <div className="flex-1 text-center lg:text-left">
+                            <h4 className="text-white font-display font-black text-xs uppercase tracking-widest mb-2 font-mono">Neural Inference Engine Stats (v4.3)</h4>
+                            <p className="text-[10px] text-slate-500 font-bold leading-relaxed uppercase tracking-tight max-w-2xl font-body">
+                                Your current configuration requires a confluence of {Object.keys(settings?.gate_thresholds || {}).length} unique data gates. This ensures that every BUY/SELL signal is backed by a harmonic resonance of technical, social, and institutional telemetry. 
+                                <span className="text-cyan-400 opacity-60 ml-2 italic">Expect lower signal density with more conservative thresholds.</span>
+                            </p>
+                         </div>
                     </div>
                 </div>
 
-                {/* Model Params & System */}
-                <div className="lg:col-span-5 flex flex-col gap-8 relative z-10">
-                    <div className="neon-frame p-8 flex flex-col gap-8">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-cyan/10 text-cyan rounded-2xl border border-cyan/20">
-                                <Sliders size={24} />
-                            </div>
-                            <h2 className="font-display font-black text-xl text-white uppercase tracking-tight">Engine Specs</h2>
+                {/* System Specs & Sidebar */}
+                <div className="xl:col-span-4 flex flex-col gap-8">
+                    <div className="glass-card p-10 flex flex-col h-full bg-void shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-8 opacity-5">
+                            <Box size={140} className="text-white" />
                         </div>
-
-                        <div className="grid grid-cols-1 gap-4">
-                            <div className="bg-void/40 p-5 rounded-2xl border border-white/5 space-y-4 shadow-inner">
-                                <div className="flex justify-between items-center group/item hover:translate-x-1 transition-transform">
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Temporal Window</span>
-                                    <span className="px-3 py-1 bg-cyan/10 text-cyan text-xs font-data font-bold rounded-lg border border-cyan/10">{settings?.model_params?.sequence_length} STEPS</span>
-                                </div>
-                                <div className="h-px bg-gradient-to-r from-transparent via-white/5 to-transparent" />
-                                <div className="flex justify-between items-center group/item hover:translate-x-1 transition-transform">
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Neuron Density</span>
-                                    <span className="px-3 py-1 bg-emerald/10 text-emerald text-xs font-data font-bold rounded-lg border border-emerald/10">{settings?.model_params?.features} CORES</span>
-                                </div>
-                            </div>
-
-                            <div className="p-5 bg-cyan/[0.03] rounded-2xl border border-cyan/10 flex items-start gap-4">
-                                <Info size={18} className="text-cyan shrink-0 mt-0.5" />
-                                <p className="text-[9px] text-slate-400 font-bold leading-relaxed uppercase tracking-tight">
-                                    Ensemble weights are derived from GRU-TCN signal convergence. Dynamic weight shifting enabled for v4.0 architecture.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    {/* Performance Telemetry */}
-                    <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] p-8 overflow-hidden neural-hud group">
-                        <div className="absolute inset-0 scanline-effect opacity-[0.02] pointer-events-none" />
                         
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20">
-                                    <Activity size={24} />
-                                </div>
-                                <div>
-                                    <h2 className="font-black text-lg text-white uppercase tracking-tight">Strategy Telemetry</h2>
-                                    <p className="text-slate-500 text-[9px] font-bold uppercase tracking-widest">30-Day Simulated Performance</p>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={runBacktest}
-                                className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 text-slate-400 hover:text-white"
-                            >
-                                <RefreshCw size={16} />
-                            </button>
+                        <div className="flex items-center gap-3 mb-10">
+                           <LayoutGrid size={20} className="text-cyan-400" />
+                           <h3 className="text-white font-display font-black text-sm uppercase tracking-[0.3em]">System Manifest</h3>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/5 text-center group/stat hover:border-cyan-500/30 transition-all">
-                                <div className="text-[10px] font-mono text-white/30 tracking-widest mb-1">WIN RATE</div>
-                                <div className={`text-3xl font-black ${stats?.win_rate > 50 ? 'text-emerald-400' : 'text-rose-400'} drop-shadow-[0_0_10px_rgba(16,185,129,0.2)]`}>
-                                    {stats?.win_rate}%
+                        <div className="space-y-6 flex-1 relative z-10">
+                            {[
+                                { label: "Temporal Depth", value: "60 Steps", icon: <RefreshCw size={14} /> },
+                                { label: "Neuron Clusters", value: "32 Cores", icon: <Cpu size={14} /> },
+                                { label: "Optimizer Logic", value: "Genetic_Search", icon: <Search size={14} /> },
+                                { label: "Kernal Variant", value: "Apex_v4.2", icon: <Binary size={14} /> }
+                            ].map((spec, i) => (
+                                <div key={i} className="flex justify-between items-center group/spec py-2">
+                                    <div className="flex items-center gap-3 text-slate-600 group-hover/spec:text-slate-400 transition-colors">
+                                        {spec.icon}
+                                        <span className="text-[10px] font-black uppercase tracking-widest leading-none">{spec.label}</span>
+                                    </div>
+                                    <span className="font-mono text-[10px] font-black text-white px-3 py-1 bg-white/5 border border-white/5 rounded-lg group-hover/spec:border-cyan-500/30 transition-all">{spec.value}</span>
                                 </div>
-                            </div>
-                            <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/5 text-center group/stat hover:border-cyan-500/30 transition-all">
-                                <div className="text-[10px] font-mono text-white/30 tracking-widest mb-1">TOTAL RETURN</div>
-                                <div className={`text-3xl font-black ${stats?.total_return_pct > 0 ? 'text-cyan-400' : 'text-rose-400'} drop-shadow-[0_0_10px_rgba(34,211,238,0.2)]`}>
-                                    {stats?.total_return_pct}%
-                                </div>
-                            </div>
-                            <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/5 text-center col-span-2 flex justify-between items-center group/stat px-8">
-                                <div className="text-left">
-                                    <div className="text-[9px] font-mono text-white/25 tracking-widest uppercase">Signal Density</div>
-                                    <div className="text-xs font-black text-white tracking-widest">{stats?.total_trades} TRADES EXECUTED</div>
-                                </div>
-                                <div className="h-0.5 w-24 bg-white/5 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full bg-gradient-to-r from-cyan-500 to-indigo-500" 
-                                        style={{ width: `${Math.min(stats?.total_trades * 5, 100)}%` }}
-                                    />
-                                </div>
-                            </div>
+                            ))}
                         </div>
 
-                        <div className="mt-8 p-6 bg-cyan-500/5 rounded-2xl border border-cyan-500/10 flex items-start gap-4">
-                            <Info size={18} className="text-cyan-500 shrink-0 mt-0.5" />
-                            <p className="text-[10px] text-slate-400 font-bold leading-relaxed uppercase tracking-tight">
-                                Backtest simulations incorporate trading fees (0.1%) and use a 3-day mean-reversion exit logic. {ticker} specific regime detected as SIDEWAYS.
+                        <div className="mt-12 p-6 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex gap-4 items-start">
+                            <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                            <p className="text-[9px] text-amber-500/80 font-black leading-relaxed uppercase tracking-tighter">
+                                Warning: Over-tuning for high win-rates may cause "Overfitting." Ensure the Strategy Telemetry remains stable across multiple tickers before committing.
                             </p>
-                        </div>
-                    </div>
-
-                    {/* System Meta */}
-                    <div className="relative rounded-2xl border border-white/10 bg-white/[0.01] p-10 flex flex-col gap-6 relative overflow-hidden group neural-hud">
-                        <div className="absolute -right-4 -bottom-4 p-8 opacity-5 group-hover:scale-125 transition-transform duration-1000">
-                            <Zap size={140} className="text-white" />
-                        </div>
-                        <div className="flex items-center gap-4 text-white/20 relative z-10">
-                            <Zap size={24} />
-                            <h2 className="font-black text-xl uppercase tracking-tight">System ID</h2>
-                        </div>
-                        <div className="font-mono text-[11px] text-cyan-400/30 bg-void/50 p-6 rounded-2xl border border-white/5 relative z-10 leading-loose uppercase tracking-[0.3em] font-bold italic">
-                            {`ID: APEX-TUNER-ENGINE\nSTATUS: VERIFIED\nKERNEL: OPTIMIZED`}
                         </div>
                     </div>
                 </div>

@@ -5,12 +5,21 @@
 /// <reference types="vite/client" />
 const BASE = (import.meta as any).env?.VITE_API_URL ?? ""; // Use proxy in dev, or VITE_API_URL if set
 
+import { useAuthStore } from '../store/useAuthStore';
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, opts);
+  const token = useAuthStore.getState().token;
+  const headers = new Headers(opts?.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  const mergedOpts = { ...opts, headers };
+  
+  const res = await fetch(`${BASE}${path}`, mergedOpts);
   if (!res.ok) {
     let errorMsg = `API ${res.status}: ${res.statusText}`;
     try {
@@ -99,6 +108,12 @@ export interface SentimentMatrixResponse {
       status: string;
     };
   };
+  ticker_meta?: {
+    sector: string;
+    industry: string;
+    market_cap: number;
+    beta: number;
+  };
   summary_ai: string;
 }
 
@@ -133,6 +148,12 @@ export interface SignalResponse {
   adx:              number;         // added in v3.1
   atr:              number;
   accuracy:         number;         // 54.0 honest in-sample
+  pattern?: {
+    name: string;
+    emoji: string;
+    type: string;
+    count: number;
+  };
   gate_results:     GateResults;
   sentiment:        SentimentData;
   sentiment_score:  number;         // added in v3.1 (alias for sentiment.score)
@@ -174,6 +195,26 @@ export interface BulkDeal {
 
 export interface BulkDealsResponse {
   deals: BulkDeal[];
+  count: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Types — Patterns
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface Pattern {
+  name: string;
+  type: string;
+  strength: number;
+  target?: number;
+  breakout?: number;
+  description?: string;
+  emoji?: string;
+}
+
+export interface PatternsResponse {
+  ticker: string;
+  patterns: Pattern[];
   count: number;
 }
 
@@ -396,6 +437,35 @@ export function fetchExplainability(ticker: string, mode = "swing") {
   ).then(d => importanceToXAI(d.top_features ?? d.importance ?? {} as FeatureImportance));
 }
 
+export function fetchPatterns(ticker: string, mode: "swing" | "intraday" = "swing") {
+  return apiFetch<PatternsResponse>(`/api/patterns/${encodeURIComponent(ticker)}?mode=${mode}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Correlation Matrix
+// ─────────────────────────────────────────────────────────────────────────────
+export interface CorrelationData {
+  computed_at: string;
+  matrix: Record<string, Record<string, number>>;
+  tickers: string[];
+}
+
+export interface CorrelationRisk {
+  concentration_risk: "HIGH" | "LOW";
+  avg_correlation: number;
+  most_correlated_pair: [string, string] | null;
+  suggestion: string;
+}
+
+export interface PortfolioCorrelationResponse {
+  correlation: CorrelationData;
+  risk: CorrelationRisk;
+}
+
+export function fetchCorrelation() {
+  return apiFetch<PortfolioCorrelationResponse>(`/api/correlation`);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Extended SignalResponse fields used by older page components
 //  (added as optional so they don't break if backend doesn't send them)
@@ -415,5 +485,52 @@ declare module "./api" {
     /** aggregate_score is an alias for score — v2 component compat — already in main interface */
     ticker?: string;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  API functions — Auth & Admin
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function loginUser(data: any) {
+  const formData = new URLSearchParams();
+  formData.append('username', data.username);
+  formData.append('password', data.password);
+  
+  return fetch(`${BASE}/api/auth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData
+  }).then(async (res) => {
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  });
+}
+
+export function registerUser(data: any) {
+  return apiFetch<any>("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+}
+
+export function fetchAdminUsers() {
+  return apiFetch<any[]>("/api/admin/users");
+}
+
+export function fetchAdminActivity() {
+  return apiFetch<any[]>("/api/admin/activity");
+}
+
+export function fetchAdminStats() {
+  return apiFetch<any>("/api/admin/stats");
+}
+
+export function updateAdminUserRole(userId: number, role: 'ADMIN' | 'USER') {
+  return apiFetch<any>(`/api/admin/users/${userId}/role`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role })
+  });
 }
 

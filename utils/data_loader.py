@@ -30,50 +30,52 @@ def normalize_ticker(ticker: str) -> str:
 def fetch_data(ticker: str, period: str = "2y", interval: str = "1d") -> pd.DataFrame | None:
     """Fetch OHLCV data enriched with macro indices and static company metadata.
 
-    For daily resolution (interval='1d'):
-        - Uses :func:`~utils.data_pipeline.fetch_multi_modal` to download OHLCV
-          plus VIX, SP500, and NSEI in one round-trip.
-        - Calls :func:`~utils.data_pipeline.add_static_metadata` to attach sector,
-          industry, log_market_cap, and beta as constant columns.
-        - Retains PE_Ratio, EPS, and Debt_to_Equity from yfinance Ticker.info.
-
-    For intraday intervals (e.g. '5m', '15m'):
-        - Falls back to a direct yf.download (macro indices are not available
-          at sub-daily resolution) and skips static metadata.
-
-    Returns None on any unrecoverable error.
+    Implements a Fail-Soft strategy: if requested period returns empty,
+    it automatically retries with a wider period (e.g. 1y or 2y) to attempt recovery.
     """
     ticker = normalize_ticker(ticker)
-    try:
-        # ── Intraday fast-path (no macro / metadata available sub-daily) ──────
-        if interval != "1d":
-            data = download_yf(
-                ticker, period=period, interval=interval,
-                progress=False, group_by='column'
-            )
-            if data is None or data.empty:
+    
+    def _attempt_fetch(p: str, i: str):
+        try:
+            if i != "1d":
+                data = download_yf(ticker, period=p, interval=i, progress=False, group_by='column')
+                if data is not None and not data.empty:
+                    if isinstance(data.columns, pd.MultiIndex):
+                        data.columns = data.columns.get_level_values(0)
+                    return data.ffill().bfill()
                 return None
-            if isinstance(data.columns, pd.MultiIndex):
-                data.columns = data.columns.get_level_values(0)
-            data = data.ffill().bfill()
-            return data
 
-        # ── Daily path: full Phase-2 pipeline ────────────────────────────────
-        # 1. Multi-modal fetch (OHLCV + VIX + SP500 + NSEI)
-        data = fetch_multi_modal(ticker, period=period)
+            # Daily path: full Phase-2 pipeline
+            data = fetch_multi_modal(ticker, period=p)
+            if data is not None and not data.empty:
+                data = add_static_metadata(data, ticker)
+                return data.ffill().bfill()
+            return None
+        except Exception as e:
+            print(f"Fetch failure for {ticker} ({p}): {e}")
+            return None
 
-        # 2. Static metadata (sector, industry, log_market_cap, beta)
-        data = add_static_metadata(data, ticker)
+    # Step 1: Initial Attempt
+    result = _attempt_fetch(period, interval)
+    if result is not None and len(result) > 5:
+        return result
 
-        # 3. Robust cleaning  (fundamental ratios removed — they hit the Yahoo
-        #    crumb endpoint causing HTTP 401 errors and produce all-NaN columns
-        #    that wipe out every row in dropna().  They are not used as features.)
-        data = data.ffill().bfill()
-        return data
+    # Step 2: Retry with wider window if primary failed
+    if interval == "1d":
+        fallback_periods = ["1y", "2y", "max"] if period not in ["1y", "2y", "max"] else ["max"]
+    else:
+        # Intraday (15m, 1h, etc) - Yahoo limit is often 60 days
+        fallback_periods = ["60d"] if period != "60d" else []
+        
+    for fallback in fallback_periods:
+        print(f"INFO: DataFrame for {ticker} ({period}) empty/short. Retrying with {fallback}...")
+        result = _attempt_fetch(fallback, interval)
+        if result is not None and len(result) > 5:
+            print(f"SUCCESS: Recovered {ticker} data using {fallback} baseline.")
+            return result
 
-    except Exception as e:
-        print(f"Critical fetch error for {ticker}: {e}")
-        return None
+    print(f"CRITICAL: All fetch attempts failed for {ticker}. Check internet/symbol.")
+    return None
 
 def clean_data(df):
     """Secondary cleaning pass for indicators."""

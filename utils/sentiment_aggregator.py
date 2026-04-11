@@ -85,9 +85,25 @@ class SentimentAggregator:
 
         final_label, emoji = SentimentAggregator.get_label(agg_score)
 
+        # ── TICKER METADATA (Neural Context) ──────────────────────────────────
+        ticker_meta = {"sector": "Unknown", "industry": "Unknown", "market_cap": 0, "beta": 0}
+        try:
+            from utils.yf_utils import get_ticker
+            stock = get_ticker(ticker)
+            info = stock.info
+            ticker_meta = {
+                "sector": info.get("sector", "Financials"),
+                "industry": info.get("industry", "Equity"),
+                "market_cap": info.get("marketCap") or stock.fast_info.get("marketCap", 0),
+                "beta": round(info.get("beta", 1.0), 2)
+            }
+        except Exception as e:
+            logging.debug(f"Metadata fetch failed for {ticker}: {e}")
+
         return {
             "ticker": ticker,
             "timestamp": datetime.now().isoformat(),
+            "ticker_meta": ticker_meta,
             "aggregate": {
                 "score": round(agg_score, 2),
                 "label": final_label,

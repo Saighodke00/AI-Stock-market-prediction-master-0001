@@ -100,7 +100,8 @@ class SentimentScrapers:
             reddit = praw.Reddit(
                 client_id=REDDIT_CLIENT_ID,
                 client_secret=REDDIT_CLIENT_SECRET,
-                user_agent=REDDIT_USER_AGENT
+                user_agent=REDDIT_USER_AGENT,
+                request_timeout=5.0
             )
             
             # Search across finance subreddits
@@ -111,7 +112,10 @@ class SentimentScrapers:
             count = 0
             
             # Simple keyword scoring for mock-like sentiment in praw
-            for submission in subs.search(search_query, limit=20, time_filter="week"):
+            # Wrap generator to handle network errors during iteration
+            search_results = subs.search(search_query, limit=20, time_filter="week")
+            
+            for submission in search_results:
                 count += 1
                 text = (submission.title + " " + submission.selftext).lower()
                 if any(w in text for w in ["moon", "buy", "long", "bull", "undervalued"]):
@@ -127,11 +131,13 @@ class SentimentScrapers:
                 "score": score,
                 "buzz_count": count,
                 "sentiment_ratio": f"{bulls}/{bears}",
-                "source": "Reddit"
+                "source": "Reddit",
+                "status": "ONLINE"
             }
         except Exception as e:
-            logger.error(f"Reddit (PRAW) fetch error for {ticker}: {e}")
-            return {"score": 0.0, "buzz_count": 0, "status": "ERROR", "source": "Reddit"}
+            # Silently fallback for network/auth errors to avoid log spam
+            logger.debug(f"Reddit (PRAW) fetch error for {ticker}: {e}")
+            return {"score": 0.0, "buzz_count": 0, "status": "OFFLINE", "source": "Reddit"}
 
     @staticmethod
     def fetch_nse_announcements(ticker: str) -> List[Dict[str, Any]]:

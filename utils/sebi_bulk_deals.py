@@ -88,6 +88,9 @@ def _classify(flag: str) -> str:
 
 
 def _fetch_nse(ticker: str) -> List[Dict]:
+    if not ticker or not isinstance(ticker, str):
+        return []
+
     try:
         import requests
     except ImportError:
@@ -128,17 +131,22 @@ def _fetch_nse(ticker: str) -> List[Dict]:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def get_bulk_deals(ticker: str) -> List[Dict[str, Any]]:
+def get_bulk_deals(ticker: str, days: int = 7) -> List[Dict[str, Any]]:
     """
     Returns up to N_DEALS recent bulk/block deals for the ticker.
     Each deal: {symbol, client, transaction, quantity, price, date, source}
     Cached for CACHE_TTL seconds.
     """
+    if not ticker or not isinstance(ticker, str):
+        return []
+
     cached = _get_cached(ticker)
     if cached is not None:
         return cached
 
     deals = _fetch_nse(ticker)
+    # Filter by days if needed (simple implementation as _fetch_nse 
+    # already returns most recent N_DEALS)
     _set_cache(ticker, deals)
 
     if deals:
@@ -146,7 +154,7 @@ def get_bulk_deals(ticker: str) -> List[Dict[str, Any]]:
         sells = sum(1 for d in deals if d["transaction"] == "SELL")
         log.info("📋 SEBI deals %s: %d BUY, %d SELL", ticker, buys, sells)
     else:
-        log.info("📋 No bulk deals for %s (normal for smaller caps)", ticker)
+        log.info("📋 No bulk deals for %s in the specified period", ticker)
 
     return deals
 

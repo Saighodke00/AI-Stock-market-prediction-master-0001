@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { 
+  X, ExternalLink, MapPin, Building2, BarChart3, TrendingUp, 
+  TrendingDown, Activity, Globe, Info, Newspaper, ArrowUpRight
+} from 'lucide-react';
 
 interface CompanyData {
     id: number;
@@ -27,6 +31,12 @@ interface Props {
 
 const API = import.meta.env.VITE_API_URL || '';
 
+const SECTOR_COLORS: Record<string, string> = {
+    IT: '#8b5cf6', Banking: '#3b82f6', Pharma: '#ef4444', Auto: '#f59e0b',
+    Energy: '#10b981', Metals: '#6b7280', FMCG: '#ec4899',
+    Infrastructure: '#14b8a6', Consumer: '#f97316', Telecom: '#06b6d4'
+};
+
 const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
     const [data, setData] = useState<CompanyData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -39,327 +49,177 @@ const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
             .catch(() => setData(null))
             .finally(() => setLoading(false));
 
-        // Live refresh every 30s
         const iv = setInterval(() => {
             axios.get(`${API}/api/geo/company/${companyId}`).then((r) => setData(r.data));
-        }, 30000);
+        }, 45000);
         return () => clearInterval(iv);
     }, [companyId]);
 
     const isUp = data?.stock?.change_pct != null ? data.stock.change_pct >= 0 : true;
 
-    const sectorColor: Record<string, string> = {
-        IT: '#8b5cf6', Banking: '#3b82f6', Pharma: '#ef4444', Auto: '#f59e0b',
-        Energy: '#10b981', Metals: '#6b7280', FMCG: '#ec4899',
-        Infrastructure: '#14b8a6', Consumer: '#f97316', Telecom: '#06b6d4',
-    };
-
     return (
         <div
+            className="neural-hud custom-scrollbar animate-in slide-in-from-right duration-700"
             style={{
                 position: 'absolute',
-                top: 60,
-                right: 16,
-                bottom: 16,
+                top: 70,
+                right: 12,
+                bottom: 12,
                 zIndex: 1000,
                 width: 340,
-                background: 'rgba(6, 11, 20, 0.96)',
-                backdropFilter: 'blur(16px)',
+                background: 'rgba(6, 11, 20, 0.92)',
+                backdropFilter: 'blur(24px)',
                 border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 16,
+                borderRadius: 20,
                 overflowY: 'auto',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+                boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
             }}
-            className="custom-scrollbar"
         >
-            {/* Header */}
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '14px 18px',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
-                }}
-            >
-                <span
-                    style={{
-                        fontFamily: "'Orbitron', sans-serif",
-                        fontSize: 11,
-                        color: '#00e5ff',
-                        letterSpacing: 1.5,
-                    }}
-                >
-                    COMPANY INTEL
-                </span>
+            {/* Intel Header */}
+            <div className="flex items-center justify-between p-4 pb-3 border-b border-white/5 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                        <Globe size={12} className={loading ? "animate-spin" : ""} />
+                    </div>
+                    <span className="text-[10px] font-black text-white uppercase tracking-[0.3em] font-mono">
+                       Neural_Intel_Dossier
+                    </span>
+                </div>
                 <button
                     onClick={onClose}
-                    style={{
-                        background: 'rgba(255,255,255,0.06)',
-                        border: 'none',
-                        borderRadius: 8,
-                        color: '#94a3b8',
-                        fontSize: 16,
-                        cursor: 'pointer',
-                        padding: '4px 10px',
-                        lineHeight: 1,
-                    }}
+                    className="p-2 rounded-xl bg-white/5 border border-white/10 text-slate-500 hover:text-white hover:bg-rose-500/10 transition-all"
                 >
-                    ✕
+                    <X size={16} />
                 </button>
             </div>
 
             {loading ? (
-                <div style={{ padding: 40, textAlign: 'center', color: '#5a75a0', fontSize: 13 }}>
-                    Loading company intel...
+                <div className="flex flex-col items-center justify-center p-20 gap-4">
+                    <Activity className="text-cyan-500/40 animate-pulse" size={40} />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Accessing Node Data...</span>
                 </div>
             ) : !data ? (
-                <div style={{ padding: 40, textAlign: 'center', color: '#ff1744' }}>
-                    Failed to load data
+                <div className="p-20 text-center text-rose-500 font-black text-[10px] uppercase tracking-widest">
+                    Fatal: Transmission Interrupted
                 </div>
             ) : (
-                <div style={{ padding: '16px 18px' }}>
-                    {/* Company Info */}
-                    <div style={{ marginBottom: 18 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                            <div
-                                style={{
-                                    width: 42,
-                                    height: 42,
-                                    borderRadius: 12,
-                                    background: 'rgba(255,255,255,0.04)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: 22,
-                                }}
-                            >
-                                🏢
+                <div className="p-6 space-y-8 pb-12">
+                    {/* Primary Identifier */}
+                    <div className="space-y-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center shadow-inner overflow-hidden relative group">
+                                <Building2 className="text-white/40 group-hover:scale-110 transition-transform" size={24} />
+                                <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-transparent" />
                             </div>
-                            <div>
-                                <div
-                                    style={{
-                                        fontFamily: "'Rajdhani', sans-serif",
-                                        fontWeight: 700,
-                                        fontSize: 17,
-                                        color: '#fff',
-                                        lineHeight: 1.2,
-                                    }}
-                                >
+                            <div className="flex-1">
+                                <h3 className="text-xl font-display font-black text-white tracking-tighter uppercase leading-tight">
                                     {data.name}
-                                </div>
-                                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                                    <span
-                                        style={{
-                                            fontSize: 10,
-                                            padding: '2px 10px',
-                                            borderRadius: 50,
-                                            background: `${sectorColor[data.sector] || '#6b7280'}18`,
-                                            color: sectorColor[data.sector] || '#6b7280',
-                                            border: `1px solid ${sectorColor[data.sector] || '#6b7280'}30`,
-                                            fontWeight: 600,
+                                </h3>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    <span 
+                                        className="text-[9px] font-black px-3 py-1 rounded-lg border uppercase tracking-widest"
+                                        style={{ 
+                                            color: SECTOR_COLORS[data.sector] || '#6b7280',
+                                            borderColor: `${SECTOR_COLORS[data.sector] || '#6b7280'}30`,
+                                            background: `${SECTOR_COLORS[data.sector] || '#6b7280'}10`
                                         }}
                                     >
                                         {data.sector}
                                     </span>
-                                    <span
-                                        style={{
-                                            fontSize: 10,
-                                            color: '#5a75a0',
-                                            fontFamily: "'Share Tech Mono', monospace",
-                                        }}
-                                    >
-                                        📍 {data.city}, {data.state}
-                                    </span>
+                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/5 border border-white/5 text-slate-500">
+                                        <MapPin size={10} />
+                                        <span className="text-[9px] font-bold uppercase">{data.city}, {data.state}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, margin: '10px 0 0' }}>
+                        <p className="text-[11px] text-slate-400 font-bold leading-relaxed uppercase tracking-tight italic opacity-80 border-l-2 border-white/10 pl-4 py-2 bg-white/[0.01]">
                             {data.description}
                         </p>
                     </div>
 
-                    {/* Stock Data */}
+                    {/* Stock Telemetry */}
                     {data.stock && (
-                        <div style={{ marginBottom: 18 }}>
-                            <div
-                                style={{
-                                    fontFamily: "'Share Tech Mono', monospace",
-                                    fontSize: 10,
-                                    color: '#5a75a0',
-                                    letterSpacing: 1.5,
-                                    marginBottom: 8,
-                                }}
-                            >
-                                REAL-TIME STOCK DATA
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3 text-cyan-400/60">
+                                <BarChart3 size={12} />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] font-mono">Real-Time Data Streams</span>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                                <div
-                                    style={{
-                                        background: 'rgba(255,255,255,0.03)',
-                                        borderRadius: 10,
-                                        padding: '10px 12px',
-                                    }}
-                                >
-                                    <div style={{ fontSize: 10, color: '#5a75a0', marginBottom: 4 }}>Price</div>
-                                    <div
-                                        style={{
-                                            fontFamily: "'Orbitron', sans-serif",
-                                            fontSize: 15,
-                                            fontWeight: 700,
-                                            color: '#fff',
-                                        }}
-                                    >
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 rounded-xl bg-void/50 border border-white/5 space-y-1.5 group hover:border-cyan-500/30 transition-all">
+                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none">Market_Val</span>
+                                    <div className="text-lg font-display font-black text-white tracking-tighter">
                                         ₹{data.stock.current_price?.toLocaleString()}
                                     </div>
                                 </div>
-                                <div
-                                    style={{
-                                        background: 'rgba(255,255,255,0.03)',
-                                        borderRadius: 10,
-                                        padding: '10px 12px',
-                                    }}
-                                >
-                                    <div style={{ fontSize: 10, color: '#5a75a0', marginBottom: 4 }}>Change</div>
-                                    <div
-                                        style={{
-                                            fontFamily: "'Orbitron', sans-serif",
-                                            fontSize: 15,
-                                            fontWeight: 700,
-                                            color: isUp ? '#00e676' : '#ff1744',
-                                        }}
-                                    >
-                                        {isUp ? '▲' : '▼'} {Math.abs(data.stock.change_pct ?? 0).toFixed(2)}%
-                                    </div>
-                                </div>
-                                <div
-                                    style={{
-                                        background: 'rgba(255,255,255,0.03)',
-                                        borderRadius: 10,
-                                        padding: '10px 12px',
-                                    }}
-                                >
-                                    <div style={{ fontSize: 10, color: '#5a75a0', marginBottom: 4 }}>Volume</div>
-                                    <div
-                                        style={{
-                                            fontFamily: "'Orbitron', sans-serif",
-                                            fontSize: 12,
-                                            fontWeight: 700,
-                                            color: '#fff',
-                                        }}
-                                    >
-                                        {data.stock.volume?.toLocaleString()}
+                                <div className="p-4 rounded-xl bg-void/50 border border-white/5 space-y-1.5 group hover:border-cyan-500/30 transition-all">
+                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none">Net_Alpha</span>
+                                    <div className={`text-lg font-display font-black tracking-tighter flex items-center gap-1.5 ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                        {Math.abs(data.stock.change_pct ?? 0).toFixed(2)}%
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Market Cap */}
-                            {data.stock.market_cap > 0 && (
-                                <div
-                                    style={{
-                                        marginTop: 8,
-                                        background: 'rgba(255,255,255,0.03)',
-                                        borderRadius: 10,
-                                        padding: '10px 12px',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                    }}
-                                >
-                                    <span style={{ fontSize: 10, color: '#5a75a0' }}>Market Cap</span>
-                                    <span
-                                        style={{
-                                            fontFamily: "'Share Tech Mono', monospace",
-                                            fontSize: 12,
-                                            color: '#e2e8f0',
-                                        }}
-                                    >
-                                        ₹{(data.stock.market_cap / 1e7).toFixed(0)} Cr
-                                    </span>
+                            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-center px-6">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[9px] font-black text-slate-700 uppercase tracking-widest">Gross_Volume</span>
+                                    <span className="text-xs font-mono font-black text-slate-400">{data.stock.volume?.toLocaleString()}</span>
                                 </div>
-                            )}
+                                <div className="h-8 w-px bg-white/5" />
+                                <div className="flex flex-col gap-1 text-right">
+                                    <span className="text-[9px] font-black text-slate-700 uppercase tracking-widest">Capitalization</span>
+                                    <span className="text-xs font-mono font-black text-white">₹{(data.stock.market_cap / 1e7).toFixed(0)} Cr</span>
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    {/* News */}
+                    {/* Neural News Feed */}
                     {data.news && data.news.length > 0 && (
-                        <div>
-                            <div
-                                style={{
-                                    fontFamily: "'Share Tech Mono', monospace",
-                                    fontSize: 10,
-                                    color: '#5a75a0',
-                                    letterSpacing: 1.5,
-                                    marginBottom: 8,
-                                }}
-                            >
-                                LATEST NEWS
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3 text-indigo-400/60">
+                                <Newspaper size={12} />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] font-mono">Global News Clusters</span>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="space-y-3">
                                 {data.news.map((item, i) => (
                                     <a
                                         key={i}
                                         href={item.url}
                                         target="_blank"
                                         rel="noreferrer"
-                                        style={{
-                                            display: 'block',
-                                            background: 'rgba(255,255,255,0.03)',
-                                            borderRadius: 10,
-                                            padding: '10px 12px',
-                                            textDecoration: 'none',
-                                            transition: 'background 0.2s',
-                                        }}
-                                        onMouseEnter={(e) =>
-                                            (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')
-                                        }
-                                        onMouseLeave={(e) =>
-                                            (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')
-                                        }
+                                        className="block p-4 rounded-2xl bg-white/[0.01] border border-white/5 hover:bg-white/[0.04] hover:border-indigo-500/20 transition-all group relative overflow-hidden"
                                     >
-                                        <div
-                                            style={{
-                                                fontSize: 12,
-                                                color: '#e2e8f0',
-                                                lineHeight: 1.5,
-                                                marginBottom: 4,
-                                            }}
-                                        >
-                                            {item.title}
+                                        <div className="flex justify-between items-start gap-4">
+                                            <div className="text-[11px] font-black text-slate-300 uppercase italic tracking-tight leading-relaxed group-hover:text-white transition-colors">
+                                                {item.title}
+                                            </div>
+                                            <ArrowUpRight size={14} className="text-slate-700 group-hover:text-indigo-400 transition-colors shrink-0" />
                                         </div>
-                                        <div style={{ fontSize: 10, color: '#5a75a0' }}>{item.publisher}</div>
+                                        <div className="mt-3 flex items-center justify-between">
+                                            <span className="text-[9px] font-black text-indigo-400/60 uppercase tracking-widest">{item.publisher}</span>
+                                            <div className="w-8 h-0.5 bg-indigo-500/10 rounded-full group-hover:w-12 transition-all duration-500" />
+                                        </div>
                                     </a>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    {/* NSE Link */}
-                    <a
-                        href={`https://www.nseindia.com/get-quotes/equity?symbol=${data.ticker?.replace('.NS', '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                            display: 'block',
-                            textAlign: 'center',
-                            marginTop: 16,
-                            padding: '10px 0',
-                            borderRadius: 10,
-                            border: '1px solid rgba(0, 229, 255, 0.2)',
-                            color: '#00e5ff',
-                            fontSize: 11,
-                            fontFamily: "'Share Tech Mono', monospace",
-                            textDecoration: 'none',
-                            transition: 'background 0.2s',
-                        }}
-                        onMouseEnter={(e) =>
-                            (e.currentTarget.style.background = 'rgba(0, 229, 255, 0.08)')
-                        }
-                        onMouseLeave={(e) =>
-                            (e.currentTarget.style.background = 'transparent')
-                        }
-                    >
-                        View on NSE India →
-                    </a>
+                    {/* Protocol Links */}
+                    <div className="pt-4">
+                        <a
+                            href={`https://www.nseindia.com/get-quotes/equity?symbol=${data.ticker?.replace('.NS', '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center justify-center gap-3 w-full py-4 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-cyan-500/20 transition-all active:scale-[0.98] group"
+                        >
+                            External_Reference: NSE_India
+                            <ExternalLink size={12} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                        </a>
+                    </div>
                 </div>
             )}
         </div>

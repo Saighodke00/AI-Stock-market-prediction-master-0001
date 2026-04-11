@@ -76,12 +76,18 @@ inject_global_css()
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.header("Hardware Config")
+    # ── HEADER ──
+    st.markdown("""
+    <div style='font-family:JetBrains Mono; font-size:11px; letter-spacing:3px; color:#5a6585;
+                text-transform:uppercase; margin-bottom:4px;'>⚡ INTRADAY CONTROLS</div>
+    <div style='height:1px; background:linear-gradient(90deg,#1a3050,transparent); margin-bottom:16px;'></div>
+    """, unsafe_allow_html=True)
+
     if "intraday_custom_tickers" not in st.session_state:
         st.session_state["intraday_custom_tickers"] = []
-    
-    # ── Top Signals Today ──
-    st.markdown("### 🔥 Top Signals Today")
+
+    # ── SECTION 1: TOP SIGNALS ──
+    st.markdown("<div style='font-size:11px; font-weight:700; letter-spacing:2px; color:#ffc107; text-transform:uppercase; margin-bottom:8px;'>🔥 Top Signals Today</div>", unsafe_allow_html=True)
     top_suggestions = DEFAULT_SUGGESTIONS.copy()
     if "intraday_results" in st.session_state and st.session_state["intraday_results"]:
         sorted_results = sorted(
@@ -93,66 +99,64 @@ with st.sidebar:
 
     cols = st.columns(3)
     for i, _t in enumerate(top_suggestions[:3]):
-        with cols[i%3]:
-            if st.button(_t, key=f"sug_in_{_t}"):
+        with cols[i % 3]:
+            if st.button(_t, key=f"sug_in_{_t}", use_container_width=True):
                 if "intraday_active_tickers" not in st.session_state:
                     st.session_state["intraday_active_tickers"] = []
                 if _t not in st.session_state["intraday_active_tickers"] and len(st.session_state["intraday_active_tickers"]) < 5:
                     st.session_state["intraday_active_tickers"].append(_t)
 
-    st.markdown("---")
-    
-    # Sector-based selection (Intraday)
-    st.markdown("### ⚡ Fast Selection")
-    
-    # Get sector list and sort it nicely
+    st.markdown("<div style='height:1px; background:rgba(90,101,133,0.25); margin:14px 0;'></div>", unsafe_allow_html=True)
+
+    # ── SECTION 2: SECURITY SELECTION ──
+    st.markdown("<div style='font-size:11px; font-weight:700; letter-spacing:2px; color:#00e5ff; text-transform:uppercase; margin-bottom:8px;'>⚡ Scalp Selection</div>", unsafe_allow_html=True)
     sector_options = ["All"] + list(TICKER_LIST.keys())
     selected_sector = st.selectbox("Market Sector", options=sector_options, index=0, key="in_sector_select")
-    
-    # Filter available tickers based on sector
+
     if selected_sector == "All":
         available_tickers = list(ALL_TICKERS)
     else:
         available_tickers = list(TICKER_LIST[selected_sector])
-    
-    # Add custom tickers to the pool
+
     available_tickers = list(set(available_tickers + st.session_state.get("intraday_custom_tickers", [])))
     available_tickers.sort()
 
     if "intraday_active_tickers" not in st.session_state:
         st.session_state["intraday_active_tickers"] = ["RELIANCE.NS"] if "RELIANCE.NS" in ALL_TICKERS else []
-    
-    # Ensure active_tickers are always available in the options even if sector changes
+
     display_options = list(set(available_tickers + st.session_state["intraday_active_tickers"]))
     display_options.sort()
 
     selected_tickers = st.multiselect(
-        f"Select Scrips ({selected_sector})", 
-        options=display_options, 
-        default=st.session_state["intraday_active_tickers"], 
+        f"Scrips — {selected_sector}",
+        options=display_options,
+        default=st.session_state["intraday_active_tickers"],
         max_selections=5,
-        help="Institutional scalp analysis limited to 5 concurrent scrips.",
+        help="Scalp analysis limited to 5 concurrent scrips.",
         key="ms_in_tickers"
     )
     st.session_state["intraday_active_tickers"] = selected_tickers
-    
+
     with st.expander("➕ Add Custom Ticker"):
-        custom_t = st.text_input("Enter Ticker (e.g. RELIANCE.NS)", key="ct_in").upper().strip()
-        if st.button("Add", key="btn_in"):
+        custom_t = st.text_input("Ticker Symbol (e.g. RELIANCE.NS)", key="ct_in").upper().strip()
+        if st.button("Add Ticker", key="btn_in", use_container_width=True):
             if custom_t:
                 with st.spinner("Validating..."):
                     try:
-                        info = yf.Ticker(custom_t).info
+                        yf.Ticker(custom_t).info
                         if custom_t not in st.session_state["intraday_custom_tickers"]:
                             st.session_state["intraday_custom_tickers"].append(custom_t)
                         if custom_t not in st.session_state["intraday_active_tickers"] and len(st.session_state["intraday_active_tickers"]) < 5:
                             st.session_state["intraday_active_tickers"].append(custom_t)
-                        st.success(f"Added {custom_t}")
+                        st.success(f"✓ Added {custom_t}")
                         st.rerun()
                     except Exception:
                         st.error("Invalid ticker or network error")
 
-    # ── TIMEFRAME SELECTOR (FIX 03) ──
+    st.markdown("<div style='height:1px; background:rgba(90,101,133,0.25); margin:14px 0;'></div>", unsafe_allow_html=True)
+
+    # ── SECTION 3: TIMEFRAME ──
+    st.markdown("<div style='font-size:11px; font-weight:700; letter-spacing:2px; color:#00e5ff; text-transform:uppercase; margin-bottom:8px;'>⏱ Timeframe</div>", unsafe_allow_html=True)
     tf_options = list(TIMEFRAME_CONFIG.keys())
     selected_tf = st.segmented_control("TIMEFRAME", options=tf_options, default="5m", key="tf_intraday")
     if not selected_tf: selected_tf = "5m"
@@ -160,14 +164,27 @@ with st.sidebar:
     if selected_tf in ["1m", "5m"]:
         st.warning("⚠ Intraday data only available 5 days back", icon="⚠")
 
+    st.markdown("<div style='height:1px; background:rgba(90,101,133,0.25); margin:14px 0;'></div>", unsafe_allow_html=True)
+
+    # ── SECTION 4: MODEL PARAMETERS ──
+    st.markdown("<div style='font-size:11px; font-weight:700; letter-spacing:2px; color:#00e5ff; text-transform:uppercase; margin-bottom:8px;'>🧠 Engine Parameters</div>", unsafe_allow_html=True)
     lookback = st.slider("Memory Clusters", 30, 90, 60)
-    st.markdown("---")
     show_ema = st.toggle("Overlay EMA 9/21", value=True)
-    force_retrain = st.button("🔄 Force Retrain", help="Delete saved model and retrain from scratch")
     st.caption("Auto-optimizing for current volatility index...")
-    
-    st.markdown("---")
-    st.markdown("### 🇮🇳 India Pulse")
+
+    r1, r2 = st.columns(2)
+    with r1:
+        force_retrain = st.button("🔄 Retrain", help="Delete saved model and retrain from scratch", use_container_width=True)
+    with r2:
+        clear_cache_in = st.button("🗑 Clear", help="Clear all cached results", use_container_width=True)
+    if clear_cache_in:
+        st.session_state["intraday_results"] = {}
+        st.rerun()
+
+    st.markdown("<div style='height:1px; background:rgba(90,101,133,0.25); margin:14px 0;'></div>", unsafe_allow_html=True)
+
+    # ── SECTION 5: INSTITUTIONAL FLOW ──
+    st.markdown("<div style='font-size:11px; font-weight:700; letter-spacing:2px; color:#ffc107; text-transform:uppercase; margin-bottom:8px;'>🇮🇳 India Pulse</div>", unsafe_allow_html=True)
     fii_data = intel.get_fii_dii_flow()
     if fii_data:
         flow_color = "#00ffcc" if fii_data['sentiment'] == "BULLISH" else "#ff4b4b"
@@ -178,6 +195,8 @@ with st.sidebar:
                 <div style="font-size:10px; color:#fff;">FII: {fii_data['fii_net']:+d} | DII: {fii_data['dii_net']:+d}</div>
             </div>
         """), unsafe_allow_html=True)
+    else:
+        st.caption("FII/DII data unavailable")
 
 @st.cache_data
 def get_intraday_data(ticker, period, interval):
@@ -257,12 +276,6 @@ def run_inference_for_intraday(ticker, tf_config):
     except Exception:
         preds, acts, acc = [], [], 50.0
 
-    reason = f"Neural Scalping Signal: {signal}. "
-    if signal == "NEUTRAL":
-        reason += "Gating criteria not met (Low confidence or insufficient volatility)."
-    else:
-        reason += f"Confidence: {dir_prob[0][0]*100:.1f}%. Expected Return: {mean_ret[0]*100:.2f}%."
-    
     from utils.pattern_recognition import detect_all_patterns, get_confluence_message
     
     # FIX 07: Intraday Pattern Recognition
@@ -272,9 +285,13 @@ def run_inference_for_intraday(ticker, tf_config):
     final_signal = confluence["final_action"]
     final_confidence = confluence["confluence_score"]
     
+    reason = confluence["message"]
+    
+    # Append pattern reason if hold conflict
     # Append pattern reason if hold conflict
     if final_signal == "HOLD" and confluence["conflict"]:
-         reason += " (Pattern Conflict)"
+         # Already included in confluence["message"]
+         pass
          
     gauge_val = final_confidence * 100
     
@@ -504,7 +521,7 @@ if selected_tickers:
                     if total_cost > (portfolio_value * 0.20):
                         st.markdown(f"<div style='margin-top:8px; padding:8px; background:rgba(255,23,68,0.1); border-radius:4px; border:1px solid #ff1744; color:#ff1744; font-size:12px;'><span style='font-size:14px;'>⚠</span> Position ({total_cost/portfolio_value*100:.1f}%) exceeds 20% of day capital. Consider reducing risk %.</div>", unsafe_allow_html=True)
 
-            tab_chart, tab_loss = st.tabs(["⚡ Precision Feed", "🧠 Convergence Log"])
+            tab_chart, tab_loss, tab_scratch = st.tabs(["⚡ Precision Feed", "🧠 Convergence Log", "🧹 Scratch Pad"])
             with tab_chart:
                 df_plot = data['df'].iloc[-80:]
                 fig = go.Figure()
@@ -518,11 +535,12 @@ if selected_tickers:
                 for r in levels['resistance']: fig.add_hline(y=r, line_dash="dash", line_color="rgba(255, 51, 51, 0.3)")
                 
                 last_idx = df_plot.index[-1]
-                next_idx = last_idx + (df_plot.index[-1] - df_plot.index[-2]) 
-                fig.add_trace(go.Scatter(x=[last_idx, next_idx], y=[data['current_price'], data['predicted']], mode='lines+markers', name='Neural Forecast', line=dict(color='#00ffcc', width=2, dash='dash')))
-                
+                fig = draw_patterns_on_chart(fig=fig, pattern_result=data['pattern_result'], df=df_plot, price_col="Close", max_patterns=3, show_levels=True, show_labels=True)
                 fig = apply_chart_style(fig)
                 st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown("---")
+                render_pattern_panel_streamlit(data['pattern_result'], data['confluence'])
             
             with tab_loss:
                 fig_loss = go.Figure()
@@ -530,6 +548,98 @@ if selected_tickers:
                 if 'val_loss' in data['history_data']: fig_loss.add_trace(go.Scatter(y=data['history_data']['val_loss'], name='Validation Loss', line=dict(color='#ff3333', dash='dash')))
                 fig_loss = apply_chart_style(fig_loss)
                 st.plotly_chart(fig_loss, use_container_width=True)
+
+            with tab_scratch:
+                st.markdown(textwrap.dedent("""
+                <div style='font-family:JetBrains Mono; font-size:11px; letter-spacing:3px; color:#00e5ff;
+                            text-transform:uppercase; margin-bottom:4px;'>🧹 SCRATCH PAD — INTRADAY SCALP PLANNER</div>
+                <div style='font-size:12px; color:#5a6585; margin-bottom:18px;'>
+                    No AI inference needed. Map any scalp trade idea instantly — entry, target, stop & position sizing.
+                </div>
+                """), unsafe_allow_html=True)
+
+                scratch_cp = data.get('current_price', 0.0)
+
+                sc1, sc2 = st.columns(2)
+                with sc1:
+                    st.markdown("##### 📌 Scalp Setup")
+                    scratch_entry  = st.number_input("Entry Price (₹)",  value=float(round(scratch_cp, 2)),        step=0.25, key=f"in_sc_entry_{t}")
+                    scratch_target = st.number_input("Target Price (₹)", value=float(round(scratch_cp * 1.02, 2)), step=0.25, key=f"in_sc_tgt_{t}")
+                    scratch_sl     = st.number_input("Stop Loss (₹)",    value=float(round(scratch_cp * 0.99, 2)), step=0.25, key=f"in_sc_sl_{t}")
+                    scratch_qty    = st.number_input("Quantity (shares)", value=50, min_value=1,                              key=f"in_sc_qty_{t}")
+                    scratch_cap    = st.number_input("Day Capital (₹)",   value=100000, step=5000,                            key=f"in_sc_cap_{t}")
+
+                with sc2:
+                    st.markdown("##### 📊 Instant P&L Analysis")
+
+                    sc_upside     = scratch_target - scratch_entry
+                    sc_downside   = scratch_entry  - scratch_sl
+                    sc_rr         = (sc_upside / sc_downside) if sc_downside > 0 else 0
+                    sc_pnl_win    = sc_upside   * scratch_qty
+                    sc_pnl_loss   = sc_downside * scratch_qty
+                    sc_be_move    = ((scratch_entry - scratch_cp) / scratch_cp * 100) if scratch_cp > 0 else 0
+                    sc_risk_pct   = (sc_pnl_loss / scratch_cap * 100) if scratch_cap > 0 else 0
+                    sc_reward_pct = (sc_pnl_win  / scratch_cap * 100) if scratch_cap > 0 else 0
+
+                    rr_color = "#00e676" if sc_rr >= 1.5 else ("#ffc107" if sc_rr >= 1.0 else "#ff4b4b")
+                    rr_label = "GREAT" if sc_rr >= 2.0 else ("GOOD" if sc_rr >= 1.5 else ("OK" if sc_rr >= 1.0 else "POOR"))
+
+                    st.markdown(textwrap.dedent(f"""
+                    <div style="background:rgba(0,229,255,0.04); border:1px solid rgba(0,229,255,0.15);
+                                border-radius:12px; padding:18px; font-family:'JetBrains Mono',monospace;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                            <div style="background:rgba(0,255,136,0.06); border-radius:8px; padding:12px; border-left:3px solid #00e676;">
+                                <div style="font-size:9px; color:#888; letter-spacing:1px;">SCALP GAIN</div>
+                                <div style="font-size:20px; font-weight:700; color:#00e676; margin-top:4px;">+₹{sc_pnl_win:,.0f}</div>
+                                <div style="font-size:10px; color:#5a8;">+{sc_reward_pct:.2f}% of capital</div>
+                            </div>
+                            <div style="background:rgba(255,75,75,0.06); border-radius:8px; padding:12px; border-left:3px solid #ff4b4b;">
+                                <div style="font-size:9px; color:#888; letter-spacing:1px;">MAX LOSS</div>
+                                <div style="font-size:20px; font-weight:700; color:#ff4b4b; margin-top:4px;">-₹{sc_pnl_loss:,.0f}</div>
+                                <div style="font-size:10px; color:#a55;">-{sc_risk_pct:.2f}% of capital</div>
+                            </div>
+                            <div style="background:rgba({','.join(['0,230,118' if sc_rr>=1.5 else ('255,193,7' if sc_rr>=1 else '255,75,75')])},0.06); border-radius:8px; padding:12px; border-left:3px solid {rr_color}; grid-column:span 2;">
+                                <div style="font-size:9px; color:#888; letter-spacing:1px;">RISK : REWARD</div>
+                                <div style="display:flex; align-items:center; gap:12px; margin-top:6px;">
+                                    <div style="font-size:28px; font-weight:900; color:{rr_color};">1 : {sc_rr:.2f}</div>
+                                    <div style="background:{rr_color}; color:#000; font-size:9px; font-weight:800; padding:3px 8px; border-radius:4px; letter-spacing:1px;">{rr_label}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.06); padding-top:12px;
+                                    display:flex; justify-content:space-between; font-size:11px; color:#666;">
+                            <span>Break-even: <b style="color:#fff;">₹{scratch_entry:,.2f}</b></span>
+                            <span>Move to entry: <b style="color:#00e5ff;">{sc_be_move:+.2f}%</b></span>
+                            <span>Capital at risk: <b style="color:#ff4b4b;">{sc_risk_pct:.2f}%</b></span>
+                        </div>
+                    </div>
+                    """), unsafe_allow_html=True)
+
+                st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
+
+                # Scratch payoff diagram
+                st.markdown("##### 📉 Scalp Payoff Diagram")
+                scratch_prices = np.linspace(scratch_sl * 0.98, scratch_target * 1.02, 120)
+                scratch_pnl    = (scratch_prices - scratch_entry) * scratch_qty
+                fig_scratch = go.Figure()
+                fig_scratch.add_hline(y=0, line_color="rgba(255,255,255,0.15)", line_dash="dot")
+                fig_scratch.add_vline(x=scratch_entry,  line_color="#00e5ff",  line_dash="dash", annotation_text="Entry",  annotation_font_color="#00e5ff")
+                fig_scratch.add_vline(x=scratch_target, line_color="#00e676",  line_dash="dash", annotation_text="Target", annotation_font_color="#00e676")
+                fig_scratch.add_vline(x=scratch_sl,     line_color="#ff4b4b",  line_dash="dash", annotation_text="Stop",   annotation_font_color="#ff4b4b")
+                fig_scratch.add_trace(go.Scatter(
+                    x=scratch_prices, y=scratch_pnl,
+                    fill='tozeroy',
+                    fillcolor='rgba(0,229,255,0.07)',
+                    line=dict(color='#00e5ff', width=2),
+                    name='P&L'
+                ))
+                fig_scratch.update_layout(
+                    height=260, margin=dict(l=0, r=0, t=10, b=0),
+                    xaxis_title="Price (₹)", yaxis_title="P&L (₹)"
+                )
+                st.plotly_chart(apply_chart_style(fig_scratch), use_container_width=True)
+
+                st.markdown("<div style='margin-top:8px; font-size:11px; color:#5a6585; font-family:JetBrains Mono;'>💡 Tip: For scalping aim for RR ≥ 1.5 with tight stops. Enter only when spread is ≤ 0.1% of price.</div>", unsafe_allow_html=True)
 
             st.markdown("---")
             # ── FIX 05: SENTIMENT DASHBOARD ──

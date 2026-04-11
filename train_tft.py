@@ -144,7 +144,7 @@ def build_model(training_dataset) -> "TemporalFusionTransformer":
 # ---------------------------------------------------------------------------
 # 2. build_trainer
 # ---------------------------------------------------------------------------
-def build_trainer(log_dir: str = DEFAULT_LOG_DIR, max_epochs: int = MAX_EPOCHS) -> "pl.Trainer":
+def build_trainer(log_dir: str = DEFAULT_LOG_DIR, max_epochs: int = MAX_EPOCHS, ticker: str = "UNKNOWN") -> "pl.Trainer":
     """Create a PyTorch-Lightning Trainer with recommended TFT settings.
 
     Callbacks
@@ -161,6 +161,10 @@ def build_trainer(log_dir: str = DEFAULT_LOG_DIR, max_epochs: int = MAX_EPOCHS) 
     ----------
     log_dir : str, optional
         TensorBoard log directory.  Defaults to ``'logs/tft'``.
+    max_epochs : int, optional
+        Maximum training epochs.
+    ticker : str, optional
+        The ticker being trained. Used in checkpoint filenames.
 
     Returns
     -------
@@ -171,9 +175,11 @@ def build_trainer(log_dir: str = DEFAULT_LOG_DIR, max_epochs: int = MAX_EPOCHS) 
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(DEFAULT_CKPT_DIR, exist_ok=True)
 
+    # Use ticker in filename for multi-model clarity
+    clean_ticker = ticker.replace(".", "_").replace("^", "")
     checkpoint_callback = ModelCheckpoint(
         dirpath=DEFAULT_CKPT_DIR,
-        filename="tft-{epoch:03d}-{val_loss:.4f}",
+        filename=f"tft-{{epoch:03d}}-{{val_loss:.4f}}-{clean_ticker}",
         monitor="val_loss",
         save_top_k=1,
         mode="min",
@@ -359,14 +365,14 @@ def train(
     model = build_model(train_ds)
 
     # ── LR Finder (optional) ────────────────────────────────────────────
-    trainer = build_trainer(log_dir=log_dir, max_epochs=max_epochs)
+    trainer = build_trainer(log_dir=log_dir, max_epochs=max_epochs, ticker=ticker)
     if run_lr_finder:
         print(f"  [LR] Running LR Finder …")
         suggested_lr = lr_finder(model, trainer, train_dl, val_dl)
         model.hparams.learning_rate = suggested_lr
         logger.info("LR updated to %.2e after LR finder.", suggested_lr)
         # Rebuild trainer (LR finder may have advanced its state)
-        trainer = build_trainer(log_dir=log_dir)
+        trainer = build_trainer(log_dir=log_dir, max_epochs=max_epochs, ticker=ticker)
 
     # ── Step 9: Training ─────────────────────────────────────────────────
     print(f"  [8/8] Starting training (max_epochs={MAX_EPOCHS}) …")
@@ -858,12 +864,14 @@ if __name__ == "__main__":
 
     TICKER = sys.argv[1] if len(sys.argv) > 1 else "AAPL"
     PERIOD = sys.argv[2] if len(sys.argv) > 2 else "3y"
+    EPOCHS = int(sys.argv[3]) if len(sys.argv) > 3 else MAX_EPOCHS
 
     try:
         model, ckpt = train(
             ticker=TICKER,
             period=PERIOD,
-            run_lr_finder=False,   # set True to auto-tune LR before training
+            run_lr_finder=False,
+            max_epochs=EPOCHS
         )
         # Print final val_loss from the Lightning trainer logs
         val_loss = model.trainer.logged_metrics.get("val_loss", "N/A")

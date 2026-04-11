@@ -28,6 +28,7 @@ interface CandlestickChartProps {
     ticker?: string;
     ohlcv?: OHLCVPoint[];
     forecast?: ForecastPoint[];
+    patterns?: any[];
     action?: string;
     isLive?: boolean;
     intervalMs?: number;
@@ -37,6 +38,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     ticker, 
     ohlcv: initialOhlcv = [], 
     forecast: initialForecast = [], 
+    patterns = [],
     action: initialAction = 'HOLD',
     isLive = false,
     intervalMs = 30000 
@@ -248,15 +250,29 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             ]);
 
             // ── NOW marker on the p50 line ──
-            p50Series.createPriceLine({
-                price: anchorClose,
-                color: '#6366f1',
-                lineWidth: 1,
-                lineStyle: LineStyle.Solid,
-                axisLabelVisible: true,
-                title: 'SIGNAL GENERATED',
-            });
-        }
+                p50Series.createPriceLine({
+                    price: anchorClose,
+                    color: '#6366f1',
+                    lineWidth: 1,
+                    lineStyle: LineStyle.Solid,
+                    axisLabelVisible: true,
+                    title: 'SIGNAL GENERATED',
+                });
+
+                // ── Pattern Targets ──
+                patterns.forEach((p, idx) => {
+                    if (p.target) {
+                        p50Series.createPriceLine({
+                            price: p.target,
+                            color: p.type === 'Bullish' ? '#10b981' : (p.type === 'Bearish' ? '#f43f5e' : '#6366f1'),
+                            lineWidth: 1,
+                            lineStyle: LineStyle.Dashed,
+                            axisLabelVisible: true,
+                            title: `${p.name} Target`,
+                        });
+                    }
+                });
+            }
 
         // 5. Tooltip/Legend Sync
         chart.subscribeCrosshairMove(param => {

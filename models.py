@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, ForeignKey, Text
+from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -12,14 +12,40 @@ Base = declarative_base()
 
 # ── MODELS ───────────────────────────────────────────────────────────────────
 
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    role = Column(String, default="USER") # "USER" or "ADMIN"
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    portfolios = relationship("PaperPortfolio", back_populates="user")
+    activities = relationship("UserActivity", back_populates="user")
+
+class UserActivity(Base):
+    __tablename__ = "user_activities"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    action_type = Column(String) # e.g. "LOGIN", "SIGN_REQ", "PAPER_TRADE", "SCREENER"
+    details = Column(String, nullable=True) # JSON or text details
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", back_populates="activities")
+
 class PaperPortfolio(Base):
     __tablename__ = "paper_portfolios"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id")) # Changed to relation
     cash_balance = Column(Float, default=100000.0)
     created_at = Column(DateTime, default=datetime.utcnow)
     
+    user = relationship("User", back_populates="portfolios")
     positions = relationship("PaperPosition", back_populates="portfolio")
     trades = relationship("PaperTrade", back_populates="portfolio")
 
@@ -67,17 +93,6 @@ class SentimentHistory(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
-    
-    # Create default portfolio if none exists
-    db = SessionLocal()
-    try:
-        default_p = db.query(PaperPortfolio).filter(PaperPortfolio.user_id == "default_user").first()
-        if not default_p:
-            new_p = PaperPortfolio(user_id="default_user", cash_balance=100000.0)
-            db.add(new_p)
-            db.commit()
-    finally:
-        db.close()
 
 if __name__ == "__main__":
     print("Initializing SQLite database...")

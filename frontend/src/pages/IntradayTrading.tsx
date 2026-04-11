@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchSignal, fetchSentiment, fetchBacktest, fetchExplainability, fetchTickerMetadata, SignalResponse, SentimentData, BacktestMetrics, XAIReport, TickerMetadata } from '../api/api';
+import { fetchSignal, fetchSentiment, fetchBacktest, fetchExplainability, fetchPatterns, fetchTickerMetadata, SignalResponse, SentimentData, BacktestMetrics, XAIReport, TickerMetadata } from '../api/api';
 import { SignalCard } from '../components/trading/SignalCard';
 import { CandlestickChart } from '../components/trading/CandlestickChart';
 import { MetricGrid } from '../components/trading/MetricGrid';
@@ -11,13 +11,27 @@ import { Search, Timer, Zap, AlertCircle, RefreshCcw, ChevronDown, Activity, Shi
 
 import { SignalBadge } from '../components/trading/SignalBadge';
 import { GateCard } from '../components/trading/GateCard';
+import { PatternIntelligence } from '../components/trading/PatternIntelligence';
+import { ScratchPad } from '../components/trading/ScratchPad';
+import { Edit3 } from 'lucide-react';
 
 export const IntradayTradingPage: React.FC = () => {
     const [tickerMetadata, setTickerMetadata] = useState<TickerMetadata | null>(null);
     const [selectedSector, setSelectedSector] = useState<string>('All');
     const [ticker, setTicker] = useState('RELIANCE.NS');
-    const [tf, setTf] = useState('15m'); // Default to 15m for intraday
+    const [tf, setTf] = useState('15m');
     const [isLive, setIsLive] = useState(false);
+    const [isScratchOpen, setIsScratchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Derive a display-friendly company name from ticker
+    const companyName = ticker.replace('.NS', '').replace('.BO', '').replace(/_/g, ' ');
+
+    // Filter tickers based on search query
+    const baseTickerList = selectedSector === 'All' ? tickerMetadata?.all_tickers : tickerMetadata?.ticker_list[selectedSector];
+    const filteredTickers = (baseTickerList || []).filter((t: string) =>
+        t.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -25,6 +39,7 @@ export const IntradayTradingPage: React.FC = () => {
     const [sentiment, setSentiment] = useState<SentimentData | null>(null);
     const [backtest, setBacktest] = useState<BacktestMetrics | null>(null);
     const [xai, setXai] = useState<XAIReport[]>([]);
+    const [patterns, setPatterns] = useState<any[]>([]);
 
     // 1. Initial Metadata Load
     useEffect(() => {
@@ -43,11 +58,12 @@ export const IntradayTradingPage: React.FC = () => {
             setLoading(true);
             setError(null);
             try {
-                const [sigRes, senRes, btRes, xaiRes] = await Promise.all([
+                const [sigRes, senRes, btRes, xaiRes, patRes] = await Promise.all([
                     fetchSignal(ticker, 'intraday').catch(e => { throw e }),
                     fetchSentiment(ticker).catch(() => null),
                     fetchBacktest(ticker, tf).catch(() => null),
-                    fetchExplainability(ticker, tf).catch(() => null)
+                    fetchExplainability(ticker, tf).catch(() => null),
+                    fetchPatterns(ticker, 'intraday').catch(() => null)
                 ]);
 
                 if (!active) return;
@@ -56,6 +72,7 @@ export const IntradayTradingPage: React.FC = () => {
                 if (senRes) setSentiment(senRes);
                 if (btRes) setBacktest(btRes);
                 if (xaiRes && Array.isArray(xaiRes)) setXai(xaiRes);
+                if (patRes) setPatterns(patRes.patterns);
             } catch (err: any) {
                 console.error(err);
                 if (active) setError(err.message || 'Failed to fetch signal data');
@@ -80,7 +97,7 @@ export const IntradayTradingPage: React.FC = () => {
             } catch (e) {
                 console.error("Live poll failed", e);
             }
-        }, 30000);
+        }, 60000);
 
         return () => clearInterval(interval);
     }, [isLive, ticker]);
@@ -134,69 +151,122 @@ export const IntradayTradingPage: React.FC = () => {
                             <span className="font-data text-gold tracking-widest text-sm uppercase">No Signal Data Found — Execute Inference</span>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-8 max-w-[1400px] mx-auto">
-                            {/* TOP CONTROLS */}
-                            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-4 px-1">
-                                <div className="flex flex-wrap items-center gap-6">
-                                    <div className="flex items-center gap-3 bg-white/[0.03] border border-white/10 p-1.5 rounded-2xl backdrop-blur-md">
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-3">Sector:</span>
-                                        <select
-                                            value={selectedSector}
-                                            onChange={(e) => setSelectedSector(e.target.value)}
-                                            className="bg-transparent border-none text-white font-display font-bold text-xs pr-8 py-1.5 outline-none cursor-pointer hover:text-cyan transition-colors appearance-none"
-                                        >
-                                            <option value="All" className="bg-slate-900">All Markets</option>
-                                            {tickerMetadata?.sectors.map((s: string) => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
-                                        </select>
-                                    </div>
-
-                                    <div className="relative group">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-cyan transition-colors">
-                                            <Search size={16} />
+                        <div className="flex flex-col gap-6 max-w-[1400px] mx-auto">
+                            {/* TOP CONTROLS — STRICTLY ALIGNED ROWS */}
+                            <div className="flex flex-col gap-5 mb-6 px-1">
+                                
+                                {/* ROW 1: Market Context & System Controls */}
+                                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-3 bg-white/[0.03] border border-white/10 p-1.5 rounded-2xl backdrop-blur-md shadow-lg shrink-0">
+                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-3">Sector</span>
+                                            <select
+                                                value={selectedSector}
+                                                onChange={(e) => setSelectedSector(e.target.value)}
+                                                className="bg-transparent border-none text-white font-display font-bold text-xs pr-8 py-1.5 outline-none cursor-pointer hover:text-cyan transition-colors appearance-none"
+                                            >
+                                                <option value="All" className="bg-slate-900">All Markets</option>
+                                                {tickerMetadata?.sectors.map((s: string) => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
+                                            </select>
                                         </div>
-                                        <select
-                                            value={ticker}
-                                            onChange={(e) => setTicker(e.target.value)}
-                                            className="bg-white/[0.03] border border-white/10 text-white font-display font-bold text-lg pl-12 pr-10 py-3 rounded-2xl focus:border-cyan/50 outline-none w-64 shadow-2xl appearance-none cursor-pointer hover:bg-white/[0.05] transition-all"
-                                        >
-                                            {(selectedSector === 'All' ? tickerMetadata?.all_tickers : tickerMetadata?.ticker_list[selectedSector])?.map((t: string) => (
-                                                <option key={t} value={t} className="bg-slate-900">{t}</option>
-                                            ))}
-                                        </select>
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                            <ChevronDown size={16} />
+
+                                        <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl shrink-0">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                            <span className="font-display font-black text-sm text-indigo-300 tracking-wide whitespace-nowrap">{companyName}</span>
+                                            <span className="text-[9px] text-slate-500 font-medium uppercase tracking-widest">NSE</span>
                                         </div>
                                     </div>
 
-                                    <div className="flex bg-white/[0.03] border border-white/10 rounded-2xl p-1.5 backdrop-blur-md">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <button 
+                                            onClick={() => setIsScratchOpen(true)}
+                                            className="group flex items-center gap-3 bg-white/[0.03] border border-white/10 px-5 py-3 rounded-2xl font-display font-black text-[10px] tracking-widest text-slate-400 hover:text-white hover:bg-white/5 transition-all outline-none uppercase shrink-0"
+                                        >
+                                            <Edit3 className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform" /> Scratch Pad
+                                        </button>
+
+                                        <button 
+                                            onClick={() => setIsLive(!isLive)}
+                                            className={`flex items-center gap-2 px-5 py-3 rounded-2xl border transition-all duration-300 font-display text-[10px] font-black tracking-widest uppercase shrink-0 ${isLive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'bg-white/[0.03] border-white/10 text-slate-500 hover:border-white/20'}`}
+                                        >
+                                            <div className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`} />
+                                            {isLive ? 'Live Sync Active' : 'Enable Live Sync'}
+                                        </button>
+                                        
+                                        <div className="flex items-center gap-3 px-5 py-3 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl shadow-inner shrink-0">
+                                            <Timer className="w-4 h-4 text-indigo-400" />
+                                            <span className="text-[10px] font-bold text-indigo-400 tracking-[0.2em] uppercase whitespace-nowrap">Neural Refresh: <span className="text-white">60s</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ROW 2: Ticker Selection & Execution */}
+                                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        <div className="relative group shrink-0">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-cyan transition-colors">
+                                                <Search size={16} />
+                                            </div>
+                                            <select
+                                                value={ticker}
+                                                onChange={(e) => { setTicker(e.target.value); setSearchQuery(''); }}
+                                                className="bg-white/[0.03] border border-white/10 text-white font-display font-bold text-sm pl-12 pr-10 py-3 rounded-2xl focus:border-cyan/50 outline-none w-56 shadow-lg appearance-none cursor-pointer hover:bg-white/[0.05] transition-all"
+                                            >
+                                                {filteredTickers.map((t: string) => (
+                                                    <option key={t} value={t} className="bg-slate-900">{t}</option>
+                                                ))}
+                                            </select>
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover:text-white transition-colors">
+                                                <ChevronDown size={16} />
+                                            </div>
+                                        </div>
+
+                                        <div className="relative shrink-0">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                                                <Search size={14} />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Search ticker…"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                className="bg-white/[0.03] border border-white/10 text-white font-display font-bold text-sm pl-10 pr-4 py-3 rounded-2xl focus:border-cyan/40 outline-none w-56 placeholder-slate-600 transition-all hover:border-white/20 shadow-lg"
+                                            />
+                                            {searchQuery && (
+                                                <button
+                                                    onClick={() => setSearchQuery('')}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                                                >
+                                                    ×
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="shrink-0">
+                                        <button className="group flex items-center gap-3 bg-white text-slate-900 px-8 py-3.5 rounded-2xl font-display font-black text-xs tracking-widest hover:bg-indigo-500 hover:text-white transition-all duration-500 shadow-xl shadow-indigo-500/20 active:scale-95 uppercase">
+                                            <Zap className="w-4 h-4 fill-current group-hover:animate-pulse" /> Execute Inference
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* ROW 3: Horizon Layer */}
+                                <div className="flex flex-wrap items-center gap-4 mt-2">
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <Activity className="w-3 h-3 text-cyan shadow-[0_0_8px_rgba(0,229,255,0.4)]" />
+                                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest whitespace-nowrap">Timeframe Cluster:</span>
+                                    </div>
+                                    <div className="flex flex-wrap bg-white/[0.03] border border-white/10 rounded-2xl p-1.5 backdrop-blur-md gap-1">
                                         {['1m', '5m', '15m', '30m', '1h', '4h'].map(t => (
                                             <button
                                                 key={t}
                                                 onClick={() => setTf(t)}
-                                                className={`px-4 py-2 font-display text-[10px] font-black tracking-widest rounded-xl transition-all duration-300 uppercase ${tf === t ? 'bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                                                className={`px-5 py-2 font-display text-[10px] font-black tracking-widest rounded-xl transition-all duration-300 uppercase shrink-0 ${tf === t ? 'bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                                             >
                                                 {t}
                                             </button>
                                         ))}
                                     </div>
-                                </div>
-
-                                <div className="flex items-center gap-4">
-                                    <button 
-                                        onClick={() => setIsLive(!isLive)}
-                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-300 font-display text-[10px] font-black tracking-widest uppercase ${isLive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'bg-white/[0.03] border-white/10 text-slate-500 hover:border-white/20'}`}
-                                    >
-                                        <div className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`} />
-                                        {isLive ? 'Live Sync Active' : 'Enable Live Sync'}
-                                    </button>
-                                    <div className="w-px h-6 bg-white/5 mx-1" />
-                                    <div className="flex items-center gap-3 px-4 py-2.5 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
-                                        <Timer className="w-4 h-4 text-indigo-400" />
-                                        <span className="text-[10px] font-bold text-indigo-400 tracking-[0.2em] uppercase">Neural Refresh: <span className="text-white">60s</span></span>
-                                    </div>
-                                    <button className="group flex items-center gap-3 bg-white text-slate-900 px-6 py-3 rounded-2xl font-display font-black text-[11px] tracking-widest hover:bg-indigo-500 hover:text-white transition-all duration-500 shadow-2xl shadow-indigo-500/20 active:scale-95 uppercase">
-                                        <Zap className="w-4 h-4 fill-current group-hover:animate-pulse" /> Execute Inference
-                                    </button>
                                 </div>
                             </div>
 
@@ -209,14 +279,20 @@ export const IntradayTradingPage: React.FC = () => {
                                             ticker={ticker}
                                             ohlcv={signal.ohlcv || []} 
                                             forecast={signal.forecast || []} 
+                                            patterns={patterns}
                                             action={signal.action} 
                                             isLive={isLive}
-                                            intervalMs={30000}
+                                            intervalMs={60000}
                                         />
                                     </div>
                                 </div>
                                 <div className="mt-4">
                                     <PositionSizer data={signal} />
+                                </div>
+                                
+                                {/* Pattern Intelligence (Neural Geometry) */}
+                                <div className="mt-4 bg-void/30 border border-indigo-500/20 rounded-[2rem] p-8 backdrop-blur-md">
+                                    <PatternIntelligence ticker={ticker} mode="intraday" patterns={patterns} />
                                 </div>
                             </div>
                         </div>
@@ -273,6 +349,13 @@ export const IntradayTradingPage: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Overlays */}
+            <ScratchPad 
+                isOpen={isScratchOpen} 
+                onClose={() => setIsScratchOpen(false)} 
+                currentPrice={signal?.current_price || 0}
+            />
         </div>
     );
 };

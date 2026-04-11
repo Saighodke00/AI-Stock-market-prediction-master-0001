@@ -9,6 +9,7 @@ import {
   RefreshCw, ChevronDown, AlertTriangle, CheckCircle2,
   XCircle, Target, BarChart2, Cpu, Zap
 } from 'lucide-react';
+import { PatternIntelligence } from '../components/trading/PatternIntelligence';
 
 const TICKERS = ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS'];
 const TFS = ['1D', '1W'];
@@ -331,6 +332,11 @@ export default function SwingTradingView() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Pattern Intelligence (Neural Geometry) */}
+          <div style={{ background: '#0a1525', border: '1px solid #00e5ff30', borderRadius: 12, padding: 20 }}>
+             <PatternIntelligence ticker={ticker} mode="swing" />
           </div>
         </div>
 

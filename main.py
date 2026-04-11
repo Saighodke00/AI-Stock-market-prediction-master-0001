@@ -54,18 +54,22 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 # Light helpers for initial routing
 from utils.constants import NSE_SCREENER_TICKERS, TICKER_LIST, ALL_TICKERS
-from paper_trading import PaperPortfolio
+from routers import auth, admin, paper_trade
+from fastapi.security import OAuth2PasswordBearer
+from auth_utils import log_user_activity, get_current_user
 from utils.india_market import IndiaMarketIntelligence
-from utils.yf_utils import download_yf, get_ticker
+from utils.yf_utils import download_yf, get_ticker, check_connectivity
 from utils.data_loader import fetch_data
 from utils.features import build_features
 from utils.indicators import compute_rsi, compute_atr
 from utils.sentiment import get_sentiment
 from utils.risk_manager import RiskManager
 from reasoning import get_explanation
+from utils.pattern_recognition import detect_all_patterns
 
 # Setup high-fidelity logging with Rich
 logging.basicConfig(
@@ -79,15 +83,31 @@ console.print("[bold green][OK] Framework initialized.[/bold green]")
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 FITTED_SCALER_PATH = os.path.join(MODELS_DIR, "scaler_fitted.pkl")
-PORTFOLIO_PATH = os.path.join(os.path.dirname(__file__), "paper_portfolio.json")
+FITTED_SCALER_PATH = os.path.join(MODELS_DIR, "scaler_fitted.pkl")
+
+import json
+
+TUNER_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "tuner_config.json")
 
 # ── gate thresholds ────────────────────────────────────────────────────────────
 GATE1_CONE_MAX       = 0.16   # (P90-P10)/P50 must be below this (Relaxed from 0.12)
-GATE2_SENT_BUY_MIN   = 0.01   # FinBERT score >= this (Softened from 0.05 for neutral news)
+GATE2_SENT_BUY_MIN   = -0.05  # FinBERT score >= this (Allows Neutral-Bullish setups)
 GATE2_SENT_SELL_MAX  = 0.01   # FinBERT score <= -this
-GATE3_RSI_BUY_LO     = 40
-GATE3_RSI_BUY_HI     = 70
-GATE3_RSI_SELL_HI    = 55
+GATE3_RSI_BUY_LO     = 30     # Capture deeper dips (Relaxed from 40)
+GATE3_RSI_BUY_HI     = 75     # Allow breakout momentum (Relaxed from 70)
+GATE3_RSI_SELL_HI    = 60     # Slightly higher sell-threshold
+
+if os.path.exists(TUNER_CONFIG_PATH):
+    try:
+        with open(TUNER_CONFIG_PATH, "r") as f:
+            _tconf = json.load(f)
+        GATE1_CONE_MAX = _tconf.get("cone_max", GATE1_CONE_MAX)
+        GATE2_SENT_BUY_MIN = _tconf.get("sent_buy_min", GATE2_SENT_BUY_MIN)
+        GATE2_SENT_SELL_MAX = _tconf.get("sent_sell_max", GATE2_SENT_SELL_MAX)
+        GATE3_RSI_BUY_LO = _tconf.get("rsi_buy_lo", GATE3_RSI_BUY_LO)
+        GATE3_RSI_BUY_HI = _tconf.get("rsi_buy_hi", GATE3_RSI_BUY_HI)
+    except Exception as e:
+        logger.error(f"Failed to load tuner config: {e}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -99,10 +119,10 @@ class AppState:
     keras_models:  dict[str, Any] = field(default_factory=dict)
     tft_models:    dict[str, Any] = field(default_factory=dict)
     scaler:        Any             = None
-    portfolio:     PaperPortfolio  = field(default_factory=PaperPortfolio)
     intel:         IndiaMarketIntelligence = field(default_factory=IndiaMarketIntelligence)
-    sem:             asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(5))
+    sem:             asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(4))
     inference_cache: dict[tuple[str, str], tuple[float, dict]] = field(default_factory=dict)
+    tft_batch_cache: dict[tuple[str, str], dict] = field(default_factory=dict)
 
 
 _state = AppState()
@@ -152,23 +172,7 @@ def _save_scaler(sc: Any) -> None:
         logger.warning("Scaler save failed: %s", exc)
 
 
-# ── portfolio persistence ──────────────────────────────────────────────────
-
-def _save_portfolio():
-    """Serialize the current paper portfolio to disk."""
-    try:
-        _state.portfolio.save_to_file(PORTFOLIO_PATH)
-        # logger.info("Paper portfolio persisted → %s", PORTFOLIO_PATH)
-    except Exception as exc:
-        logger.error("Portfolio save failed: %s", exc)
-
-def _load_portfolio():
-    """Restore paper portfolio from disk if available."""
-    if _state.portfolio.load_from_file(PORTFOLIO_PATH):
-        _add_log("Paper Portfolio Restored from Ledger", "SUCCESS")
-        logger.info("Paper portfolio loaded from %s", PORTFOLIO_PATH)
-    else:
-        logger.info("No existing portfolio found or load failed. Starting fresh.")
+# ── portfolio persistence removed  ──────────────────────────────────────────────────
 
 
 def _find_startup_scaler() -> Any | None:
@@ -304,8 +308,15 @@ async def _load_resources_bg():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("APEX AI v3.0 starting (background resources load) …")
-    # 0. Restore Paper Portfolio from ledger
-    _load_portfolio()
+    
+    # 0. Check Network Connectivity
+    conn_status = check_connectivity()
+    for site, st in conn_status.items():
+        icon = "[OK]" if st == "ONLINE" else "[!!]"
+        logger.info(f"  {icon} {site}: {st}")
+        _add_log(f"Connection to {site}: {st}", "SUCCESS" if st == "ONLINE" else "WARNING")
+    
+    # 1. (Legacy Portfolio Load Removed)
     # 1. Warm up heavy libraries immediately but in background
     asyncio.create_task(asyncio.to_thread(_import_ml_core))
     # 2. Load models/scalers
@@ -322,6 +333,11 @@ app = FastAPI(title="APEX AI", version="3.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
+
+# ── Mount Custom Routers ──
+app.include_router(auth.router)
+app.include_router(admin.router)
+app.include_router(paper_trade.router)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -588,7 +604,7 @@ def _sentiment_label(score: float) -> str:
     return "BULLISH" if score >= 0.2 else ("BEARISH" if score <= -0.2 else "NEUTRAL")
 
 
-def _run_inference(ticker: str, mode: str = "swing") -> dict:
+def _run_inference(ticker: str, mode: str = "swing", use_tft: bool = True) -> dict:
     import time
     now = time.time()
     cache_key = (ticker.upper(), mode.lower())
@@ -603,7 +619,17 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
     period   = "6mo" if mode == "swing" else "5d"
     interval = "1d"  if mode == "swing" else "15m"
 
-    df = fetch_data(ticker, period=period, interval=interval)
+    # ── 1. Concurrent I/O: Data Fetch & Sentiment ────────────────────────────
+    from concurrent.futures import ThreadPoolExecutor
+    from utils.sentiment import get_sentiment
+    
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_data = executor.submit(fetch_data, ticker, period, interval)
+        future_sent = executor.submit(get_sentiment, ticker)
+        
+        df = future_data.result()
+        sentiment_score, articles = future_sent.result()
+
     if df is None or df.empty:
         logger.error(f"DataFrame is EMPTY for {ticker}. Check YFinance connection.")
         raise HTTPException(422, f"Insufficient data for {ticker}")
@@ -646,7 +672,16 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
     
     # ── 3a. TFT Inference (Phase 2) ──────────────────────────────────────────
     is_tft = False
-    if mkey in _state.tft_models:
+    p10 = p50 = p90 = 0.0
+    
+    # Check if we have a pre-calculated result from a batch run
+    if cache_key in _state.tft_batch_cache:
+        tft_res = _state.tft_batch_cache.pop(cache_key)
+        p10, p50, p90 = tft_res["p10"], tft_res["p50"], tft_res["p90"]
+        is_tft = True
+        logger.info(f"Using pre-calculated TFT result for {ticker}")
+    
+    elif use_tft and mkey in _state.tft_models:
         try:
             from train_tft import fast_predict, get_quantile_prices
             from utils.features import build_all_features
@@ -659,9 +694,6 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
             prices  = get_quantile_prices(raw_out)
             
             p10, p50, p90 = float(prices["p10"]), float(prices["p50"]), float(prices["p90"])
-            gru_p = tcn_p = 0.5 + ((p50 / cur - 1.0) * 2.0) # Heuristic conviction
-            gru_p = float(np.clip(gru_p, 0.4, 0.7))
-            tcn_p = gru_p
             is_tft = True
             logger.info("TFT inference successful for %s", ticker)
         except Exception as exc:
@@ -673,6 +705,11 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
         p10 = _to_price(p10r, cur)
         p50 = _to_price(p50r, cur)
         p90 = _to_price(p90r, cur)
+    else:
+        # Heuristic conviction for TFT
+        gru_p = tcn_p = 0.5 + ((p50 / cur - 1.0) * 2.0) 
+        gru_p = float(np.clip(gru_p, 0.4, 0.7))
+        tcn_p = gru_p
 
     # ── 4. Fallbacks & Post-processing ───────────────────────────────────────
     if p50 <= 0 or abs(p50 - cur) / max(cur, 1) > 0.5:
@@ -681,7 +718,7 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
 
     direction = "BUY" if (gru_p + tcn_p) / 2 > 0.5 else "SELL"
 
-    sentiment_score, articles = get_sentiment(ticker)
+    # Concurrent fetch completed earlier
     rsi = compute_rsi(df["Close"], period=14)
 
     gates, confidence = _gates_and_confidence(direction, p10, p50, p90, sentiment_score, rsi)
@@ -711,6 +748,11 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
         ticker, direction, cur, p10, p50, p90, atr
     )
 
+    # ── 8. Pattern Detection (Summary for Dashboard/Screener) ──────────────
+    from utils.pattern_recognition import detect_all_patterns
+    pat_res = detect_all_patterns(df, lookback_bars=100)
+    top_pat = pat_res["patterns"][0] if pat_res["patterns"] else None
+    
     res = {
         "ticker":           ticker,
         "action":           action,
@@ -733,6 +775,12 @@ def _run_inference(ticker: str, mode: str = "swing") -> dict:
             "label":    _sentiment_label(sentiment_score),
             "articles": articles,
         },
+        "pattern": {
+            "name": top_pat.name if top_pat else "None",
+            "emoji": top_pat.emoji if top_pat else "📐",
+            "type": top_pat.direction.capitalize() if top_pat else "Neutral",
+            "count": len(pat_res["patterns"])
+        } if top_pat else None,
         "explanation": explanation,
         "importance":  importance,
         "regime":      _get_market_regime(df),
@@ -770,37 +818,97 @@ async def get_signal(ticker: str, mode: str = "swing"):
 #  Routes — Screener  (concurrent)
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def _safe_infer(ticker: str, mode: str) -> dict | None:
-    async with _state.sem:
-        loop = asyncio.get_event_loop()
-        try:
-            # Add timeout to prevent hanging the whole screener
-            return await asyncio.wait_for(
-                loop.run_in_executor(None, _run_inference, ticker, mode),
-                timeout=30.0
-            )
-        except asyncio.TimeoutError:
-            logger.warning("Screener timeout for %s", ticker)
-            return None
-        except Exception as exc:
-            logger.warning("Screener skip %s: %s", ticker, exc)
-            return None
+def _build_features_worker(tkr: str, df: pd.DataFrame):
+    """Isolated worker for parallel feature building."""
+    from utils.data_pipeline import add_static_metadata
+    from utils.features import build_all_features
+    try:
+        df_m = add_static_metadata(df, tkr)
+        df_f = build_all_features(df_m, ticker=tkr)
+        return tkr, df_f
+    except Exception as e:
+        return tkr, None
+
+
+async def _batch_infer_tft(tickers: list[str], mode: str = "swing") -> dict[str, dict]:
+    """Runs high-throughput TFT inference for a list of tickers + parallel F.E."""
+    from utils.data_pipeline import fetch_multi_modal_batch
+    from train_tft import batch_predict
+    
+    # 1. Fetch data in bulk
+    period = "6mo" if mode == "swing" else "5d"
+    dfs = fetch_multi_modal_batch(tickers, period=period)
+    if not dfs: return {}
+    
+    # 2. Parallel Feature Building
+    _add_log(f"Parallel Feature Engine: Building matrices for {len(dfs)} assets...")
+    loop = asyncio.get_event_loop()
+    with ProcessPoolExecutor(max_workers=min(len(dfs), 4)) as pool:
+        # We need to pass the DFs to workers.
+        # Note: ProcessPoolExecutor requires picklable args.
+        futures = [loop.run_in_executor(None, _build_features_worker, tkr, df) for tkr, df in dfs.items()]
+        worker_results = await asyncio.gather(*futures)
+        
+    enriched_dfs = {tkr: df_f for tkr, df_f in worker_results if df_f is not None}
+    if not enriched_dfs: return {}
+    
+    # 3. Batch Predict
+    model = None
+    for mname, mobj in _state.tft_models.items():
+        if mode in mname:
+            model = mobj
+            break
+            
+    if not model: return {}
+        
+    try:
+        res = batch_predict(model, list(enriched_dfs.keys()), enriched_dfs, None)
+        # Populate the batch cache for _run_inference to pick up
+        for tkr, prices in res.items():
+            _state.tft_batch_cache[(tkr.upper(), mode.lower())] = prices
+        return res
+    except Exception as e:
+        logger.error(f"Batch prediction failed: {e}")
+        return {}
 
 
 @app.get("/api/screener")
 async def screener(mode: str = "swing"):
     """
-    Runs all tickers concurrently via asyncio.gather().
-    Latency: ~5s flat regardless of list length.
+    Optimized Screener: Parallel data/features + Batch inference.
+    Latency: ~10-15s for 20 tickers.
     """
-    from utils.data_loader import fetch_data # Ensure available if not pre-loaded
     tickers = NSE_SCREENER_TICKERS[:20]
-    results = await asyncio.gather(*[_safe_infer(t, mode) for t in tickers])
-    valid   = [r for r in results if r is not None]
+    _add_log(f"Screener Batch Protocol Initiated: {len(tickers)} assets")
+    
+    # 1. Batch TFT Inference for supported tickers
+    # (We prioritize TFT but keep fallbacks in _run_inference)
+    tft_results = await _batch_infer_tft(tickers, mode)
+    
+    # 2. Sequential/Concurrent fallback for remaining logic 
+    # (Reasoning, Pattern Detection, Sentiment Matrix are still individual)
+    # However, we can use the pre-calculated TFT prices if available.
+    
+    async def _processed_infer(tkr):
+        async with _state.sem:
+            loop = asyncio.get_event_loop()
+            try:
+                # If we have TFT results, they get injected or cached
+                # For now, let's keep the _safe_infer but it will hits the cache 
+                # if we were to populate it.
+                return await asyncio.wait_for(
+                    loop.run_in_executor(None, _run_inference, tkr, mode, True),
+                    timeout=90.0
+                )
+            except: return None
 
+    results = await asyncio.gather(*[_processed_infer(t) for t in tickers])
+    valid = [r for r in results if r is not None]
+    
     rank = {"BUY": 0, "HOLD": 1, "SELL": 2}
     valid.sort(key=lambda r: (rank.get(r["action"], 3), -r["confidence"]))
-
+    
+    _add_log(f"Screener Complete: {len(valid)} analyzed", "SUCCESS")
     return _json_sanitize({"results": valid, "count": len(valid), "total": len(tickers)})
 
 
@@ -896,61 +1004,19 @@ async def sebi_bulk_deals(ticker: str | None = None, days: int = 7):
     NSE bulk/block deal data (replaces SEC Form 4 — that was US-only).
     Source: nseindia.com/market-data/block-deal
     """
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker parameter is required")
+        
     from utils.sebi_bulk_deals import fetch_bulk_deals
     loop = asyncio.get_event_loop()
     try:
-        deals = await loop.run_in_executor(None, fetch_bulk_deals, ticker, days)
+        deals = await loop.run_in_executor(None, fetch_bulk_deals, ticker.upper(), days)
+        if not deals:
+            logger.info(f"No bulk deals found for {ticker}")
         return _json_sanitize({"deals": deals, "count": len(deals)})
     except Exception as exc:
         logger.exception("SEBI deals error")
         raise HTTPException(500, str(exc))
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  Routes — Paper Trading
-# ─────────────────────────────────────────────────────────────────────────────
-
-class TradeRequest(BaseModel):
-    ticker:   str
-    action:   str        # "BUY" | "SELL"
-    quantity: int
-    price:    float
-    notes:    str = ""
-
-
-@app.get("/api/paper/positions")
-async def paper_positions():
-    return {"positions": _state.portfolio.get_positions()}
-
-
-@app.get("/api/paper/history")
-async def paper_history():
-    return {"history": _state.portfolio.get_history()}
-
-
-@app.get("/api/paper/summary")
-async def paper_summary():
-    return _state.portfolio.get_summary()
-
-
-@app.post("/api/paper/trade")
-async def paper_trade(req: TradeRequest):
-    try:
-        res = _state.portfolio.execute_trade(
-            ticker=req.ticker.upper(), action=req.action.upper(),
-            quantity=req.quantity, price=req.price, notes=req.notes,
-        )
-        _save_portfolio()  # ✅ Auto-save
-        return res
-    except ValueError as exc:
-        raise HTTPException(400, str(exc))
-
-
-@app.delete("/api/paper/reset")
-async def paper_reset():
-    _state.portfolio.reset()
-    _save_portfolio()  # ✅ Auto-save
-    return {"status": "reset"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1029,11 +1095,6 @@ async def market_pulse():
             "message": "Market Data Interrupted"
         })
 
-@app.get("/api/health")
-async def health_check():
-    """System health anchor."""
-    return {"status": "ok", "timestamp": datetime.now().isoformat()}
-
 
 @app.get("/api/dashboard-stats")
 async def dashboard_stats():
@@ -1078,23 +1139,78 @@ async def dashboard_stats():
         logger.error(f"Dashboard stats error: {e}")
         return {"error": str(e)}
 
+@app.get("/api/correlation")
+async def get_correlation():
+    """Generates a correlation matrix for top active tickers."""
+    loop = asyncio.get_event_loop()
+    try:
+        def _compute():
+            import pandas as pd
+            tickers = TICKER_LIST[:8]
+            tickers_str = " ".join(tickers)
+            data = yf.download(tickers_str, period="1mo", interval="1d", progress=False)
+            
+            if "Close" in data:
+                data = data["Close"]
+            elif "Adj Close" in data:
+                data = data["Adj Close"]
+                
+            if data.empty:
+                raise ValueError("No data returned")
+                
+            data.fillna(method="ffill", inplace=True)
+            data.fillna(method="bfill", inplace=True)
+            corr = data.corr()
+            
+            matrix_dict = {}
+            for t1 in tickers:
+                matrix_dict[t1] = {}
+                for t2 in tickers:
+                    if t1 in corr.columns and t2 in corr.columns:
+                        val = corr.loc[t1, t2]
+                        matrix_dict[t1][t2] = float(val) if not pd.isna(val) else 0.0
+                    else:
+                        matrix_dict[t1][t2] = 0.0
+
+            vals = []
+            max_pair = None
+            max_val = -1.0
+            
+            for i, t1 in enumerate(tickers):
+                for j, t2 in enumerate(tickers):
+                    if i < j:
+                        v = matrix_dict[t1][t2]
+                        vals.append(v)
+                        if v > max_val:
+                            max_val = v
+                            max_pair = [t1, t2]
+                            
+            avg_corr = sum(vals) / len(vals) if vals else 0.0
+            is_high_risk = avg_corr > 0.6
+            
+            return _json_sanitize({
+                "correlation": {
+                    "computed_at": datetime.now().isoformat(),
+                    "matrix": matrix_dict,
+                    "tickers": tickers
+                },
+                "risk": {
+                    "concentration_risk": "HIGH" if is_high_risk else "LOW",
+                    "avg_correlation": float(avg_corr),
+                    "most_correlated_pair": max_pair,
+                    "suggestion": "Diversify into non-correlated sectors to reduce portfolio volatility." if is_high_risk else "Current portfolio has good diversification metrics."
+                }
+            })
+            
+        return await loop.run_in_executor(None, _compute)
+    except Exception as exc:
+        logger.error(f"Correlation API Error: {exc}")
+        return {"error": str(exc)}
+
 @app.get("/api/dashboard/logs")
 async def get_dashboard_logs():
     """Returns rotating list of system events."""
     return _dashboard_logs[::-1] # Newest first
-
-@app.get("/api/portfolio/stats")
-async def portfolio_stats():
-    """Returns simple P&L for the dashboard widget."""
-    try:
-        summary = _state.portfolio.get_summary()
-        return _json_sanitize({
-            "pnl": summary["unrealised_pnl"] + summary["realised_pnl"],
-            "return_pct": summary["total_return_pct"],
-            "active_positions": summary["open_positions"]
-        })
-    except:
-        return {"pnl": 0, "return_pct": 0, "active_positions": 0}
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Geo Dashboard — Company database + endpoints
@@ -1114,6 +1230,15 @@ except Exception as _exc:
 @app.get("/api/geo/companies")
 async def geo_companies(sector: str | None = None, state: str | None = None):
     """GeoJSON FeatureCollection of Indian listed companies (filterable)."""
+    global _COMPANIES_DB
+    # Hot-reload from absolute path for resilience
+    abs_path = os.path.abspath(_GEO_DB_PATH)
+    try:
+        with open(abs_path, encoding="utf-8") as _fh:
+            _COMPANIES_DB = _json.load(_fh)
+    except Exception as e:
+        logger.error(f"Geo Hot-Reload Failed: {e}")
+
     companies = _COMPANIES_DB
     if sector:
         companies = [c for c in companies if c["sector"].lower() == sector.lower()]
@@ -1122,6 +1247,10 @@ async def geo_companies(sector: str | None = None, state: str | None = None):
 
     features = []
     for c in companies:
+        # Normalize sector for frontend compatibility
+        sector_norm = c.get("sector", "Other")
+        if sector_norm == "Oil & Energy": sector_norm = "Energy"
+        
         features.append({
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [c["lng"], c["lat"]]},
@@ -1129,7 +1258,7 @@ async def geo_companies(sector: str | None = None, state: str | None = None):
                 "id": c["id"],
                 "name": c["name"],
                 "ticker": c["ticker"],
-                "sector": c["sector"],
+                "sector": sector_norm,
                 "city": c["city"],
                 "state": c["state"],
                 "description": c["description"],
@@ -1161,6 +1290,37 @@ async def geo_stock(ticker: str):
         return await loop.run_in_executor(None, _fetch)
     except Exception as exc:
         return {"error": str(exc), "ticker": ticker}
+
+class TickerBatch(BaseModel):
+    tickers: list[str]
+
+@app.post("/api/geo/stocks/batch")
+async def geo_stocks_batch(batch: TickerBatch):
+    """Batch fetch live stock status to avoid API exhaustion."""
+    loop = asyncio.get_event_loop()
+    try:
+        def _fetch():
+            results = {}
+            if not batch.tickers: return results
+            tickers_str = " ".join(batch.tickers)
+            try:
+                # yf.Tickers allows accessing individual fast_info
+                data = yf.Tickers(tickers_str)
+                for t in batch.tickers:
+                    try:
+                        fi = data.tickers[t].fast_info
+                        cur = fi.get("lastPrice", 0)
+                        prev = fi.get("previousClose", cur)
+                        chg = ((cur - prev) / prev * 100) if prev else 0
+                        results[t] = chg >= 0
+                    except:
+                        pass
+            except Exception as e:
+                logger.error(f"Batch fetch error: {e}")
+            return results
+        return await loop.run_in_executor(None, _fetch)
+    except Exception as exc:
+        return {"error": str(exc)}
 
 
 @app.get("/api/geo/company/{company_id}")
@@ -1207,7 +1367,7 @@ async def health():
         "scaler_loaded":   _state.scaler is not None,
         "tflite_models":   list(_state.tflite_models.keys()),
         "keras_models":    list(_state.keras_models.keys()),
-        "paper_positions": len(_state.portfolio.get_positions()),
+        "paper_positions": "DB-Backed", # Portfolio is now multi-user DB backed
     }
 
 
@@ -1294,44 +1454,44 @@ async def explainability(ticker: str, mode: str = "swing"):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/patterns/{ticker}")
-async def get_patterns(ticker: str):
+async def get_patterns(ticker: str, mode: str = "swing"):
     """
     Detects technical candle patterns using recent data.
     """
     loop = asyncio.get_event_loop()
     try:
-        df = await loop.run_in_executor(None, fetch_data, ticker.upper(), "1mo", "1d")
-        if df is None or len(df) < 5:
-            return {"ticker": ticker, "patterns": []}
+        # Use different intervals based on mode
+        period = "5d" if mode == "intraday" else "2mo"
+        interval = "15m" if mode == "intraday" else "1d"
+        
+        df = await loop.run_in_executor(None, fetch_data, ticker.upper(), period, interval)
+        if df is None or len(df) < 20:
+            return {"ticker": ticker, "patterns": [], "count": 0}
 
+        # Use the robust geometric detection engine
+        result = detect_all_patterns(df, price_col="Close", lookback_bars=120)
         patterns = []
-        # Simple Logic for Demonstration
-        last_3 = df.tail(3)
-        c1, c2, c3 = last_3.iloc[0], last_3.iloc[1], last_3.iloc[2]
         
-        # 1. Doji
-        if abs(c3['Close'] - c3['Open']) < (c3['High'] - c3['Low']) * 0.1:
-            patterns.append({"name": "Doji", "type": "Neutral", "strength": 0.6})
-        
-        # 2. Bullish Engulfing
-        if c2['Close'] < c2['Open'] and c3['Close'] > c3['Open'] and \
-           c3['Close'] >= c2['Open'] and c3['Open'] <= c2['Close']:
-            patterns.append({"name": "Bullish Engulfing", "type": "Bullish", "strength": 0.85})
-            
-        # 3. Hammer
-        body = abs(c3['Close'] - c3['Open'])
-        lower_shadow = min(c3['Open'], c3['Close']) - c3['Low']
-        if lower_shadow > body * 2:
-            patterns.append({"name": "Hammer", "type": "Bullish", "strength": 0.75})
+        for p in result["patterns"]:
+            patterns.append({
+                "name": p.name,
+                "type": p.direction.capitalize(),
+                "strength": float(p.confidence),
+                "target": float(p.target_price) if p.target_price else None,
+                "breakout": float(p.breakout_level) if p.breakout_level else None,
+                "description": p.description,
+                "emoji": p.emoji
+            })
 
         return _json_sanitize({
             "ticker": ticker.upper(),
             "patterns": patterns,
-            "count": len(patterns)
+            "count": len(patterns),
+            "summary": result["summary"]
         })
     except Exception as exc:
-        logger.exception("Patterns error")
-        return {"ticker": ticker, "patterns": [], "error": str(exc)}
+        logger.exception("Patterns error for %s", ticker)
+        return {"ticker": ticker, "patterns": [], "error": str(exc), "count": 0}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1407,7 +1567,19 @@ async def save_tuner_settings(settings: dict):
     GATE3_RSI_BUY_LO = thresholds.get("rsi_buy_lo", GATE3_RSI_BUY_LO)
     GATE3_RSI_BUY_HI = thresholds.get("rsi_buy_hi", GATE3_RSI_BUY_HI)
 
-    
+    try:
+        with open(TUNER_CONFIG_PATH, "w") as f:
+            json.dump({
+                "cone_max": GATE1_CONE_MAX,
+                "sent_buy_min": GATE2_SENT_BUY_MIN,
+                "sent_sell_max": GATE2_SENT_SELL_MAX,
+                "rsi_buy_lo": GATE3_RSI_BUY_LO,
+                "rsi_buy_hi": GATE3_RSI_BUY_HI
+            }, f, indent=4)
+        logger.info("Saved tuner config to disk.")
+    except Exception as e:
+        logger.error(f"Failed to save tuner config: {e}")
+
     logger.info(f"Hyperparameters synchronized: {GATE1_CONE_MAX}, {GATE2_SENT_BUY_MIN}...")
     return {"status": "success", "synchronized": True}
 
@@ -1441,6 +1613,24 @@ async def get_logs():
         ]
     }
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+frontend_dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+if os.path.exists(frontend_dist):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+    
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        if full_path.startswith("api/") or full_path == "api":
+            from fastapi import status
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API route not found")
+        
+        file_path = os.path.join(frontend_dist, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+            
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
 
 if __name__ == "__main__":
     import uvicorn

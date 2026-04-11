@@ -23,7 +23,7 @@ export const MarketPulseBar: React.FC = () => {
         };
 
         fetchPulse();
-        const interval = setInterval(fetchPulse, 30000);
+        const interval = setInterval(fetchPulse, 60000);
         return () => clearInterval(interval);
     }, [data]);
 

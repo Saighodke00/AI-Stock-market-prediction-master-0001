@@ -109,6 +109,12 @@ function SignalCard({ row, rank }: { row: ScreenerResult; rank: number }) {
         <ConfidenceSparkBar value={row.confidence} />
         <div className="hidden lg:block border-l border-white/5 h-8 mx-2" />
         <GateDots gates={row.gate_results} />
+        {row.pattern && (
+          <div className={`hidden xl:flex items-center gap-2 px-3 py-1 rounded-lg border border-indigo-500/20 bg-indigo-500/5 text-indigo-400 font-mono text-[9px] font-black uppercase tracking-widest animate-pulse-glow`}>
+            <span>{row.pattern.emoji}</span>
+            <span>{row.pattern.name}</span>
+          </div>
+        )}
       </div>
 
       {/* Metrics */}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { PortfolioCorrelationResponse } from '../types/portfolio';
+import { PortfolioCorrelationResponse } from '../api/api';
 
 interface Props {
     data: PortfolioCorrelationResponse;
