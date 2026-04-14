@@ -12,6 +12,7 @@ import { Search, Timer, Zap, AlertCircle, RefreshCcw, ChevronDown, Activity, Shi
 import { SignalBadge } from '../components/trading/SignalBadge';
 import { GateCard } from '../components/trading/GateCard';
 import { PatternIntelligence } from '../components/trading/PatternIntelligence';
+import { NeuralSignalHeader } from '../components/trading/NeuralSignalHeader';
 import { ScratchPad } from '../components/trading/ScratchPad';
 import { Edit3 } from 'lucide-react';
 
@@ -272,6 +273,7 @@ export const IntradayTradingPage: React.FC = () => {
 
                             {/* MAIN SIGNAL AREA */}
                             <div className="grid grid-cols-1 gap-6">
+                                <NeuralSignalHeader data={signal} mode="intraday" />
                                 <div className="flex flex-col gap-6">
                                     <SignalCard data={signal} isLoading={false} timeframe={`${tf} SCALP`} />
                                     <div className="h-[calc(100vh-420px)] min-h-[500px]">
