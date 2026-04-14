@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import {
@@ -75,8 +75,8 @@ const GateSlider: React.FC<{
 
       <div className="relative h-1.5 bg-white/5 rounded-full mt-2">
         <div 
-          className={"absolute left-0 top-0 h-full rounded-full transition-all `}
-          style={{ width: ${pct}% }} 
+          className={`absolute left-0 top-0 h-full rounded-full transition-all ${bgFillClass}`}
+          style={{ width: `${pct}%` }} 
         />
         <input
           type="range"

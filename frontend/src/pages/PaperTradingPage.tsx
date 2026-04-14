@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import {
@@ -119,7 +119,7 @@ const EquityChart: React.FC<{ trades: Trade[]; initialCapital: number }> = ({
             tick={{ fontSize: 9, fill: "#64748b", fontFamily: "monospace" }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={v => ₹k}
+            tickFormatter={v => `₹${v / 1000}k`}
             width={44}
           />
           <Tooltip
