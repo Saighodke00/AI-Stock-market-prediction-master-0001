@@ -1,493 +1,858 @@
-// pages/PaperTradingPage.tsx
-// Paper trading portfolio — upgraded to v3.2 Neural HUD aesthetic.
-// Features: real-time P&L, cluster distribution, neural order entry.
+/**
+ * PaperTradingPage.tsx — APEX AI Paper Trading v2.0
+ *
+ * Fixes:
+ *  1. Real-time P&L that persists and shows growth/loss correctly
+ *  2. Equity curve chart that reflects actual trade history
+ *  3. Position MTM updated from live price on each load
+ *  4. Proper win/loss tracking visible at a glance
+ *  5. Personalized, connected UI matching Dashboard aesthetic
+ */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import useAuthStore from "@/store/useAuthStore";
 import {
-  fetchPositions, fetchTradeHistory, fetchPortfolioSummary,
-  executeTrade, resetPortfolio,
-  Position, Trade, PortfolioSummary, TradeRequest,
-} from "../api/api";
-import { 
-  Wallet, Briefcase, History, TrendingUp, TrendingDown, Trash2, 
-  ShieldCheck, PieChart, Activity, DollarSign, LayoutGrid, 
-  List, AlertCircle, CheckCircle2, RefreshCw, Zap,
-  BarChart3, Layers, Target, ArrowUpRight, ArrowDownRight
+  TrendingUp, TrendingDown, Wallet, BarChart2, Target,
+  RefreshCw, ArrowUpRight, ArrowDownRight, Plus, Minus,
+  Activity, Clock, CheckCircle2, AlertCircle, Zap, Trash2,
+  ChevronDown, ChevronUp
 } from "lucide-react";
-import { NeuralSpinner } from "../components/ui/LoadingStates";
-import { EquityCurveChart } from "../components/trading/EquityCurveChart";
-import { WinLossPie } from "../components/trading/WinLossPie";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Sub-components
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-function NeuralStatCard({
-  label, value, sub, highlight, icon, trend
-}: { 
-  label: string; 
-  value: string; 
-  sub?: string; 
-  highlight?: "green" | "red" | "amber" | "cyan"; 
-  icon?: React.ReactNode;
-  trend?: number;
-}) {
-  const isPos = (trend || 0) >= 0;
-  
-  const themes = {
-    green: "border-emerald-500/20 bg-emerald-500/[0.02] text-emerald-400 shadow-emerald-500/5",
-    red:   "border-rose-500/20 bg-rose-500/[0.02] text-rose-400 shadow-rose-500/5",
-    amber: "border-amber-500/20 bg-amber-500/[0.02] text-amber-500 shadow-amber-500/5",
-    cyan:  "border-cyan-500/20 bg-cyan-500/[0.02] text-cyan-400 shadow-cyan-500/5",
-  };
+interface Position {
+  ticker: string;
+  quantity: number;
+  avg_cost: number;
+  current_price: number;
+  market_value: number;
+  unrealised_pnl: number;
+  unrealised_pct: number;
+  opened_at: string;
+}
 
-  const activeTheme = themes[highlight || "cyan"];
+interface Trade {
+  id: string;
+  ticker: string;
+  action: "BUY" | "SELL";
+  quantity: number;
+  price: number;
+  total: number;
+  realised_pnl: number;
+  executed_at: string;
+}
+
+interface PortfolioSummary {
+  cash_balance: number;
+  invested_value: number;
+  portfolio_value: number;
+  unrealised_pnl: number;
+  realised_pnl: number;
+  total_return_pct: number;
+  win_rate: number;
+  trade_count: number;
+  open_positions: number;
+  initial_capital: number;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const fmt = (n: number, d = 2) =>
+  new Intl.NumberFormat("en-IN", { maximumFractionDigits: d, minimumFractionDigits: d }).format(n);
+
+const fmtCur = (n: number) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency", currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(n);
+
+const fmtDate = (iso: string) => {
+  try {
+    return new Date(iso).toLocaleDateString("en-IN", {
+      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+    });
+  } catch { return iso; }
+};
+
+// ─── Equity Chart ─────────────────────────────────────────────────────────────
+
+const EquityChart: React.FC<{ trades: Trade[]; initialCapital: number }> = ({
+  trades, initialCapital,
+}) => {
+  // Build equity curve from trade history
+  const chartData = React.useMemo(() => {
+    if (!trades || trades.length === 0) {
+      return [{ date: "Start", value: initialCapital }];
+    }
+
+    const sorted = [...trades].sort(
+      (a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime()
+    );
+
+    let runningCapital = initialCapital;
+    const points = [{ date: "Start", value: initialCapital }];
+
+    sorted.forEach((t) => {
+      if (t.action === "SELL" && t.realised_pnl !== 0) {
+        runningCapital += t.realised_pnl;
+      }
+      const label = new Date(t.executed_at).toLocaleDateString("en-IN", {
+        day: "2-digit", month: "short",
+      });
+      points.push({ date: label, value: Math.round(runningCapital) });
+    });
+
+    return points;
+  }, [trades, initialCapital]);
+
+  const lastVal = chartData[chartData.length - 1]?.value ?? initialCapital;
+  const isGrowth = lastVal >= initialCapital;
+  const chartColor = isGrowth ? "#00e676" : "#ff4b4b";
 
   return (
-    <div className={`group relative p-6 rounded-3xl border transition-all duration-500 hover:scale-[1.02] active:scale-95 overflow-hidden ${activeTheme}`}>
-      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-        {icon}
-      </div>
-      
-      <div className="relative z-10 flex flex-col gap-1">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-1">{label}</span>
-        <div className="flex items-baseline gap-3">
-          <span className="text-3xl font-display font-black tracking-tight">{value}</span>
-          {trend !== undefined && (
-            <div className={`flex items-center gap-0.5 text-[10px] font-black px-2 py-0.5 rounded-full border ${isPos ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
-              {isPos ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
-              {Math.abs(trend).toFixed(1)}%
-            </div>
-          )}
-        </div>
-        {sub && <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">{sub}</span>}
-      </div>
-      
-      {/* Decorative corner blur */}
-      <div className={`absolute -bottom-10 -right-10 w-24 h-24 blur-[40px] rounded-full opacity-20 pointer-events-none group-hover:opacity-40 transition-opacity bg-current`} />
+    <div style={{ width: "100%", height: 160 }}>
+      <ResponsiveContainer>
+        <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+          <defs>
+            <linearGradient id="equityGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={chartColor} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 9, fill: "#3a5a7a", fontFamily: "monospace" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fontSize: 9, fill: "#3a5a7a", fontFamily: "monospace" }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`}
+            width={44}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "#0a192f",
+              border: "1px solid rgba(99,179,237,0.2)",
+              borderRadius: 8,
+              fontSize: 11,
+              fontFamily: "monospace",
+              color: "#c8d8f0",
+            }}
+            formatter={(v: number) => [fmtCur(v), "Portfolio Value"]}
+          />
+          <ReferenceLine y={initialCapital} stroke="rgba(255,255,255,0.1)" strokeDasharray="4 4" />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke={chartColor}
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4, fill: chartColor }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
-}
+};
 
-function PositionMatrixRow({ pos }: { pos: Position }) {
-  const pnlPos = pos.unrealised_pnl >= 0;
-  return (
-    <tr className="border-b border-white/5 hover:bg-white/[0.03] transition-all group">
-      <td className="py-5 px-6">
-        <div className="flex items-center gap-4">
-          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-display font-black text-xs ${pnlPos ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
-            {pos.ticker.slice(0, 2)}
-          </div>
-          <div className="flex flex-col">
-            <span className="font-display font-black text-white text-md uppercase tracking-tight group-hover:text-cyan transition-colors">{pos.ticker}</span>
-            <span className="text-[8px] text-slate-600 font-bold tracking-[0.2em] font-mono">SEQ_ENTRY: {new Date(pos.opened_at).toLocaleDateString()}</span>
-          </div>
-        </div>
-      </td>
+// ─── Trade Execute Panel ──────────────────────────────────────────────────────
 
-      <td className="py-5 px-6 font-mono font-bold text-slate-300 text-sm">{pos.quantity}</td>
-      
-      <td className="py-5 px-6">
-        <div className="flex flex-col">
-          <span className="font-mono text-xs text-white">₹{pos.avg_cost.toLocaleString()}</span>
-          <span className="text-[9px] text-slate-600 uppercase font-black tracking-widest">Avg Intake</span>
-        </div>
-      </td>
+const TradePanel: React.FC<{
+  onTrade: (ticker: string, action: "BUY" | "SELL", qty: number, price: number) => Promise<void>;
+  cashBalance: number;
+}> = ({ onTrade, cashBalance }) => {
+  const [ticker, setTicker] = useState("");
+  const [action, setAction] = useState<"BUY" | "SELL">("BUY");
+  const [qty, setQty] = useState(1);
+  const [price, setPrice] = useState("");
+  const [fetching, setFetching] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
-      <td className="py-5 px-6">
-        <div className="flex flex-col">
-          <span className="font-mono text-xs text-cyan animate-pulse">₹{pos.current_price.toLocaleString()}</span>
-          <span className="text-[9px] text-slate-600 uppercase font-black tracking-widest">Live Feed</span>
-        </div>
-      </td>
-
-      <td className="py-5 px-6 text-right">
-        <div className="flex flex-col items-end">
-          <span className={`font-mono text-md font-black ${pnlPos ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {pnlPos ? '+' : ''}₹{pos.unrealised_pnl.toLocaleString(undefined, { minimumFractionDigits: 1 })}
-          </span>
-          <div className={`flex items-center gap-1 text-[10px] font-black ${pnlPos ? 'text-emerald-500/60' : 'text-rose-500/60'}`}>
-            {pnlPos ? 'BULLISH ALPHA' : 'BEARISH PRESSURE'} &middot; {pnlPos ? '+' : ''}{pos.unrealised_pct.toFixed(2)}%
-          </div>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function HistoryProtocolRow({ trade }: { trade: Trade }) {
-  const isBuy = trade.action === "BUY";
-  const pnlPos = trade.realised_pnl >= 0;
-  return (
-    <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-all">
-      <td className="py-4 px-6 font-mono text-slate-600 text-[9px] font-bold uppercase tracking-widest leading-none">
-        {new Date(trade.executed_at).toLocaleDateString()}<br/>
-        <span className="opacity-40">{new Date(trade.executed_at).toLocaleTimeString()}</span>
-      </td>
-      <td className="py-4 px-6">
-        <span className="font-display font-black text-white uppercase text-sm">{trade.ticker}</span>
-      </td>
-      <td className="py-4 px-6">
-        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg border font-mono text-[9px] font-black tracking-widest uppercase ${isBuy ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
-          {isBuy ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
-          {trade.action}
-        </div>
-      </td>
-      <td className="py-4 px-6 font-mono text-slate-300 text-xs text-right font-bold">{trade.quantity}</td>
-      <td className="py-4 px-6 font-mono text-white text-xs text-right font-black">₹{trade.price.toLocaleString()}</td>
-      <td className="py-4 px-6 text-right">
-        {trade.action === "SELL" ? (
-          <span className={`font-mono text-xs font-black ${pnlPos ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {pnlPos ? '+' : '-'}₹{Math.abs(trade.realised_pnl).toLocaleString()}
-          </span>
-        ) : (
-          <span className="text-slate-800">—</span>
-        )}
-      </td>
-    </tr>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Neural Order Terminal
-// ─────────────────────────────────────────────────────────────────────────────
-
-function OrderTerminal({ onTradeSuccess }: { onTradeSuccess: () => void }) {
-  const [form, setForm] = useState<TradeRequest>({
-    ticker: "", action: "BUY", quantity: 1, price: 0, notes: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (form.ticker.length >= 3) {
-      const timer = setTimeout(() => {
-        fetch(`/api/signal/${form.ticker}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.current_price) setForm(f => ({ ...f, price: data.current_price }));
-          });
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [form.ticker]);
+  const fetchPrice = async () => {
+    if (!ticker.trim()) return;
+    setFetching(true);
+    try {
+      const t = ticker.trim().toUpperCase();
+      const fullTicker = t.includes(".NS") || t.includes(".BO") ? t : `${t}.NS`;
+      const res = await fetch(`/api/signal/${fullTicker}?mode=swing`);
+      if (res.ok) {
+        const d = await res.json();
+        const p = d.current_price || d.price;
+        if (p) setPrice(String(Math.round(p * 100) / 100));
+      }
+    } catch {}
+    setFetching(false);
+  };
 
   const handleSubmit = async () => {
-    if (!form.ticker || form.quantity <= 0 || form.price <= 0) {
-      setError("Incomplete Protocol Logic");
-      return;
-    }
-    setLoading(true); setError(null); setSuccess(null);
+    if (!ticker || !price || qty < 1) return;
+    setExecuting(true);
+    setMsg(null);
+    const fullTicker = ticker.trim().toUpperCase();
+    const t = fullTicker.includes(".NS") || fullTicker.includes(".BO") ? fullTicker : `${fullTicker}.NS`;
     try {
-      await executeTrade(form);
-      setSuccess("TRANSACTION_COUPLED");
-      setForm(f => ({ ...f, ticker: "", quantity: 1, price: 0 }));
-      onTradeSuccess();
-    } catch (e: any) {
-      setError(e.message ?? "NEURAL_LINK_REJECTED");
-    } finally {
-      setLoading(false);
+      await onTrade(t, action, qty, Number(price));
+      setMsg({ text: `${action} executed — ${qty} × ${t} @ ₹${price}`, ok: true });
+      setTimeout(() => setMsg(null), 4000);
+    } catch (err: any) {
+      setMsg({ text: err.message || "Trade failed", ok: false });
     }
+    setExecuting(false);
   };
 
-  const isBuy = form.action === "BUY";
+  const totalCost = qty * Number(price || 0);
+  const canAfford = action === "BUY" ? totalCost <= cashBalance : true;
 
   return (
-    <div className="glass-card overflow-hidden flex flex-col h-full border-cyan-500/10 shadow-cyan-500/5">
-      <div className="bg-gradient-to-r from-cyan-500/10 to-transparent p-5 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <Layers size={16} className="text-cyan-400" />
-          <h2 className="text-white font-display font-black text-xs uppercase tracking-[0.3em]">Neural Order Entry</h2>
-        </div>
+    <div style={{
+      background: "rgba(8,16,32,0.8)",
+      border: "1px solid rgba(255,255,255,0.07)",
+      borderRadius: 14,
+      padding: "20px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+        <Zap size={15} color="#63b3ed" />
+        <span style={{ fontSize: 11, letterSpacing: 2, color: "#4a6a8a", textTransform: "uppercase", fontFamily: "monospace" }}>
+          Neural Order Entry
+        </span>
       </div>
 
-      <div className="p-6 space-y-6 flex-1">
-        <div className="space-y-1.5">
-          <label className="text-slate-600 text-[9px] font-black uppercase tracking-[0.2em] ml-1">Asset Identifier</label>
-          <div className="relative group">
-            <input
-              type="text"
-              value={form.ticker}
-              onChange={e => setForm(f => ({ ...f, ticker: e.target.value.toUpperCase() }))}
-              placeholder="Ex. TATASTEEL"
-              className="w-full bg-void border border-white/5 rounded-2xl px-5 py-4 font-display font-black text-white text-md focus:outline-none focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10 transition-all placeholder-slate-800"
-            />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-20 group-hover:opacity-100 transition-opacity">
-               <Briefcase size={16} className="text-cyan-400" />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 p-1 bg-void/50 border border-white/5 rounded-2xl">
-          {(['BUY', 'SELL'] as const).map(action => (
-            <button
-              key={action}
-              onClick={() => setForm(f => ({ ...f, action }))}
-              className={`py-3 rounded-xl font-display font-black text-[10px] tracking-widest transition-all uppercase ${
-                form.action === action 
-                  ? (action === 'BUY' ? 'bg-emerald text-void shadow-lg shadow-emerald-500/20' : 'bg-rose text-white shadow-lg shadow-rose-500/20') 
-                  : 'text-slate-600 hover:text-white'
-              }`}
-            >
-              {action === 'BUY' ? 'Initiate Buy' : 'Commit Sell'}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-slate-600 text-[9px] font-black uppercase tracking-[0.2em] ml-1">Quant Units</label>
-            <input
-              type="number"
-              min={1}
-              value={form.quantity}
-              onChange={e => setForm(f => ({ ...f, quantity: parseInt(e.target.value) || 0 }))}
-              className="w-full bg-void border border-white/5 rounded-2xl px-5 py-4 font-mono font-black text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-all"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-slate-600 text-[9px] font-black uppercase tracking-[0.2em] ml-1">Fill NAV</label>
-            <input
-              type="number"
-              value={form.price || ""}
-              onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))}
-              placeholder="0.00"
-              className="w-full bg-void border border-white/5 rounded-2xl px-5 py-4 font-mono font-black text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-all"
-            />
-          </div>
-        </div>
-
-        {form.quantity > 0 && form.price > 0 && (
-          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-1 items-center justify-center text-center">
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Exposure Projection</span>
-            <span className={`text-xl font-display font-black ${isBuy ? 'text-emerald-400' : 'text-rose-400'}`}>
-              ₹{(form.quantity * form.price).toLocaleString()}
-            </span>
-          </div>
-        )}
-
-        {error && <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20 text-rose-400 text-[9px] font-black uppercase tracking-[0.2em] animate-pulse text-center">{error}</div>}
-        {success && <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-[0.2em] animate-pulse text-center">{success}</div>}
+      {/* Action selector */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+        {(["BUY", "SELL"] as const).map(a => (
+          <button
+            key={a}
+            onClick={() => setAction(a)}
+            style={{
+              padding: "10px",
+              border: action === a
+                ? `1px solid ${a === "BUY" ? "rgba(0,230,118,0.4)" : "rgba(255,75,75,0.4)"}`
+                : "1px solid rgba(255,255,255,0.06)",
+              background: action === a
+                ? a === "BUY" ? "rgba(0,230,118,0.1)" : "rgba(255,75,75,0.1)"
+                : "transparent",
+              borderRadius: 8,
+              cursor: "pointer",
+              color: action === a
+                ? a === "BUY" ? "#00e676" : "#ff4b4b"
+                : "#5a7a9a",
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: "monospace",
+              transition: "all 0.15s",
+            }}
+          >
+            {a === "BUY" ? "↑ BUY" : "↓ SELL"}
+          </button>
+        ))}
       </div>
 
-      <div className="p-6 pt-0 mt-auto">
+      {/* Ticker input */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <input
+          value={ticker}
+          onChange={e => setTicker(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && fetchPrice()}
+          placeholder="Ticker (e.g. RELIANCE)"
+          style={{
+            flex: 1, background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 8, padding: "10px 14px",
+            color: "#c8d8f0", fontSize: 13, fontFamily: "monospace",
+            outline: "none",
+          }}
+        />
         <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className={`w-full py-5 rounded-2xl font-display font-black text-[11px] tracking-[0.3em] transition-all duration-500 shadow-2xl uppercase active:scale-[0.98] flex items-center justify-center gap-3 ${
-            isBuy ? "bg-emerald text-void hover:bg-emerald/90" : "bg-rose text-white hover:bg-rose/90"
-          } disabled:opacity-50 group`}
+          onClick={fetchPrice}
+          disabled={fetching}
+          style={{
+            background: "rgba(99,179,237,0.08)",
+            border: "1px solid rgba(99,179,237,0.2)",
+            borderRadius: 8, padding: "10px 12px",
+            cursor: "pointer", color: "#63b3ed",
+            fontSize: 11, fontFamily: "monospace",
+          }}
         >
-          {loading ? <RefreshCw className="animate-spin" size={16} /> : <Zap size={16} className="fill-current group-hover:animate-pulse" />}
-          Execute {form.action} Protocol
+          {fetching ? "..." : "↓ LTP"}
         </button>
       </div>
+
+      {/* Price & Qty */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+        <div>
+          <label style={{ fontSize: 10, color: "#3a5a7a", fontFamily: "monospace", display: "block", marginBottom: 5 }}>
+            PRICE (₹)
+          </label>
+          <input
+            type="number"
+            value={price}
+            onChange={e => setPrice(e.target.value)}
+            placeholder="0.00"
+            style={{
+              width: "100%", background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 8, padding: "10px 14px",
+              color: "#c8d8f0", fontSize: 14, fontFamily: "monospace",
+              outline: "none", boxSizing: "border-box",
+            }}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: 10, color: "#3a5a7a", fontFamily: "monospace", display: "block", marginBottom: 5 }}>
+            QUANTITY
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+            <button
+              onClick={() => setQty(Math.max(1, qty - 1))}
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "8px 0 0 8px",
+                padding: "10px 12px", cursor: "pointer", color: "#7a9ab0",
+              }}
+            >
+              <Minus size={12} />
+            </button>
+            <input
+              type="number"
+              value={qty}
+              onChange={e => setQty(Math.max(1, Number(e.target.value)))}
+              style={{
+                flex: 1, textAlign: "center",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderTop: "1px solid rgba(255,255,255,0.08)",
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                borderLeft: "none", borderRight: "none",
+                padding: "10px 6px",
+                color: "#c8d8f0", fontSize: 14, fontFamily: "monospace",
+                outline: "none",
+              }}
+            />
+            <button
+              onClick={() => setQty(qty + 1)}
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "0 8px 8px 0",
+                padding: "10px 12px", cursor: "pointer", color: "#7a9ab0",
+              }}
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Total cost */}
+      {totalCost > 0 && (
+        <div style={{
+          display: "flex", justifyContent: "space-between",
+          padding: "8px 12px", marginBottom: 12,
+          background: canAfford ? "rgba(0,230,118,0.05)" : "rgba(255,75,75,0.05)",
+          border: `1px solid ${canAfford ? "rgba(0,230,118,0.15)" : "rgba(255,75,75,0.15)"}`,
+          borderRadius: 8,
+        }}>
+          <span style={{ fontSize: 11, color: "#4a6a8a", fontFamily: "monospace" }}>Total Cost</span>
+          <span style={{
+            fontSize: 13, fontWeight: 700, fontFamily: "monospace",
+            color: canAfford ? "#00e676" : "#ff4b4b",
+          }}>
+            {fmtCur(totalCost)}
+            {!canAfford && <span style={{ fontSize: 10, marginLeft: 6 }}>— Insufficient funds</span>}
+          </span>
+        </div>
+      )}
+
+      {/* Execute button */}
+      <button
+        onClick={handleSubmit}
+        disabled={executing || !ticker || !price || !canAfford}
+        style={{
+          width: "100%",
+          background: executing || !ticker || !price || !canAfford
+            ? "rgba(255,255,255,0.04)"
+            : action === "BUY"
+              ? "linear-gradient(135deg, rgba(0,230,118,0.2), rgba(0,160,80,0.1))"
+              : "linear-gradient(135deg, rgba(255,75,75,0.2), rgba(200,40,40,0.1))",
+          border: `1px solid ${executing || !ticker || !price || !canAfford
+            ? "rgba(255,255,255,0.06)"
+            : action === "BUY" ? "rgba(0,230,118,0.3)" : "rgba(255,75,75,0.3)"}`,
+          borderRadius: 10,
+          padding: "13px",
+          cursor: executing || !ticker || !price || !canAfford ? "not-allowed" : "pointer",
+          color: executing || !ticker || !price || !canAfford
+            ? "#3a5a7a"
+            : action === "BUY" ? "#00e676" : "#ff4b4b",
+          fontSize: 13,
+          fontWeight: 700,
+          fontFamily: "monospace",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          transition: "all 0.2s",
+        }}
+      >
+        {executing
+          ? <><RefreshCw size={14} /> Processing...</>
+          : action === "BUY"
+            ? <><TrendingUp size={14} /> Execute BUY</>
+            : <><TrendingDown size={14} /> Execute SELL</>}
+      </button>
+
+      {/* Status message */}
+      {msg && (
+        <div style={{
+          marginTop: 12,
+          padding: "8px 12px",
+          background: msg.ok ? "rgba(0,230,118,0.08)" : "rgba(255,75,75,0.08)",
+          border: `1px solid ${msg.ok ? "rgba(0,230,118,0.2)" : "rgba(255,75,75,0.2)"}`,
+          borderRadius: 8,
+          display: "flex", alignItems: "center", gap: 6,
+          fontSize: 11, fontFamily: "monospace",
+          color: msg.ok ? "#00e676" : "#ff4b4b",
+        }}>
+          {msg.ok ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+          {msg.text}
+        </div>
+      )}
     </div>
   );
-}
+};
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Main Ledger Page
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
-type Tab = "positions" | "history";
+const PaperTradingPage: React.FC = () => {
+  const { token } = useAuthStore() as any;
+  const navigate = useNavigate();
 
-export default function PaperTradingPage() {
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [history, setHistory] = useState<Trade[]>([]);
-  const [activeTab, setActiveTab] = useState<Tab>("positions");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"positions" | "history">("positions");
+  const [showReset, setShowReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
-  const reload = useCallback(async () => {
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  const fetchAll = useCallback(async () => {
+    if (!token) { navigate("/login"); return; }
     setLoading(true);
     try {
-      const [sumRes, posRes, histRes] = await Promise.all([
-        fetchPortfolioSummary(),
-        fetchPositions(),
-        fetchTradeHistory(),
+      const [sumRes, posRes, hisRes] = await Promise.all([
+        fetch("/api/paper/summary", { headers }),
+        fetch("/api/paper/positions", { headers }),
+        fetch("/api/paper/history", { headers }),
       ]);
-      setSummary(sumRes); setPositions(posRes.positions); setHistory(histRes.history);
-    } catch (e: any) {
-      setError(e.message ?? "SYNCHRONIZATION_ERROR");
-    } finally {
-      setLoading(false);
+
+      if (sumRes.ok) setSummary(await sumRes.json());
+      if (posRes.ok) {
+        const d = await posRes.json();
+        setPositions(d.positions || []);
+      }
+      if (hisRes.ok) {
+        const d = await hisRes.json();
+        setHistory(d.history || []);
+      }
+    } catch {}
+    setLoading(false);
+  }, [token]);
+
+  useEffect(() => { fetchAll(); }, []);
+
+  const executeTrade = async (
+    ticker: string,
+    action: "BUY" | "SELL",
+    qty: number,
+    price: number
+  ) => {
+    const res = await fetch("/api/paper/trade", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ ticker, action, quantity: qty, price, confidence: 0.7 }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Trade failed");
     }
-  }, []);
+    await fetchAll();
+  };
 
-  useEffect(() => { reload(); }, [reload]);
+  const resetPortfolio = async () => {
+    setResetting(true);
+    try {
+      await fetch("/api/paper/reset", { method: "DELETE", headers });
+      await fetchAll();
+      setShowReset(false);
+    } catch {}
+    setResetting(false);
+  };
 
-  const exposureData = useMemo(() => {
-    const total = positions.reduce((acc, p) => acc + p.market_value, 0) || 1;
-    return positions.map(p => ({
-      name: p.ticker,
-      value: (p.market_value / total) * 100,
-      color: `#${Math.floor(Math.random()*16777215).toString(16)}`
-    }));
-  }, [positions]);
+  const totalPnl = summary
+    ? summary.unrealised_pnl + summary.realised_pnl
+    : 0;
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-      {/* Dynamic Pulse Header */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">
-        <div className="space-y-3">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shadow-lg shadow-cyan-500/5">
-              <BarChart3 className="text-cyan-400" size={24} />
-            </div>
-            <div>
-              <h1 className="text-4xl font-display font-black text-white tracking-tighter uppercase flex items-center gap-2">
-                Neural Ledger <span className="text-slate-800 font-normal italic">v3.2</span>
-              </h1>
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Quant_Sandbox // Zero_Lag_MTM_Execution</p>
+    <div style={{
+      minHeight: "100vh",
+      background: "#060b14",
+      color: "#c8d8f0",
+      fontFamily: "'Rajdhani', 'Segoe UI', sans-serif",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(99,179,237,0.15); border-radius: 99px; }
+      `}</style>
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div style={{
+        padding: "24px 40px 20px",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Wallet size={20} color="#63b3ed" />
+          <div>
+            <h1 style={{
+              margin: 0, fontSize: 18,
+              fontFamily: "'Orbitron', monospace",
+              fontWeight: 900, color: "#e2e8f0", letterSpacing: 1,
+            }}>
+              PAPER TRADING
+            </h1>
+            <div style={{ fontSize: 11, color: "#3a5a7a", fontFamily: "monospace" }}>
+              Neural Ledger — Zero-Risk Simulation
             </div>
           </div>
         </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={fetchAll} style={{
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 8, padding: "8px 14px",
+            cursor: "pointer", color: "#4a6a8a",
+            fontSize: 12, fontFamily: "monospace",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <RefreshCw size={12} /> Refresh
+          </button>
+          <button onClick={() => setShowReset(!showReset)} style={{
+            background: "rgba(255,75,75,0.05)",
+            border: "1px solid rgba(255,75,75,0.15)",
+            borderRadius: 8, padding: "8px 14px",
+            cursor: "pointer", color: "#ff4b4b",
+            fontSize: 12, fontFamily: "monospace",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <Trash2 size={12} /> Reset
+          </button>
+        </div>
+      </div>
 
-        {summary && (
-          <div className="flex items-center gap-4 p-2 bg-void/50 border border-white/5 rounded-3xl backdrop-blur-3xl shadow-2xl">
-            <div className={`px-6 py-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-1 min-w-[200px] ${summary.total_return_pct >= 0 ? 'border-emerald-500/10' : 'border-rose-500/10'}`}>
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Net Equity Value</span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-display font-black text-white">₹{summary.portfolio_value.toLocaleString()}</span>
-                <span className={`text-[11px] font-black ${summary.total_return_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {summary.total_return_pct >= 0 ? '+' : ''}{summary.total_return_pct.toFixed(2)}%
-                </span>
-              </div>
-            </div>
-            <button onClick={reload} className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-all group">
-              <RefreshCw size={20} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'} />
+      {/* Reset confirmation */}
+      {showReset && (
+        <div style={{
+          margin: "0 40px",
+          padding: "12px 16px",
+          background: "rgba(255,75,75,0.06)",
+          border: "1px solid rgba(255,75,75,0.2)",
+          borderRadius: 10,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginTop: 16,
+          fontSize: 13,
+        }}>
+          <span style={{ color: "#ff8080" }}>Reset portfolio to ₹10,00,000? All trades will be deleted.</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setShowReset(false)} style={{
+              background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 6, padding: "5px 12px", cursor: "pointer",
+              color: "#5a7a9a", fontSize: 12, fontFamily: "monospace",
+            }}>
+              Cancel
+            </button>
+            <button onClick={resetPortfolio} disabled={resetting} style={{
+              background: "rgba(255,75,75,0.15)", border: "1px solid rgba(255,75,75,0.3)",
+              borderRadius: 6, padding: "5px 12px", cursor: "pointer",
+              color: "#ff4b4b", fontSize: 12, fontFamily: "monospace",
+            }}>
+              {resetting ? "Resetting..." : "Confirm Reset"}
             </button>
           </div>
-        )}
-      </div>
-
-      {/* Primary Analytics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {summary ? (
-          <>
-            <NeuralStatCard label="Sandbox Balance" value={`₹${summary.cash_balance.toLocaleString()}`} icon={<Wallet className="text-cyan-400" />} highlight="cyan" />
-            <NeuralStatCard label="Unrealised Profit" value={`₹${summary.unrealised_pnl.toLocaleString()}`} icon={<Activity />} highlight={summary.unrealised_pnl >= 0 ? "green" : "red"} trend={summary.total_return_pct} />
-            <NeuralStatCard label="Settled P&L" value={`₹${summary.realised_pnl.toLocaleString()}`} icon={<DollarSign />} highlight={summary.realised_pnl >= 0 ? "green" : "red"} />
-            <NeuralStatCard label="Success Matrix" value={`${summary.win_rate.toFixed(1)}%`} sub={`${history.length} PROTOCOLS_STORED`} icon={<ShieldCheck />} highlight="amber" />
-          </>
-        ) : [1,2,3,4].map(i => <div key={i} className="h-28 glass-card animate-pulse opacity-50" />)}
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch">
-        {/* Left Control Column */}
-        <div className="xl:col-span-4 flex flex-col gap-8">
-          <OrderTerminal onTradeSuccess={reload} />
-          
-          <div className="glass-card p-6 flex flex-col items-center">
-            <div className="flex items-center gap-3 self-start mb-8 text-indigo-400">
-               <PieChart size={16} />
-               <h3 className="text-white font-display font-black text-[10px] uppercase tracking-[0.3em]">Exposure Distribution</h3>
-            </div>
-            {summary && <WinLossPie wins={Math.max(1, summary.win_rate)} losses={Math.max(1, 100 - summary.win_rate)} />}
-            <div className="flex gap-10 mt-10 w-full justify-center">
-               <div className="text-center group">
-                 <div className="text-[10px] font-black text-emerald-500 group-hover:scale-110 transition-transform tracking-widest uppercase mb-1">Winning Ops</div>
-                 <div className="text-2xl font-display font-black text-white">{history.filter(t => t.realised_pnl > 0).length}</div>
-               </div>
-               <div className="w-[1px] h-10 bg-white/5" />
-               <div className="text-center group">
-                 <div className="text-[10px] font-black text-rose-500 group-hover:scale-110 transition-transform tracking-widest uppercase mb-1">Risk Events</div>
-                 <div className="text-2xl font-display font-black text-white">{history.filter(t => t.realised_pnl < 0).length}</div>
-               </div>
-            </div>
-          </div>
         </div>
+      )}
 
-        {/* Right Execution View */}
-        <div className="xl:col-span-8 flex flex-col gap-8 min-h-[800px]">
-          {/* Equity Trajectory Chart */}
-          <div className="glass-card p-1 pb-4 bg-void/40 backdrop-blur-xl relative group overflow-hidden">
-             <div className="flex justify-between items-center p-6 pb-2">
-                <div className="flex items-center gap-3">
-                   <Target size={16} className="text-cyan-400" />
-                   <h3 className="text-white font-display font-black text-xs uppercase tracking-[0.3em]">Equity Evolution Matrix</h3>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 320px",
+        gap: 0,
+        padding: "24px 40px",
+        gap: "24px",
+      }}>
+        {/* LEFT: Summary + Chart + Positions */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* ── Portfolio Summary ───────────────────────────────────────────── */}
+          <div style={{
+            background: "linear-gradient(135deg, rgba(10,25,50,0.8), rgba(6,15,30,0.9))",
+            border: "1px solid rgba(99,179,237,0.12)",
+            borderRadius: 16,
+            padding: "24px",
+            animation: "fadeIn 0.4s ease",
+          }}>
+            {summary ? (
+              <>
+                {/* Main value */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, color: "#4a6a8a", fontFamily: "monospace", marginBottom: 4 }}>
+                    Total Net Asset Value
+                  </div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap" }}>
+                    <span style={{
+                      fontSize: 38, fontWeight: 900, fontFamily: "'Orbitron', monospace", color: "#e2e8f0",
+                    }}>
+                      {fmtCur(summary.portfolio_value)}
+                    </span>
+                    <span style={{
+                      fontSize: 15, fontWeight: 600,
+                      color: summary.total_return_pct >= 0 ? "#00e676" : "#ff4b4b",
+                      display: "flex", alignItems: "center", gap: 4,
+                    }}>
+                      {summary.total_return_pct >= 0 ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
+                      {summary.total_return_pct >= 0 ? "+" : ""}{fmt(summary.total_return_pct)}%
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, color: "#3a5a7a", marginTop: 4 }}>
+                    Started with {fmtCur(summary.initial_capital || 1000000)}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                   {['7D', '1M', '3M', 'MAX'].map(p => (
-                     <button key={p} className="px-3 py-1 rounded-lg bg-white/5 border border-white/5 text-[9px] font-black text-slate-500 hover:text-white hover:border-cyan-500/20 transition-all uppercase">{p}</button>
-                   ))}
+
+                {/* Equity chart */}
+                <div style={{ marginBottom: 20 }}>
+                  <EquityChart trades={history} initialCapital={summary.initial_capital || 1000000} />
                 </div>
-             </div>
-             <EquityCurveChart data={[
-               { date: 'INIT', value: summary?.initial_capital || 1000000 },
-               { date: 'T-5', value: (summary?.portfolio_value || 1000000) * 0.98 },
-               { date: 'T-4', value: (summary?.portfolio_value || 1000000) * 0.99 },
-               { date: 'T-3', value: (summary?.portfolio_value || 1000000) * 1.01 },
-               { date: 'T-2', value: (summary?.portfolio_value || 1000000) * 1.005 },
-               { date: 'NOW', value: summary?.portfolio_value || 1000000 },
-             ]} />
-             
-             {/* Decorative grid overlay */}
-             <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-cyan-500/5 to-transparent pointer-events-none" />
+
+                {/* Stats grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                  {[
+                    {
+                      label: "Cash", value: fmtCur(summary.cash_balance),
+                      color: "#63b3ed", icon: <Wallet size={12} />,
+                    },
+                    {
+                      label: "Invested", value: fmtCur(summary.invested_value),
+                      color: "#a78bfa", icon: <BarChart2 size={12} />,
+                    },
+                    {
+                      label: "Unrealised", value: `${summary.unrealised_pnl >= 0 ? "+" : ""}${fmtCur(summary.unrealised_pnl)}`,
+                      color: summary.unrealised_pnl >= 0 ? "#00e676" : "#ff4b4b",
+                      icon: summary.unrealised_pnl >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />,
+                    },
+                    {
+                      label: "Realised", value: `${summary.realised_pnl >= 0 ? "+" : ""}${fmtCur(summary.realised_pnl)}`,
+                      color: summary.realised_pnl >= 0 ? "#00e676" : "#ff4b4b",
+                      icon: <Target size={12} />,
+                    },
+                  ].map(s => (
+                    <div key={s.label} style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                      borderRadius: 10, padding: "12px 10px",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, color: s.color, marginBottom: 5 }}>
+                        {s.icon}
+                        <span style={{ fontSize: 9, fontFamily: "monospace", color: "#3a5a7a" }}>{s.label}</span>
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: s.color, fontFamily: "'JetBrains Mono', monospace" }}>
+                        {s.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bottom meta */}
+                <div style={{
+                  display: "flex", gap: 24, marginTop: 16,
+                  paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.05)",
+                }}>
+                  {[
+                    { label: "Win Rate", value: `${fmt(summary.win_rate)}%`, color: summary.win_rate >= 50 ? "#00e676" : "#ff4b4b" },
+                    { label: "Open Positions", value: summary.open_positions, color: "#7a9ab0" },
+                    { label: "Total Trades", value: summary.trade_count, color: "#7a9ab0" },
+                  ].map(s => (
+                    <div key={s.label}>
+                      <div style={{ fontSize: 10, color: "#3a5a7a", fontFamily: "monospace" }}>{s.label}</div>
+                      <div style={{ fontSize: 20, fontWeight: 900, fontFamily: "'Orbitron', monospace", color: s.color }}>
+                        {s.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ textAlign: "center", padding: "40px", color: "#3a5a7a" }}>
+                <div style={{
+                  display: "inline-block", width: 28, height: 28,
+                  border: "2px solid rgba(99,179,237,0.2)",
+                  borderTopColor: "#63b3ed",
+                  borderRadius: "50%",
+                  animation: "spin 0.8s linear infinite",
+                }} />
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              </div>
+            )}
           </div>
 
-          <div className="glass-card p-0 flex flex-col flex-1 overflow-hidden shadow-2xl">
-            <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02]">
-              {(["positions", "history"] as Tab[]).map(tab => (
+          {/* ── Positions / History Tabs ─────────────────────────────────────── */}
+          <div style={{
+            background: "rgba(8,16,32,0.8)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 16,
+            overflow: "hidden",
+            animation: "fadeIn 0.5s ease",
+          }}>
+            {/* Tab header */}
+            <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              {(["positions", "history"] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`flex items-center gap-3 px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === tab ? "text-cyan-400" : "text-slate-600 hover:text-white"}`}
+                  style={{
+                    flex: 1, padding: "14px",
+                    background: activeTab === tab ? "rgba(99,179,237,0.06)" : "transparent",
+                    border: "none",
+                    borderBottom: activeTab === tab ? "2px solid #63b3ed" : "2px solid transparent",
+                    cursor: "pointer",
+                    color: activeTab === tab ? "#63b3ed" : "#5a7a9a",
+                    fontSize: 12, fontWeight: 600, fontFamily: "monospace",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    textTransform: "uppercase", letterSpacing: 1,
+                    transition: "all 0.15s",
+                  }}
                 >
-                  {tab === "positions" ? <Briefcase size={12} /> : <History size={12} />}
-                  {tab === "positions" ? `Live Clusters (${positions.length})` : `Protocol Archive (${history.length})`}
-                  {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan shadow-[0_0_15px_#00d2ff]" />}
+                  {tab === "positions" ? <Activity size={13} /> : <Clock size={13} />}
+                  {tab} {tab === "positions" ? `(${positions.length})` : `(${history.length})`}
                 </button>
               ))}
             </div>
 
-            <div className="flex-1 overflow-x-auto no-scrollbar">
+            {/* Table */}
+            <div style={{ overflowX: "auto", maxHeight: 320, overflowY: "auto" }}>
               {activeTab === "positions" ? (
                 positions.length === 0 ? (
-                  <div className="p-32 text-center flex flex-col items-center justify-center space-y-4">
-                     <div className="w-20 h-20 rounded-full bg-cyan-500/5 border border-cyan-500/10 flex items-center justify-center animate-pulse">
-                        <Activity className="text-cyan-500/20" size={32} />
-                     </div>
-                     <div>
-                       <h3 className="text-white font-display font-black text-xl mb-1 uppercase tracking-tight">Vapor Detection</h3>
-                       <p className="text-slate-600 text-[10px] font-bold tracking-widest uppercase opacity-40">Initiate Buy Sequence to Spawn Clusters</p>
-                     </div>
+                  <div style={{ textAlign: "center", padding: "40px", color: "#3a5a7a" }}>
+                    <Activity size={28} style={{ marginBottom: 10, opacity: 0.4 }} />
+                    <p style={{ margin: 0, fontSize: 13, fontFamily: "monospace" }}>
+                      No open positions. Execute a BUY order to begin.
+                    </p>
                   </div>
                 ) : (
-                  <table className="w-full text-left">
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: "monospace" }}>
                     <thead>
-                      <tr className="bg-white/[0.01] border-b border-white/5">
-                        {["Cluster Metadata", "Holdings", "Intake Basis", "Mark-to-Market", "Neural Alpha"].map(h => (
-                          <th key={h} className="py-4 px-6 text-slate-700 text-[9px] font-black uppercase tracking-[0.2em]">{h}</th>
+                      <tr style={{ background: "rgba(255,255,255,0.02)" }}>
+                        {["Ticker", "Qty", "Avg Cost", "Mkt Value", "P&L", "Return %"].map(h => (
+                          <th key={h} style={{ padding: "10px 16px", textAlign: "left", color: "#3a5a7a", fontSize: 10, letterSpacing: 1, fontWeight: 600 }}>
+                            {h}
+                          </th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.02]">
-                      {positions.map(p => <PositionMatrixRow key={p.ticker} pos={p} />)}
+                    <tbody>
+                      {positions.map((p, i) => (
+                        <tr key={p.ticker} style={{
+                          borderTop: "1px solid rgba(255,255,255,0.03)",
+                          background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
+                        }}>
+                          <td style={{ padding: "10px 16px", color: "#c8d8f0", fontWeight: 600 }}>
+                            {p.ticker.replace(".NS", "").replace(".BO", "")}
+                          </td>
+                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>{p.quantity}</td>
+                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>₹{fmt(p.avg_cost)}</td>
+                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>₹{fmt(p.market_value)}</td>
+                          <td style={{ padding: "10px 16px", color: p.unrealised_pnl >= 0 ? "#00e676" : "#ff4b4b", fontWeight: 700 }}>
+                            {p.unrealised_pnl >= 0 ? "+" : ""}₹{fmt(p.unrealised_pnl)}
+                          </td>
+                          <td style={{ padding: "10px 16px", color: p.unrealised_pct >= 0 ? "#00e676" : "#ff4b4b" }}>
+                            {p.unrealised_pct >= 0 ? "+" : ""}{fmt(p.unrealised_pct)}%
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 )
               ) : (
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="bg-white/[0.01] border-b border-white/5">
-                      {["Sync Sequence", "Instrument", "Side", "Units", "Fill NAV", "Settled P&L"].map(h => (
-                        <th key={h} className="py-4 px-6 text-slate-700 text-[9px] font-black uppercase tracking-[0.2em]">{h}</th>
+                history.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px", color: "#3a5a7a" }}>
+                    <Clock size={28} style={{ marginBottom: 10, opacity: 0.4 }} />
+                    <p style={{ margin: 0, fontSize: 13, fontFamily: "monospace" }}>
+                      No trade history yet.
+                    </p>
+                  </div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: "monospace" }}>
+                    <thead>
+                      <tr style={{ background: "rgba(255,255,255,0.02)" }}>
+                        {["Ticker", "Action", "Qty", "Price", "Total", "P&L", "Time"].map(h => (
+                          <th key={h} style={{ padding: "10px 16px", textAlign: "left", color: "#3a5a7a", fontSize: 10, letterSpacing: 1, fontWeight: 600 }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {history.slice(0, 30).map((t, i) => (
+                        <tr key={t.id} style={{
+                          borderTop: "1px solid rgba(255,255,255,0.03)",
+                          background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
+                        }}>
+                          <td style={{ padding: "10px 16px", color: "#c8d8f0", fontWeight: 600 }}>
+                            {t.ticker.replace(".NS", "").replace(".BO", "")}
+                          </td>
+                          <td style={{ padding: "10px 16px" }}>
+                            <span style={{
+                              padding: "2px 8px", borderRadius: 4,
+                              background: t.action === "BUY" ? "rgba(0,230,118,0.1)" : "rgba(255,75,75,0.1)",
+                              color: t.action === "BUY" ? "#00e676" : "#ff4b4b",
+                              fontSize: 10, fontWeight: 700,
+                            }}>
+                              {t.action}
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>{t.quantity}</td>
+                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>₹{fmt(t.price)}</td>
+                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>₹{fmt(t.total)}</td>
+                          <td style={{ padding: "10px 16px", color: t.realised_pnl >= 0 ? "#00e676" : "#ff4b4b", fontWeight: 700 }}>
+                            {t.action === "SELL"
+                              ? `${t.realised_pnl >= 0 ? "+" : ""}₹${fmt(t.realised_pnl)}`
+                              : "—"}
+                          </td>
+                          <td style={{ padding: "10px 16px", color: "#3a5a7a" }}>{fmtDate(t.executed_at)}</td>
+                        </tr>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.02]">
-                    {history.map(t => <HistoryProtocolRow key={t.id} trade={t} />)}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                )
               )}
             </div>
           </div>
         </div>
+
+        {/* RIGHT: Trade Panel */}
+        <div>
+          <TradePanel onTrade={executeTrade} cashBalance={summary?.cash_balance ?? 1000000} />
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default PaperTradingPage;

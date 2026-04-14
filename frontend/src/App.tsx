@@ -8,8 +8,10 @@ import { TickerTape } from './components/layout/TickerTape';
 import { SwingTradingPage } from './pages/SwingTrading';
 import { IntradayTradingPage } from './pages/IntradayTrading';
 import ScreenerPage from './pages/Screener';
-import { DashboardPage } from './pages/Dashboard';
+import Dashboard from './pages/Dashboard';
 import PaperTradingPage from './pages/PaperTradingPage';
+import StockNewsPage from './pages/StockNewsPage';
+import SettingsPage from './pages/SettingsPage';
 import { UnderConstructionPage } from './pages/UnderConstruction';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
@@ -65,12 +67,14 @@ function App() {
                     <ProtectedRoute>
                         <RootLayout>
                             <Routes>
-                                <Route path="/" element={<DashboardPage />} />
+                                <Route path="/" element={<Dashboard />} />
                                 <Route path="/swing" element={<SwingTradingPage />} />
                                 <Route path="/intraday" element={<IntradayTradingPage />} />
                                 <Route path="/screener" element={<ScreenerPage />} />
                                 <Route path="/paper" element={<PaperTradingPage />} />
-                                <Route path="/tuner" element={<HyperTunerPage />} />
+                                <Route path="/news" element={<StockNewsPage />} />
+                                <Route path="/settings" element={<SettingsPage />} />
+                                <Route path="/tuner" element={<Navigate to="/settings" replace />} />
                                 <Route path="/geo" element={<GeoMapPage />} />
                                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                             </Routes>

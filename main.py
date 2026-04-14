@@ -999,6 +999,151 @@ async def force_sentiment_refresh(ticker: str):
     return _json_sanitize({"status": "refreshed", "ticker": ticker.upper(), "matrix": matrix})
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  Routes — News Feed (Dashboard + StockNewsPage)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/news/market")
+async def get_market_news(limit: int = 30):
+    """
+    Aggregated market news from multiple top NSE tickers + Google News RSS.
+    Powers the Dashboard news feed.
+    """
+    from utils.sentiment import get_sentiment
+    from utils.sentiment_scrapers import SentimentScrapers
+
+    FEATURED_TICKERS = [
+        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS",
+        "INFY.NS", "ICICIBANK.NS", "SBIN.NS",
+    ]
+
+    all_articles = []
+    seen_titles = set()
+
+    async def _fetch_ticker_news(ticker: str):
+        try:
+            loop = asyncio.get_event_loop()
+            score, articles = await loop.run_in_executor(None, get_sentiment, ticker)
+            return [(a, ticker) for a in articles]
+        except Exception as e:
+            logger.warning("News fetch failed for %s: %s", ticker, e)
+            return []
+
+    tasks = [_fetch_ticker_news(t) for t in FEATURED_TICKERS]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    for result in results:
+        if isinstance(result, list):
+            for article, ticker in result:
+                title = article.get("title", "")
+                if title and title not in seen_titles:
+                    seen_titles.add(title)
+                    all_articles.append({
+                        **article,
+                        "ticker": ticker,
+                    })
+
+    # Also fetch from Google News RSS (market-wide)
+    try:
+        loop = asyncio.get_event_loop()
+        def _google_news():
+            articles = SentimentScrapers.fetch_google_news("NSE India stock market")
+            return articles
+        google_news = await loop.run_in_executor(None, _google_news)
+        for a in google_news:
+            title = a.get("title", "")
+            if title and title not in seen_titles:
+                seen_titles.add(title)
+                all_articles.append({
+                    "title": a.get("title", ""),
+                    "url": a.get("url", ""),
+                    "source": a.get("source", "Google News"),
+                    "published": a.get("published", ""),
+                    "score": 0.0,
+                    "ticker": "MARKET",
+                })
+    except Exception as e:
+        logger.warning("Google News RSS fetch failed: %s", e)
+
+    def _parse_date(article):
+        try:
+            from datetime import datetime
+            pub = article.get("published", "")
+            return datetime.fromisoformat(pub.replace("Z", "+00:00"))
+        except Exception:
+            from datetime import datetime
+            return datetime.min
+
+    all_articles.sort(key=_parse_date, reverse=True)
+
+    return _json_sanitize({
+        "articles": all_articles[:limit],
+        "count": len(all_articles[:limit]),
+        "sources": list(set(a.get("ticker", "") for a in all_articles[:limit])),
+    })
+
+
+@app.get("/api/news/ticker/{ticker}")
+async def get_ticker_news_full(ticker: str, page: int = 1, limit: int = 20):
+    """
+    Full news feed for a specific ticker with sentiment scoring.
+    Powers the StockNewsPage.
+    """
+    from utils.sentiment_aggregator import SentimentAggregator
+
+    ticker = ticker.upper()
+    loop = asyncio.get_event_loop()
+
+    try:
+        matrix = await loop.run_in_executor(
+            None, SentimentAggregator.get_matrix_v3, ticker
+        )
+        all_items = matrix.get("layers", {}).get("news", {}).get("items", [])
+        start = (page - 1) * limit
+        end = start + limit
+
+        return _json_sanitize({
+            "ticker": ticker,
+            "news": all_items[start:end],
+            "total": len(all_items),
+            "page": page,
+            "aggregate_score": matrix.get("aggregate", {}).get("score", 0.0),
+            "aggregate_label": matrix.get("aggregate", {}).get("label", "NEUTRAL"),
+        })
+    except Exception as e:
+        logger.exception("Ticker news error for %s", ticker)
+        raise HTTPException(500, str(e))
+
+
+@app.get("/api/news/search")
+async def search_news(q: str, limit: int = 15):
+    """
+    Search news by keyword / company name.
+    Used by the StockNewsPage search bar.
+    """
+    from utils.sentiment_scrapers import SentimentScrapers
+
+    if not q or len(q.strip()) < 2:
+        raise HTTPException(400, "Query must be at least 2 characters")
+
+    query = q.strip()
+    loop = asyncio.get_event_loop()
+
+    try:
+        def _search():
+            return SentimentScrapers.fetch_google_news(query)
+        articles = await loop.run_in_executor(None, _search)
+
+        return _json_sanitize({
+            "query": query,
+            "articles": articles[:limit],
+            "count": min(len(articles), limit),
+        })
+    except Exception as e:
+        logger.exception("News search error for query: %s", q)
+        raise HTTPException(500, str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  Routes — Metadata
 # ─────────────────────────────────────────────────────────────────────────────
 

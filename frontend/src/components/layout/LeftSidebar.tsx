@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, Zap, Search, Triangle, MessageSquare, BookOpen, Settings, Plus, MapPin, Activity, ShieldAlert, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Zap, Search, Triangle, MessageSquare, BookOpen, Settings, Plus, MapPin, Activity, ShieldAlert, LogOut, User, Newspaper } from 'lucide-react';
 import { fetchTickerMetadata, TickerMetadata } from '../../api/api';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -10,7 +10,8 @@ const navItems = [
     { path: '/intraday', label: 'Intraday', icon: Zap },
     { path: '/screener', label: 'Screener', icon: Search },
     { path: '/paper', label: 'Paper Trading', icon: BookOpen },
-    { path: '/tuner', label: 'Hyper Tuner', icon: Settings },
+    { path: '/news', label: 'Stock News', icon: Newspaper },
+    { path: '/settings', label: 'Settings', icon: Settings },
     { path: '/geo', label: 'Geo Map', icon: MapPin },
 ];
 
