@@ -71,12 +71,8 @@ def _register(col: str, ftype: str) -> None:
 # 1. add_technical_indicators
 # ---------------------------------------------------------------------------
 def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    """Add 15 technical indicators using the pandas-ta library."""
+    """Add 15 technical indicators. Uses 'ta' library if available, otherwise manual fallbacks."""
     df = df.copy()
-
-    if not _HAS_TA:
-        logger.warning("'ta' library unavailable - skipping technical indicators.")
-        return df
 
     # Ensure we have Series, not DataFrames (in case of duplicate columns)
     def _to_series(s):
@@ -87,48 +83,95 @@ def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     lo  = _to_series(df["Low"])
     vol = _to_series(df["Volume"])
 
-    # ── RSI (14) -> RSI_14 ────────────────────────────────────────────────
-    df["RSI_14"] = _ta.momentum.RSIIndicator(close=c, window=14).rsi()
-    _register("RSI_14", "unknown")
+    if _HAS_TA:
+        # ── RSI (14) -> RSI_14 ────────────────────────────────────────────────
+        df["RSI_14"] = _ta.momentum.RSIIndicator(close=c, window=14).rsi()
+        _register("RSI_14", "unknown")
 
-    # ── MACD (12,26,9) -> MACD_12_26_9 / MACDh / MACDs ───────────────────
-    _macd = _ta.trend.MACD(close=c, window_fast=12, window_slow=26, window_sign=9)
-    df["MACD_12_26_9"]  = _macd.macd()
-    df["MACDh_12_26_9"] = _macd.macd_diff()    # histogram
-    df["MACDs_12_26_9"] = _macd.macd_signal()
-    for col in ["MACD_12_26_9", "MACDh_12_26_9", "MACDs_12_26_9"]:
-        _register(col, "unknown")
+        # ── MACD (12,26,9) -> MACD_12_26_9 / MACDh / MACDs ───────────────────
+        _macd = _ta.trend.MACD(close=c, window_fast=12, window_slow=26, window_sign=9)
+        df["MACD_12_26_9"]  = _macd.macd()
+        df["MACDh_12_26_9"] = _macd.macd_diff()
+        df["MACDs_12_26_9"] = _macd.macd_signal()
+        for col in ["MACD_12_26_9", "MACDh_12_26_9", "MACDs_12_26_9"]:
+            _register(col, "unknown")
 
-    # ── Bollinger Bands (20,2) -> BBL/BBM/BBU/BBB ─────────────────────────
-    _bb = _ta.volatility.BollingerBands(close=c, window=20, window_dev=2)
-    df["BBL_20_2"] = _bb.bollinger_lband()
-    df["BBM_20_2"] = _bb.bollinger_mavg()
-    df["BBU_20_2"] = _bb.bollinger_hband()
-    # Bandwidth = (upper - lower) / middle  (same as pandas-ta BBB)
-    df["BBB_20_2"] = _bb.bollinger_wband()      # already as % width
-    for col in ["BBL_20_2", "BBM_20_2", "BBU_20_2", "BBB_20_2"]:
-        _register(col, "unknown")
+        # ── Bollinger Bands (20,2) -> BBL/BBM/BBU/BBB ─────────────────────────
+        _bb = _ta.volatility.BollingerBands(close=c, window=20, window_dev=2)
+        df["BBL_20_2"] = _bb.bollinger_lband()
+        df["BBM_20_2"] = _bb.bollinger_mavg()
+        df["BBU_20_2"] = _bb.bollinger_hband()
+        df["BBB_20_2"] = _bb.bollinger_wband()
+        for col in ["BBL_20_2", "BBM_20_2", "BBU_20_2", "BBB_20_2"]:
+            _register(col, "unknown")
 
-    # ── ATR (14) -> ATR_14 ────────────────────────────────────────────────
-    df["ATR_14"] = _ta.volatility.AverageTrueRange(
-        high=h, low=lo, close=c, window=14
-    ).average_true_range()
-    _register("ATR_14", "unknown")
+        # ── ATR (14) -> ATR_14 ────────────────────────────────────────────────
+        df["ATR_14"] = _ta.volatility.AverageTrueRange(
+            high=h, low=lo, close=c, window=14
+        ).average_true_range()
+        _register("ATR_14", "unknown")
 
-    # ── OBV -> OBV ────────────────────────────────────────────────────────
-    df["OBV"] = _ta.volume.OnBalanceVolumeIndicator(
-        close=c, volume=vol
-    ).on_balance_volume()
-    _register("OBV", "unknown")
+        # ── OBV -> OBV ────────────────────────────────────────────────────────
+        df["OBV"] = _ta.volume.OnBalanceVolumeIndicator(
+            close=c, volume=vol
+        ).on_balance_volume()
+        _register("OBV", "unknown")
 
-    # ── Stochastic (14,3) -> STOCHk_14_3_3 / STOCHd_14_3_3 ───────────────
-    _stoch = _ta.momentum.StochasticOscillator(
-        high=h, low=lo, close=c, window=14, smooth_window=3
-    )
-    df["STOCHk_14_3_3"] = _stoch.stoch()
-    df["STOCHd_14_3_3"] = _stoch.stoch_signal()
-    for col in ["STOCHk_14_3_3", "STOCHd_14_3_3"]:
-        _register(col, "unknown")
+        # ── Stochastic (14,3) -> STOCHk_14_3_3 / STOCHd_14_3_3 ───────────────
+        _stoch = _ta.momentum.StochasticOscillator(
+            high=h, low=lo, close=c, window=14, smooth_window=3
+        )
+        df["STOCHk_14_3_3"] = _stoch.stoch()
+        df["STOCHd_14_3_3"] = _stoch.stoch_signal()
+        for col in ["STOCHk_14_3_3", "STOCHd_14_3_3"]:
+            _register(col, "unknown")
+            
+    else:
+        logger.warning("Using MANUAL indicator fallbacks (ta library missing).")
+        # ── RSI Manual Fallback ───────────────────────────────────────────
+        delta = c.diff()
+        up = delta.clip(lower=0)
+        down = -1 * delta.clip(upper=0)
+        ema_up = up.ewm(com=13, adjust=False).mean()
+        ema_down = down.ewm(com=13, adjust=False).mean()
+        rs = ema_up / (ema_down + 1e-9)
+        df["RSI_14"] = 100 - (100 / (1 + rs))
+        _register("RSI_14", "unknown")
+
+        # ── MACD Manual Fallback ──────────────────────────────────────────
+        ema12 = c.ewm(span=12, adjust=False).mean()
+        ema26 = c.ewm(span=26, adjust=False).mean()
+        df["MACD_12_26_9"] = ema12 - ema26
+        df["MACDs_12_26_9"] = df["MACD_12_26_9"].ewm(span=9, adjust=False).mean()
+        df["MACDh_12_26_9"] = df["MACD_12_26_9"] - df["MACDs_12_26_9"]
+        for col in ["MACD_12_26_9", "MACDh_12_26_9", "MACDs_12_26_9"]:
+            _register(col, "unknown")
+
+        # ── Bollinger Bands Manual Fallback ───────────────────────────────
+        df["BBM_20_2"] = c.rolling(window=20).mean()
+        std = c.rolling(window=20).std()
+        df["BBU_20_2"] = df["BBM_20_2"] + (std * 2)
+        df["BBL_20_2"] = df["BBM_20_2"] - (std * 2)
+        df["BBB_20_2"] = (df["BBU_20_2"] - df["BBL_20_2"]) / (df["BBM_20_2"] + 1e-9)
+        for col in ["BBL_20_2", "BBM_20_2", "BBU_20_2", "BBB_20_2"]:
+            _register(col, "unknown")
+
+        # ── ATR Manual Fallback ──────────────────────────────────────────
+        tr = np.maximum(h - lo, np.maximum(abs(h - c.shift(1)), abs(lo - c.shift(1))))
+        df["ATR_14"] = tr.rolling(window=14).mean()
+        _register("ATR_14", "unknown")
+
+        # ── OBV Manual Fallback ──────────────────────────────────────────
+        df["OBV"] = (np.sign(c.diff()) * vol).fillna(0).cumsum()
+        _register("OBV", "unknown")
+
+        # ── Stochastic Manual Fallback ────────────────────────────────────
+        low_min  = lo.rolling(window=14).min()
+        high_max = h.rolling(window=14).max()
+        df["STOCHk_14_3_3"] = 100 * (c - low_min) / (high_max - low_min + 1e-9)
+        df["STOCHd_14_3_3"] = df["STOCHk_14_3_3"].rolling(window=3).mean()
+        for col in ["STOCHk_14_3_3", "STOCHd_14_3_3"]:
+            _register(col, "unknown")
 
     added = [c for c in df.columns if c in FEATURE_TYPES]
     logger.info("add_technical_indicators: added %d indicator columns.", len(added))
