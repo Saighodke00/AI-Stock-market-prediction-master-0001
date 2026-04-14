@@ -237,7 +237,7 @@ export const PatternSignalSummary: React.FC<Props> = ({
       
       <div 
         style={{
-          boxShadow: \`0 8px 32px 0 \${cfg.dimGlow}\`,
+          boxShadow: `0 8px 32px 0 ${cfg.dimGlow}`,
           borderColor: cfg.border
         }}
         className="w-full bg-slate-900 border rounded-xl p-6 relative overflow-hidden text-white flex flex-col gap-6"
