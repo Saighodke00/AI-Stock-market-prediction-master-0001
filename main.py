@@ -19,6 +19,9 @@ console.print("\n[bold cyan]^ APEX AI: Core import sequence initiated...[/bold c
 import warnings
 warnings.filterwarnings("ignore", message=".*urllib3.*", category=Warning)
 warnings.filterwarnings("ignore", category=UserWarning, module="requests")
+# Suppress deprecated tf.lite.Interpreter warning (scheduled for TF 2.20 deletion)
+warnings.filterwarnings("ignore", message=".*tf\.lite\.Interpreter is deprecated.*", category=UserWarning)
+warnings.filterwarnings("ignore", message=".*_INTERPRETER_DELETION_WARNING.*", category=UserWarning)
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -269,7 +272,7 @@ def _load_all_models() -> None:
                 _state.tflite_models[key] = _tflite_interp(fpath)
                 logger.info("TFLite loaded: %s", key)
             except Exception as exc:
-                logger.warning("TFLite skip (%s): %s", fname, exc)
+                logger.debug("TFLite skip (%s): %s", fname, exc)
         elif fname.endswith(".ckpt"):
             from train_tft import load_model, _HAS_PTF
             if _HAS_PTF:
