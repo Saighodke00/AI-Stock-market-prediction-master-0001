@@ -73,6 +73,7 @@ from utils.sentiment import get_sentiment
 from utils.risk_manager import RiskManager
 from reasoning import get_explanation
 from utils.pattern_recognition import detect_all_patterns
+from models import init_db
 
 # Setup high-fidelity logging with Rich
 logging.basicConfig(
@@ -310,7 +311,14 @@ async def _load_resources_bg():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("APEX AI v3.0 starting (background resources load) …")
+    logger.info("APEX AI v3.0 starting (initializing database resources)...")
+    try:
+        init_db()
+        logger.info("  [OK] Database tables verified/created.")
+    except Exception as e:
+        logger.error(f"  [!!] Database initialization failed: {e}")
+    
+    logger.info("APEX AI v3.0 starting (background resources load) .")
     
     # 0. Check Network Connectivity
     conn_status = check_connectivity()
