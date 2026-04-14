@@ -43,4 +43,4 @@ COPY main.py .
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 EXPOSE 9001
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9001", "--workers", "4"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-9001} --workers 4"]
