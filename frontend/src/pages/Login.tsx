@@ -36,7 +36,7 @@ export default function Login() {
             <Lock className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-bold font-display tracking-wider">USER LOGIN</h2>
-          <p className="text-gray-400 mt-2">Enter your credentials to access the terminal</p>
+          <p className="text-secondary mt-2">Enter your credentials to access the terminal</p>
         </div>
 
         {error && (
@@ -48,9 +48,9 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Username / Email</label>
+            <label className="block text-sm font-medium text-secondary mb-1">Username / Email</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
                 <UserIcon className="h-5 w-5" />
               </div>
               <input 
@@ -65,9 +65,9 @@ export default function Login() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Password</label>
+            <label className="block text-sm font-medium text-secondary mb-1">Password</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
                 <Lock className="h-5 w-5" />
               </div>
               <input 
@@ -90,7 +90,7 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-400">
+        <p className="mt-6 text-center text-sm text-secondary">
           New operative? <Link to="/signup" className="text-blue-400 hover:text-blue-300 transition-colors">Create Account</Link>
         </p>
       </div>

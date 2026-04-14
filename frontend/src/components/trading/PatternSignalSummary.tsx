@@ -240,11 +240,11 @@ export const PatternSignalSummary: React.FC<Props> = ({
           boxShadow: `0 8px 32px 0 ${cfg.dimGlow}`,
           borderColor: cfg.border
         }}
-        className="w-full bg-slate-900 border rounded-xl p-6 relative overflow-hidden text-white flex flex-col gap-6"
+        className="w-full bg-base border rounded-xl p-6 relative overflow-hidden text-white flex flex-col gap-6"
       >
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 z-10 relative">
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black tracking-[0.2em] uppercase text-slate-500">
+            <span className="text-[10px] font-black tracking-[0.2em] uppercase text-muted">
               Pattern Consensus Signal
             </span>
             <div className="flex items-center gap-3">
@@ -256,30 +256,30 @@ export const PatternSignalSummary: React.FC<Props> = ({
                 {cfg.label}
               </h2>
             </div>
-            <span className="text-xs text-slate-400 mt-1">{cfg.tagline}</span>
+            <span className="text-xs text-secondary mt-1">{cfg.tagline}</span>
           </div>
           
           <div className="flex flex-col gap-2 min-w-[200px]">
             <div className="flex justify-between items-center text-xs font-bold font-display">
               <span className="text-emerald-400">Bull {consensus.bullScore}%</span>
-              <span className="text-slate-500">Hold</span>
+              <span className="text-muted">Hold</span>
               <span className="text-rose-500">Bear {consensus.bearScore}%</span>
             </div>
             <SplitBar bull={consensus.bullScore} bear={consensus.bearScore} />
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] p-4 rounded-lg border border-white/5 z-10 relative">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] p-4 rounded-lg border border-dim z-10 relative">
           <div className="flex items-center gap-2">
             <span className="text-xl">{consensus.dominantEmoji}</span>
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Dominant Pattern</span>
+              <span className="text-[10px] text-muted uppercase tracking-wider font-bold">Dominant Pattern</span>
               <span className="text-sm font-medium">{consensus.dominantPattern}</span>
             </div>
           </div>
-          <div className="h-8 w-px bg-white/10 hidden sm:block"></div>
+          <div className="h-8 w-px bg-border-mid hidden sm:block"></div>
           <div className="flex flex-col sm:items-end">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Total Signatures</span>
+            <span className="text-[10px] text-muted uppercase tracking-wider font-bold">Total Signatures</span>
             <span className="text-sm font-medium text-emerald-400">{consensus.totalPatterns} detected</span>
           </div>
         </div>

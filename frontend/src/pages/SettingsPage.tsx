@@ -65,10 +65,10 @@ const GateSlider: React.FC<{
     <div className="mb-5">
       <div className="flex justify-between items-center mb-1.5">
         <div>
-          <div className="text-[13px] font-bold font-data text-text-primary">{label}</div>
-          <div className="text-[10px] text-text-muted mt-0.5">{description}</div>
+          <div className="text-[13px] font-bold font-data text-primary">{label}</div>
+          <div className="text-[10px] text-muted mt-0.5">{description}</div>
         </div>
-        <span className={"text-sm font-bold font-data  bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-md min-w-[64px] text-center"}>
+        <span className={`text-sm font-bold font-data bg-white/5 border border-mid px-2.5 py-0.5 rounded-md min-w-[64px] text-center ${colorClass}`}>
           {formatValue ? formatValue(value) : fmt(value)}
         </span>
       </div>
@@ -86,14 +86,14 @@ const GateSlider: React.FC<{
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0"
         />
         <div 
-          className={"absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 border-bg-base pointer-events-none `}
-          style={{ left: ${pct}%, boxShadow: "0 0 8px currentColor" }}
+          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 border-bg-base pointer-events-none ${bgFillClass} ${colorClass}`}
+          style={{ left: `${pct}%`, boxShadow: "0 0 8px currentColor" }}
         />
       </div>
 
       <div className="flex justify-between mt-1">
-        <span className="text-[9px] text-text-muted font-data">{min}</span>
-        <span className="text-[9px] text-text-muted font-data">{max}</span>
+        <span className="text-[9px] text-muted font-data">{min}</span>
+        <span className="text-[9px] text-muted font-data">{max}</span>
       </div>
     </div>
   );
@@ -145,7 +145,7 @@ const HyperTunerSection: React.FC = () => {
     setLoading(true);
     setBacktestResult(null);
     try {
-      const res = await fetch(/api/tuner/backtest?ticker=.NS);
+      const res = await fetch(`/api/tuner/backtest?ticker=${backtestTicker}`);
       if (res.ok) setBacktestResult(await res.json());
     } catch {}
     setLoading(false);
@@ -155,7 +155,7 @@ const HyperTunerSection: React.FC = () => {
     setLoading(true);
     setOptimizeResult(null);
     try {
-      const res = await fetch(/api/tuner/optimize?ticker=.NS);
+      const res = await fetch(`/api/tuner/optimize?ticker=${backtestTicker}`);
       if (res.ok) {
         const d: OptimizeResult = await res.json();
         setOptimizeResult(d);
@@ -180,12 +180,14 @@ const HyperTunerSection: React.FC = () => {
   return (
     <div>
       {/* Sub-tab bar */}
-      <div className="flex gap-2 mb-6 border-b border-border-dim pb-4">
+      <div className="flex gap-2 mb-6 border-b border-dim pb-4">
         {subTabs.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveSubTab(t.id)}
-            className={"flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border font-data text-xs transition-all "}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border font-data text-xs transition-all ${
+              activeSubTab === t.id ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' : 'bg-white/5 border-dim text-muted hover:text-primary'
+            }`}
           >
             {t.icon} {t.label}
           </button>
@@ -195,7 +197,7 @@ const HyperTunerSection: React.FC = () => {
       {/* ── Thresholds Tab ─────────────────────────────────────────────────── */}
       {activeSubTab === "thresholds" && localConfig && (
         <div className="animate-page-in">
-          <div className="bg-cyan/5 border border-cyan/10 rounded-lg p-4 mb-6 text-xs text-text-secondary leading-relaxed">
+          <div className="bg-cyan/5 border border-cyan/10 rounded-lg p-4 mb-6 text-xs text-secondary leading-relaxed">
             <strong className="text-cyan">Gate System:</strong> The 3-Gate engine vetoes any signal that doesn't pass all three checks — Cone Width (model certainty), Sentiment (news alignment), and RSI (technical momentum). Adjust these thresholds to be more strict or permissive.
           </div>
 
@@ -226,7 +228,7 @@ const HyperTunerSection: React.FC = () => {
               value={localConfig.sent_buy_min}
               min={-0.30} max={0.30} step={0.01}
               onChange={v => updateGate("sent_buy_min", v)}
-              formatValue={v => v >= 0 ? + : fmt(v)}
+              formatValue={v => v >= 0 ? `+${fmt(v)}` : fmt(v)}
               colorClass="text-amber"
               bgFillClass="bg-amber"
             />
@@ -252,7 +254,7 @@ const HyperTunerSection: React.FC = () => {
               value={localConfig.rsi_buy_lo}
               min={20} max={55} step={1}
               onChange={v => updateGate("rsi_buy_lo", v)}
-              formatValue={v => ${v}}
+              formatValue={v => `${v}`}
               colorClass="text-emerald"
               bgFillClass="bg-emerald"
             />
@@ -262,7 +264,7 @@ const HyperTunerSection: React.FC = () => {
               value={localConfig.rsi_buy_hi}
               min={60} max={90} step={1}
               onChange={v => updateGate("rsi_buy_hi", v)}
-              formatValue={v => ${v}}
+              formatValue={v => `${v}`}
               colorClass="text-emerald"
               bgFillClass="bg-emerald"
             />
@@ -272,7 +274,11 @@ const HyperTunerSection: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={saveStatus === "saving"}
-            className={"w-full flex items-center justify-center gap-2 p-3 rounded-xl font-data text-sm font-bold transition-all "}
+            className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl font-data text-sm font-bold transition-all ${
+              saveStatus === 'saved' ? 'bg-emerald/10 border-emerald-500 text-emerald' : 
+              saveStatus === 'error' ? 'bg-rose/10 border-rose-500 text-rose' :
+              'bg-cyan/10 border border-cyan/30 text-cyan hover:bg-cyan/20'
+            }`}
           >
             {saveStatus === "saving" ? <><RefreshCw size={14} className="animate-spin" /> Saving...</>
               : saveStatus === "saved" ? <><CheckCircle2 size={14} /> Saved Successfully</>
@@ -286,13 +292,13 @@ const HyperTunerSection: React.FC = () => {
       {activeSubTab === "backtest" && (
         <div className="animate-page-in">
           <div className="flex flex-wrap gap-2 mb-6">
-            <div className="flex-1 flex items-center gap-2 bg-white/5 border border-border-dim rounded-lg px-3 py-2 focus-within:border-border-bright">
-              <Activity size={13} className="text-text-muted" />
+            <div className="flex-1 flex items-center gap-2 bg-white/5 border border-dim rounded-lg px-3 py-2 focus-within:border-bright">
+              <Activity size={13} className="text-muted" />
               <input
                 value={backtestTicker}
                 onChange={e => setBacktestTicker(e.target.value.toUpperCase())}
                 placeholder="Ticker (e.g. RELIANCE)"
-                className="w-full bg-transparent border-none outline-none text-text-primary text-sm font-data"
+                className="w-full bg-transparent border-none outline-none text-primary text-sm font-data"
               />
             </div>
             <button
@@ -307,14 +313,14 @@ const HyperTunerSection: React.FC = () => {
           {backtestResult && (
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Win Rate", value: ${fmt(backtestResult.win_rate)}%, good: backtestResult.win_rate >= 50 },
-                { label: "Total Return", value: ${backtestResult.total_return_pct >= 0 ? "+" : ""}%, good: backtestResult.total_return_pct >= 0 },
-                { label: "Total Trades", value: backtestResult.total_trades, good: null },
-                { label: "Avg Trade", value: ${fmt(backtestResult.avg_trade_pct)}%, good: backtestResult.avg_trade_pct >= 0 },
+                { label: "Win Rate", value: `${fmt(backtestResult.win_rate)}%`, good: backtestResult.win_rate >= 50 },
+                { label: "Total Return", value: `${backtestResult.total_return_pct >= 0 ? "+" : ""}${fmt(backtestResult.total_return_pct)}%`, good: backtestResult.total_return_pct >= 0 },
+                { label: "Total Trades", value: backtestResult.total_trades.toString(), good: null },
+                { label: "Avg Trade", value: `${fmt(backtestResult.avg_trade_pct)}%`, good: backtestResult.avg_trade_pct >= 0 },
               ].map(stat => (
                 <div key={stat.label} className="glass-card p-4 rounded-xl">
-                  <div className="text-[10px] text-text-muted font-data mb-1.5">{stat.label}</div>
-                  <div className={"text-xl font-bold font-data `}>
+                  <div className="text-[10px] text-muted font-data mb-1.5">{stat.label}</div>
+                  <div className={`text-xl font-bold font-data ${stat.good === null ? 'text-primary' : stat.good ? 'text-emerald' : 'text-rose'}`}>
                     {stat.value}
                   </div>
                 </div>
@@ -323,7 +329,7 @@ const HyperTunerSection: React.FC = () => {
           )}
 
           {!backtestResult && !loading && (
-            <div className="py-12 text-center text-text-muted">
+            <div className="py-12 text-center text-muted">
               <BarChart2 size={36} className="mx-auto mb-3 opacity-40" />
               <p className="font-data text-sm">
                 Enter a ticker and run backtest to evaluate current gate thresholds.
@@ -341,13 +347,13 @@ const HyperTunerSection: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-6">
-            <div className="flex-1 flex items-center gap-2 bg-white/5 border border-border-dim rounded-lg px-3 py-2 focus-within:border-border-bright">
-              <Activity size={13} className="text-text-muted" />
+            <div className="flex-1 flex items-center gap-2 bg-white/5 border border-dim rounded-lg px-3 py-2 focus-within:border-bright">
+              <Activity size={13} className="text-muted" />
               <input
                 value={backtestTicker}
                 onChange={e => setBacktestTicker(e.target.value.toUpperCase())}
                 placeholder="Ticker (e.g. RELIANCE)"
-                className="w-full bg-transparent border-none outline-none text-text-primary text-sm font-data"
+                className="w-full bg-transparent border-none outline-none text-primary text-sm font-data"
               />
             </div>
             <button
@@ -371,13 +377,13 @@ const HyperTunerSection: React.FC = () => {
                 <CheckCircle2 size={32} className="text-emerald" />
               </div>
 
-              <div className="text-xs text-text-muted font-data mb-2.5">
+              <div className="text-xs text-muted font-data mb-2.5">
                 Optimal thresholds (auto-applied above):
               </div>
               <div className="flex flex-col gap-1.5">
                 {Object.entries(optimizeResult.best_config).map(([key, val]) => (
-                  <div key={key} className="flex justify-between bg-white/5 border border-border-dim rounded-lg px-3 py-2.5">
-                    <span className="text-xs font-data text-text-secondary">{key}</span>
+                  <div key={key} className="flex justify-between bg-white/5 border border-dim rounded-lg px-3 py-2.5">
+                    <span className="text-xs font-data text-secondary">{key}</span>
                     <span className="text-xs font-bold font-data text-indigo-400">{fmt(val as number)}</span>
                   </div>
                 ))}
@@ -414,13 +420,13 @@ const AboutSection: React.FC = () => {
           ⚡
         </div>
         <div>
-          <div className="text-xl font-black font-display text-text-primary tracking-wide">
+          <div className="text-xl font-black font-display text-primary tracking-wide">
             APEX AI
           </div>
           <div className="text-xs text-cyan font-data mt-0.5">
             v{health?.version ?? "3.0.2"} — Advanced Stock Market Intelligence
           </div>
-          <div className="text-[11px] text-text-muted mt-1">
+          <div className="text-[11px] text-muted mt-1">
             AI-powered trading signals for the NSE Indian market
           </div>
         </div>
@@ -428,8 +434,8 @@ const AboutSection: React.FC = () => {
 
       {/* System Status */}
       {health && (
-        <div className="glass border border-border-mid rounded-xl p-5 mb-5">
-          <div className="text-[10px] tracking-widest text-text-muted font-data mb-3.5 uppercase">
+        <div className="glass border border-mid rounded-xl p-5 mb-5">
+          <div className="text-[10px] tracking-widest text-muted font-data mb-3.5 uppercase">
             System Status
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -439,9 +445,9 @@ const AboutSection: React.FC = () => {
               { label: "TFLite Models", value: health.tflite_models?.length ?? 0, good: null },
               { label: "Companies DB", value: health.geo_count ?? 0, good: null },
             ].map(s => (
-              <div key={s.label} className="bg-white/5 border border-border-dim rounded-lg px-3 py-2.5">
-                <div className="text-[9px] text-text-muted font-data">{s.label}</div>
-                <div className={"text-sm font-bold font-data mt-0.5 `}>
+              <div key={s.label} className="bg-white/5 border border-dim rounded-lg px-3 py-2.5">
+                <div className="text-[9px] text-muted font-data">{s.label}</div>
+                <div className={`text-sm font-bold font-data mt-0.5 ${s.good === null ? 'text-primary' : s.good ? 'text-emerald' : 'text-rose'}`}>
                   {s.value}
                 </div>
               </div>
@@ -451,8 +457,8 @@ const AboutSection: React.FC = () => {
       )}
 
       {/* Team */}
-      <div className="glass border border-border-mid rounded-xl p-5">
-        <div className="text-[10px] tracking-widest text-text-muted font-data mb-3.5 uppercase">
+      <div className="glass border border-mid rounded-xl p-5">
+        <div className="text-[10px] tracking-widest text-muted font-data mb-3.5 uppercase">
           Built By
         </div>
         <div className="flex flex-col">
@@ -461,13 +467,13 @@ const AboutSection: React.FC = () => {
             { name: "Sunraj Shetty", role: "Quantitative Analyst" },
             { name: "Siddhartha Vijay Bhosale", role: "Full-Stack Engineer" },
           ].map(m => (
-            <div key={m.name} className="flex items-center gap-3 py-2.5 border-b border-border-dim last:border-0">
+            <div key={m.name} className="flex items-center gap-3 py-2.5 border-b border-dim last:border-0">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-700 to-teal-700 flex items-center justify-center text-xs font-bold text-white shadow-md">
                 {m.name[0]}
               </div>
               <div>
-                <div className="text-xs font-bold text-text-primary">{m.name}</div>
-                <div className="text-[10px] text-text-muted font-data mt-0.5">{m.role}</div>
+                <div className="text-xs font-bold text-primary">{m.name}</div>
+                <div className="text-[10px] text-muted font-data mt-0.5">{m.role}</div>
               </div>
             </div>
           ))}
@@ -496,15 +502,15 @@ const SettingsPage: React.FC = () => {
       <div className="grid md:grid-cols-[240px_1fr] min-h-[calc(100vh-64px)]">
         
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
-        <div className="border-r border-border-dim bg-white/[0.01] py-8 flex flex-col">
+        <div className="border-r border-dim bg-white/[0.01] py-8 flex flex-col">
           <div className="px-6 mb-6">
             <div className="flex items-center gap-2 mb-1">
               <Settings size={16} className="text-cyan" />
-              <span className="text-sm font-bold font-display tracking-widest text-text-primary uppercase">
+              <span className="text-sm font-bold font-display tracking-widest text-primary uppercase">
                 SETTINGS
               </span>
             </div>
-            <div className="text-[10px] text-text-muted font-data">
+            <div className="text-[10px] text-muted font-data">
               APEX AI Configuration Hub
             </div>
           </div>
@@ -514,7 +520,9 @@ const SettingsPage: React.FC = () => {
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                className={"w-full px-6 py-3 flex items-center gap-2.5 font-data text-[13px] transition-all text-left border-l-2 "}
+                className={`w-full px-6 py-3 flex items-center gap-2.5 font-data text-[13px] transition-all text-left border-l-2 ${
+                  activeTab === t.id ? 'border-cyan bg-cyan/5 text-cyan' : 'border-transparent text-muted hover:text-primary hover:bg-white/5'
+                }`}
               >
                 {t.icon} {t.label}
                 {activeTab === t.id && <ChevronRight size={12} className="ml-auto opacity-50" />}
@@ -522,8 +530,8 @@ const SettingsPage: React.FC = () => {
             ))}
 
             {/* Quick links */}
-            <div className="px-6 pt-5 mt-5 border-t border-border-dim">
-              <div className="text-[9px] tracking-widest text-text-muted font-data mb-2.5 uppercase">
+            <div className="px-6 pt-5 mt-5 border-t border-dim">
+              <div className="text-[9px] tracking-widest text-muted font-data mb-2.5 uppercase">
                 QUICK LINKS
               </div>
               {[
@@ -534,7 +542,7 @@ const SettingsPage: React.FC = () => {
                 <button
                   key={l.label}
                   onClick={() => navigate(l.path)}
-                  className="w-full py-2 bg-transparent border-none flex items-center gap-2 text-text-muted font-data text-xs hover:text-cyan transition-colors"
+                  className="w-full py-2 bg-transparent border-none flex items-center gap-2 text-muted font-data text-xs hover:text-cyan transition-colors"
                 >
                   {l.icon} {l.label}
                 </button>
@@ -559,7 +567,7 @@ const SettingsPage: React.FC = () => {
         <div className="p-8 md:p-10 max-h-[100vh] overflow-y-auto custom-scrollbar">
           {/* Section header */}
           <div className="mb-7">
-            <h2 className="m-0 text-xl font-display font-bold text-text-primary tracking-wide">
+            <h2 className="m-0 text-xl font-display font-bold text-primary tracking-wide">
               {tabs.find(t => t.id === activeTab)?.label}
             </h2>
             <div className="h-[1px] bg-border-dim mt-4" />
@@ -571,15 +579,17 @@ const SettingsPage: React.FC = () => {
             {activeTab === "about" && <AboutSection />}
             {activeTab === "account" && (
               <div className="animate-page-in">
-                <div className="glass border border-border-mid rounded-xl p-6">
+                <div className="glass border border-mid rounded-xl p-6">
                   <div className="flex items-center gap-4 mb-5">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-700 to-teal-700 flex items-center justify-center text-xl font-bold text-white shadow-md">
                       {user?.username?.[0]?.toUpperCase() ?? "?"}
                     </div>
                     <div>
-                      <div className="text-base font-bold text-text-primary">{user?.username ?? "Guest"}</div>
-                      <div className="text-xs text-text-muted font-data">{user?.email ?? ""}</div>
-                      <div className={"inline-block mt-1 text-[9px] px-2 py-0.5 rounded font-data tracking-widest uppercase `}>
+                      <div className="text-base font-bold text-primary">{user?.username ?? "Guest"}</div>
+                      <div className="text-xs text-muted font-data">{user?.email ?? ""}</div>
+                      <div className={`inline-block mt-1 text-[9px] px-2 py-0.5 rounded font-data tracking-widest uppercase ${
+                        user?.role === 'ADMIN' ? 'bg-rose/10 text-rose border border-rose/20' : 'bg-cyan/10 text-cyan border border-cyan/20'
+                      }`}>
                         {user?.role ?? "USER"}
                       </div>
                     </div>
@@ -596,7 +606,7 @@ const SettingsPage: React.FC = () => {
               </div>
             )}
             {activeTab === "system" && (
-              <div className="text-text-muted font-data text-sm animate-page-in">
+              <div className="text-muted font-data text-sm animate-page-in">
                 <p>System diagnostics and model info will appear here.</p>
                 <p className="mt-2">Navigate to <strong className="text-cyan font-bold">/api/health</strong> to see full system status.</p>
               </div>

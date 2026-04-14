@@ -50,7 +50,7 @@ export const SentimentGauge: React.FC<SentimentGaugeProps> = ({ score }) => {
             </svg>
 
             {/* Needle Center Pivot */}
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-4 bg-void border-2 border-slate-700 rounded-full z-20" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-4 bg-void border-2 border-mid rounded-full z-20" />
 
             {/* Needle */}
             <div 

@@ -27,12 +27,12 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-base text-text-primary flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-base text-primary flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Decor */}
       <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan/5 rounded-full blur-[120px] pointer-events-none" />
       
-      <div className="max-w-md w-full glass-card p-10 relative z-10 border border-white/5 shadow-2xl animate-page-in">
+      <div className="max-w-md w-full glass-card p-10 relative z-10 border border-dim shadow-2xl animate-page-in">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-emerald/10 border border-emerald/30 text-emerald mb-6 shadow-lg shadow-emerald/10 -rotate-3 hover:rotate-0 transition-transform duration-500">
             <ShieldCheck className="w-10 h-10" />
@@ -40,7 +40,7 @@ export default function Signup() {
           <h2 className="text-3xl font-display font-black tracking-tighter uppercase leading-none">
             APEX <span className="text-emerald glow-emerald">REGISTRY</span>
           </h2>
-          <p className="text-text-muted font-data-tiny uppercase tracking-[0.2em] mt-3">
+          <p className="text-muted font-data-tiny uppercase tracking-[0.2em] mt-3">
             New operative enlistment
           </p>
         </div>
@@ -54,9 +54,9 @@ export default function Signup() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <label className="font-data-tiny text-text-muted uppercase tracking-widest ml-1">Agent Identifier</label>
+            <label className="font-data-tiny text-muted uppercase tracking-widest ml-1">Agent Identifier</label>
             <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted group-focus-within:text-emerald transition-colors">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted group-focus-within:text-emerald transition-colors">
                 <UserIcon className="h-4 w-4" />
               </div>
               <input 
@@ -64,16 +64,16 @@ export default function Signup() {
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 required
-                className="w-full bg-white/5 border border-border-dim focus:border-emerald/50 focus:ring-0 rounded-xl py-3 pl-11 pr-4 text-text-primary font-data text-sm placeholder-text-muted/30 transition-all"
+                className="w-full bg-white/5 border border-dim focus:border-emerald/50 focus:ring-0 rounded-xl py-3 pl-11 pr-4 text-primary font-data text-sm placeholder-text-muted/30 transition-all"
                 placeholder="neo"
               />
             </div>
           </div>
           
           <div className="space-y-2">
-            <label className="font-data-tiny text-text-muted uppercase tracking-widest ml-1">Comms Link (Email)</label>
+            <label className="font-data-tiny text-muted uppercase tracking-widest ml-1">Comms Link (Email)</label>
             <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted group-focus-within:text-emerald transition-colors">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted group-focus-within:text-emerald transition-colors">
                 <Mail className="h-4 w-4" />
               </div>
               <input 
@@ -81,16 +81,16 @@ export default function Signup() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                className="w-full bg-white/5 border border-border-dim focus:border-emerald/50 focus:ring-0 rounded-xl py-3 pl-11 pr-4 text-text-primary font-data text-sm placeholder-text-muted/30 transition-all"
+                className="w-full bg-white/5 border border-dim focus:border-emerald/50 focus:ring-0 rounded-xl py-3 pl-11 pr-4 text-primary font-data text-sm placeholder-text-muted/30 transition-all"
                 placeholder="neo@matrix.com"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="font-data-tiny text-text-muted uppercase tracking-widest ml-1">Encryption Cipher</label>
+            <label className="font-data-tiny text-muted uppercase tracking-widest ml-1">Encryption Cipher</label>
             <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted group-focus-within:text-emerald transition-colors">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted group-focus-within:text-emerald transition-colors">
                 <Lock className="h-4 w-4" />
               </div>
               <input 
@@ -98,7 +98,7 @@ export default function Signup() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                className="w-full bg-white/5 border border-border-dim focus:border-emerald/50 focus:ring-0 rounded-xl py-3 pl-11 pr-4 text-text-primary font-data text-sm placeholder-text-muted/30 transition-all"
+                className="w-full bg-white/5 border border-dim focus:border-emerald/50 focus:ring-0 rounded-xl py-3 pl-11 pr-4 text-primary font-data text-sm placeholder-text-muted/30 transition-all"
                 placeholder="••••••••"
               />
             </div>
@@ -118,7 +118,7 @@ export default function Signup() {
         </form>
 
         <div className="mt-10 text-center">
-          <p className="text-xs font-data-small text-text-muted uppercase tracking-widest">
+          <p className="text-xs font-data-small text-muted uppercase tracking-widest">
             Already authorized? <Link to="/login" className="text-emerald hover:text-white transition-colors ml-1 font-bold underline decoration-emerald/30 underline-offset-4">Access Terminal</Link>
           </p>
         </div>

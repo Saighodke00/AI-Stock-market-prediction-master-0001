@@ -27,7 +27,7 @@ export const StreamlitView: React.FC<StreamlitViewProps> = ({ pageUrl, title }) 
             <h2 className="text-xl font-display font-black text-white tracking-widest uppercase animate-pulse">
               Initializing <span className="text-cyan">Neural Stream</span>
             </h2>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-[0.3em]">
+            <p className="text-[10px] font-mono font-bold text-muted uppercase tracking-[0.3em]">
               Synchronizing with Port 8501 // {title}
             </p>
           </div>
@@ -55,7 +55,7 @@ export const StreamlitView: React.FC<StreamlitViewProps> = ({ pageUrl, title }) 
         href={pageUrl} 
         target="_blank" 
         rel="noopener noreferrer"
-        className="absolute bottom-4 right-6 p-2 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-cyan hover:bg-cyan/10 hover:border-cyan/30 transition-all group z-40"
+        className="absolute bottom-4 right-6 p-2 bg-white/5 border border-mid rounded-lg text-muted hover:text-cyan hover:bg-cyan/10 hover:border-cyan/30 transition-all group z-40"
         title="Open in new tab"
       >
         <ExternalLink size={14} className="group-hover:scale-110 transition-transform" />

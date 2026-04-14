@@ -27,7 +27,7 @@ export const SentimentPanel: React.FC<SentimentPanelProps> = ({ data, gatePassed
     return (
         <div className="flex flex-col gap-6 mt-4">
             <div className="flex items-center justify-between">
-                <h3 className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Market Sentiment</h3>
+                <h3 className="text-[10px] font-bold text-muted tracking-[0.2em] uppercase font-body">Market Sentiment</h3>
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
                      <Globe className="w-3 h-3 text-indigo-400" />
                      <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">GLOBAL NLP</span>
@@ -69,16 +69,16 @@ export const SentimentPanel: React.FC<SentimentPanelProps> = ({ data, gatePassed
                             <div key={i} className="glass-card hover:bg-white/[0.04] p-3.5 group transition-all duration-300 relative overflow-hidden">
                                 <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${borderColor}`} />
                                 <div className="flex justify-between items-start gap-4">
-                                    <p className="font-body text-xs text-slate-300 font-semibold leading-relaxed line-clamp-2 group-hover:text-white transition-colors">
+                                    <p className="font-body text-xs text-secondary font-semibold leading-relaxed line-clamp-2 group-hover:text-white transition-colors">
                                         {item.title}
                                     </p>
-                                    <div className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-white/5 ${badgeColor}`}>
+                                    <div className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-mono font-bold border border-dim ${badgeColor}`}>
                                         {displayScore}
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold tracking-wider uppercase font-body mt-3">
+                                <div className="flex justify-between items-center text-[10px] text-muted font-bold tracking-wider uppercase font-body mt-3">
                                     <span className="flex items-center gap-1.5">
-                                        <div className="w-1 h-1 rounded-full bg-slate-700" />
+                                        <div className="w-1 h-1 rounded-full bg-white/10" />
                                         Neural V2
                                     </span>
                                     <span>{item.published ? new Date(item.published).toLocaleDateString('en-GB') : 'JUST NOW'}</span>

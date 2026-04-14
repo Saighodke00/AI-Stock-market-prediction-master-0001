@@ -20,7 +20,7 @@ export const XAIPanel: React.FC<XAIPanelProps> = ({ report, explanation }) => {
     return (
         <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
-                <h3 className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase font-body">Neural Drivers</h3>
+                <h3 className="text-[10px] font-bold text-muted tracking-[0.2em] uppercase font-body">Neural Drivers</h3>
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
                      <Brain className="w-3 h-3 text-indigo-400" />
                      <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">XAI ENGINE</span>
@@ -36,16 +36,16 @@ export const XAIPanel: React.FC<XAIPanelProps> = ({ report, explanation }) => {
                     return (
                         <div key={idx} className="flex flex-col gap-2 w-full group">
                             <div className="flex justify-between items-center w-full">
-                                <span className="font-body text-xs font-bold text-slate-300 group-hover:text-white transition-colors">{feat.feature}</span>
+                                <span className="font-body text-xs font-bold text-secondary group-hover:text-white transition-colors">{feat.feature}</span>
                                 <span className={`font-mono text-xs font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
                                     {isPositive ? '+' : ''}{((feat.impact || 0) * 100).toFixed(1)}%
                                 </span>
                             </div>
 
                             {/* Diverging Bar Chart */}
-                            <div className="w-full h-1.5 bg-white/[0.03] rounded-full relative flex items-center border border-white/5 overflow-hidden">
+                            <div className="w-full h-1.5 bg-white/[0.03] rounded-full relative flex items-center border border-dim overflow-hidden">
                                 {/* Center line */}
-                                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/10 z-10" />
+                                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border-mid z-10" />
 
                                 {/* Bar */}
                                 <div
@@ -62,7 +62,7 @@ export const XAIPanel: React.FC<XAIPanelProps> = ({ report, explanation }) => {
                 <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500/50" />
                 <div className="flex gap-3 items-start">
                     <Info className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-slate-400 font-medium font-body text-xs leading-relaxed italic">
+                    <p className="text-secondary font-medium font-body text-xs leading-relaxed italic">
                         {explanation}
                     </p>
                 </div>

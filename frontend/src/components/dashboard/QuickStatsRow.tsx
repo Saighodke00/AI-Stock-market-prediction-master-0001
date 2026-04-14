@@ -34,9 +34,9 @@ export const QuickStatsRow: React.FC = () => {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-6">
             {cards.map((card, i) => (
-                <div key={i} className="bg-surface border border-dim rounded-xl p-5 group hover:border-white/20 transition-all hover:shadow-2xl">
+                <div key={i} className="bg-surface border border-dim rounded-xl p-5 group hover:border-bright transition-all hover:shadow-2xl">
                     <div className="flex justify-between items-start mb-2">
-                        <div className={`p-2 bg-void/50 rounded-lg border border-white/5`}>
+                        <div className={`p-2 bg-void/50 rounded-lg border border-dim`}>
                             {card.icon}
                         </div>
                         <span className="font-data text-[10px] text-secondary tracking-widest uppercase">{card.label}</span>

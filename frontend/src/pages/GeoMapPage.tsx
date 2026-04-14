@@ -276,10 +276,10 @@ export const GeoMapPage: React.FC = () => {
                         <Globe className="text-cyan animate-spin-slow" size={18} />
                     </div>
                     <div>
-                        <div className="font-display font-black text-sm text-text-primary tracking-[0.15em] uppercase leading-none">
-                            Geo_Intelligence <span className="text-text-muted italic font-data text-[10px] ml-1 select-none">v3.5</span>
+                        <div className="font-display font-black text-sm text-primary tracking-[0.15em] uppercase leading-none">
+                            Geo_Intelligence <span className="text-muted italic font-data text-[10px] ml-1 select-none">v3.5</span>
                         </div>
-                        <div className="font-data text-[8px] text-text-muted tracking-widest uppercase mt-1 flex items-center gap-1.5">
+                        <div className="font-data text-[8px] text-muted tracking-widest uppercase mt-1 flex items-center gap-1.5">
                             <Activity size={8} className="text-emerald" />
                             {features.length} Nodes &middot; <span className="text-cyan">{activeDomainCount} Visible</span>
                         </div>
@@ -288,17 +288,17 @@ export const GeoMapPage: React.FC = () => {
 
                 <div className="hidden lg:flex flex-1 items-center justify-center gap-4 overflow-x-auto no-scrollbar mask-fade-edges">
                     {ALL_SECTORS.map((s) => (
-                        <div key={s} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all shrink-0">
+                        <div key={s} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.01] border border-dim hover:border-mid transition-all shrink-0">
                             <div className="w-1 h-1 rounded-full" style={{ background: SECTOR_COLORS[s], boxShadow: `0 0 6px ${SECTOR_COLORS[s]}` }} />
-                            <span className="text-[9px] font-black text-text-primary uppercase tracking-tight">{s}</span>
-                            <span className="text-[9px] font-data font-bold text-text-muted">{sectorStats[s] || 0}</span>
+                            <span className="text-[9px] font-black text-primary uppercase tracking-tight">{s}</span>
+                            <span className="text-[9px] font-data font-bold text-muted">{sectorStats[s] || 0}</span>
                         </div>
                     ))}
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-px bg-white/5" />
-                    <button onClick={() => window.location.reload()} className="p-2 rounded-lg bg-white/5 border border-border-dim text-text-muted hover:text-cyan transition-all">
+                    <div className="h-8 w-px bg-border-dim" />
+                    <button onClick={() => window.location.reload()} className="p-2 rounded-lg bg-white/5 border border-dim text-muted hover:text-cyan transition-all">
                         <RefreshCw size={14} />
                     </button>
                     <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-emerald/5 border border-emerald/10">
@@ -324,9 +324,9 @@ export const GeoMapPage: React.FC = () => {
 
             {/* Loading Overlay */}
             {loading && (
-                <div className="absolute inset-0 bg-bg-base/60 backdrop-blur-sm z-[2000] flex flex-col items-center justify-center gap-4">
+                <div className="absolute inset-0 bg-base/60 backdrop-blur-sm z-[2000] flex flex-col items-center justify-center gap-4">
                     <Activity className="text-cyan animate-pulse" size={48} />
-                    <span className="text-xs font-black text-text-primary uppercase tracking-[0.4em] animate-pulse">Syncing Neural Nodes...</span>
+                    <span className="text-xs font-black text-primary uppercase tracking-[0.4em] animate-pulse">Syncing Neural Nodes...</span>
                 </div>
             )}
         </div>

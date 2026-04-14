@@ -141,7 +141,7 @@ export const IntradayTradingPage: React.FC = () => {
                                 <AlertCircle className="w-10 h-10 text-rose" />
                             </div>
                             <h2 className="font-display font-black text-3xl text-white mb-4 tracking-tight">Neural Link Severed</h2>
-                            <p className="font-data text-text-secondary text-lg max-w-md leading-relaxed mb-8 font-medium">{error}</p>
+                            <p className="font-data text-secondary text-lg max-w-md leading-relaxed mb-8 font-medium">{error}</p>
                             <button
                                 onClick={() => window.location.reload()}
                                 className="flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-2xl font-display font-black text-xs tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-2xl shadow-rose-500/20 uppercase"
@@ -161,38 +161,38 @@ export const IntradayTradingPage: React.FC = () => {
                                 {/* ROW 1: Market Context & System Controls */}
                                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="flex items-center gap-3 bg-white/[0.03] border border-white/10 p-1.5 rounded-2xl backdrop-blur-md shadow-lg shrink-0">
-                                            <span className="text-[9px] font-black text-text-muted uppercase tracking-widest pl-3">Sector</span>
+                                        <div className="flex items-center gap-3 bg-white/[0.03] border border-mid p-1.5 rounded-2xl backdrop-blur-md shadow-lg shrink-0">
+                                            <span className="text-[9px] font-black text-muted uppercase tracking-widest pl-3">Sector</span>
                                             <select
                                                 value={selectedSector}
                                                 onChange={(e) => setSelectedSector(e.target.value)}
                                                 className="bg-transparent border-none text-white font-display font-bold text-xs pr-8 py-1.5 outline-none cursor-pointer hover:text-cyan transition-colors appearance-none"
                                             >
-                                                <option value="All" className="bg-slate-900">All Markets</option>
-                                                {tickerMetadata?.sectors.map((s: string) => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
+                                                <option value="All" className="bg-base">All Markets</option>
+                                                {tickerMetadata?.sectors.map((s: string) => <option key={s} value={s} className="bg-base">{s}</option>)}
                                             </select>
                                         </div>
 
                                         <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl shrink-0">
                                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
                                             <span className="font-display font-black text-sm text-indigo-300 tracking-wide whitespace-nowrap">{companyName}</span>
-                                            <span className="text-[9px] text-text-muted font-medium uppercase tracking-widest">NSE</span>
+                                            <span className="text-[9px] text-muted font-medium uppercase tracking-widest">NSE</span>
                                         </div>
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-3">
                                         <button 
                                             onClick={() => setIsScratchOpen(true)}
-                                            className="group flex items-center gap-3 bg-white/[0.03] border border-white/10 px-5 py-3 rounded-2xl font-display font-black text-[10px] tracking-widest text-text-secondary hover:text-white hover:bg-white/5 transition-all outline-none uppercase shrink-0"
+                                            className="group flex items-center gap-3 bg-white/[0.03] border border-mid px-5 py-3 rounded-2xl font-display font-black text-[10px] tracking-widest text-secondary hover:text-white hover:bg-white/5 transition-all outline-none uppercase shrink-0"
                                         >
                                             <Edit3 className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform" /> Scratch Pad
                                         </button>
 
                                         <button 
                                             onClick={() => setIsLive(!isLive)}
-                                            className={`flex items-center gap-2 px-5 py-3 rounded-2xl border transition-all duration-300 font-display text-[10px] font-black tracking-widest uppercase shrink-0 ${isLive ? 'bg-emerald/10 border-emerald/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'bg-white/[0.03] border-white/10 text-text-muted hover:border-white/20'}`}
+                                            className={`flex items-center gap-2 px-5 py-3 rounded-2xl border transition-all duration-300 font-display text-[10px] font-black tracking-widest uppercase shrink-0 ${isLive ? 'bg-emerald/10 border-emerald/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'bg-white/[0.03] border-mid text-muted hover:border-bright'}`}
                                         >
-                                            <div className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`} />
+                                            <div className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse' : 'bg-white/10'}`} />
                                             {isLive ? 'Live Sync Active' : 'Enable Live Sync'}
                                         </button>
                                         
@@ -207,25 +207,25 @@ export const IntradayTradingPage: React.FC = () => {
                                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                                     <div className="flex flex-wrap items-center gap-4">
                                         <div className="relative group shrink-0">
-                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-hover:text-cyan transition-colors">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-hover:text-cyan transition-colors">
                                                 <Search size={16} />
                                             </div>
                                             <select
                                                 value={ticker}
                                                 onChange={(e) => { setTicker(e.target.value); setSearchQuery(''); }}
-                                                className="bg-white/[0.03] border border-white/10 text-white font-display font-bold text-sm pl-12 pr-10 py-3 rounded-2xl focus:border-cyan/50 outline-none w-56 shadow-lg appearance-none cursor-pointer hover:bg-white/[0.05] transition-all"
+                                                className="bg-white/[0.03] border border-mid text-white font-display font-bold text-sm pl-12 pr-10 py-3 rounded-2xl focus:border-cyan/50 outline-none w-56 shadow-lg appearance-none cursor-pointer hover:bg-white/[0.05] transition-all"
                                             >
                                                 {filteredTickers.map((t: string) => (
-                                                    <option key={t} value={t} className="bg-slate-900">{t}</option>
+                                                    <option key={t} value={t} className="bg-base">{t}</option>
                                                 ))}
                                             </select>
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted group-hover:text-white transition-colors">
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted group-hover:text-white transition-colors">
                                                 <ChevronDown size={16} />
                                             </div>
                                         </div>
 
                                         <div className="relative shrink-0">
-                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
                                                 <Search size={14} />
                                             </div>
                                             <input
@@ -233,12 +233,12 @@ export const IntradayTradingPage: React.FC = () => {
                                                 placeholder="Search ticker…"
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                                className="bg-white/[0.03] border border-white/10 text-white font-display font-bold text-sm pl-10 pr-4 py-3 rounded-2xl focus:border-cyan/40 outline-none w-56 placeholder-slate-600 transition-all hover:border-white/20 shadow-lg"
+                                                className="bg-white/[0.03] border border-mid text-white font-display font-bold text-sm pl-10 pr-4 py-3 rounded-2xl focus:border-cyan/40 outline-none w-56 placeholder-slate-600 transition-all hover:border-bright shadow-lg"
                                             />
                                             {searchQuery && (
                                                 <button
                                                     onClick={() => setSearchQuery('')}
-                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-white transition-colors"
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition-colors"
                                                 >
                                                     ×
                                                 </button>
@@ -257,14 +257,14 @@ export const IntradayTradingPage: React.FC = () => {
                                 <div className="flex flex-wrap items-center gap-4 mt-2">
                                     <div className="flex items-center gap-2 shrink-0">
                                         <Activity className="w-3 h-3 text-cyan shadow-[0_0_8px_rgba(0,229,255,0.4)]" />
-                                        <span className="text-[9px] font-black text-text-muted uppercase tracking-widest whitespace-nowrap">Timeframe Cluster:</span>
+                                        <span className="text-[9px] font-black text-muted uppercase tracking-widest whitespace-nowrap">Timeframe Cluster:</span>
                                     </div>
-                                    <div className="flex flex-wrap bg-white/[0.03] border border-white/10 rounded-2xl p-1.5 backdrop-blur-md gap-1">
+                                    <div className="flex flex-wrap bg-white/[0.03] border border-mid rounded-2xl p-1.5 backdrop-blur-md gap-1">
                                         {['1m', '5m', '15m', '30m', '1h', '4h'].map(t => (
                                             <button
                                                 key={t}
                                                 onClick={() => setTf(t)}
-                                                className={`px-5 py-2 font-display text-[10px] font-black tracking-widest rounded-xl transition-all duration-300 uppercase shrink-0 ${tf === t ? 'bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'text-text-muted hover:text-white hover:bg-white/5'}`}
+                                                className={`px-5 py-2 font-display text-[10px] font-black tracking-widest rounded-xl transition-all duration-300 uppercase shrink-0 ${tf === t ? 'bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'text-muted hover:text-white hover:bg-white/5'}`}
                                             >
                                                 {t}
                                             </button>
@@ -307,7 +307,7 @@ export const IntradayTradingPage: React.FC = () => {
 
                 {/* RIGHT INTELLIGENCE SIDEBAR */}
                 {signal && !loading && !error && (
-                    <div className="w-[360px] hidden 2xl:block border-l border-white/5 right-sidebar-sticky p-6 bg-void/20 backdrop-blur-sm">
+                    <div className="w-[360px] hidden 2xl:block border-l border-dim right-sidebar-sticky p-6 bg-void/20 backdrop-blur-sm">
                         <div className="flex flex-col gap-8 relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-50">
                                 <Activity className="w-4 h-4 text-indigo-500 animate-pulse" />
@@ -315,14 +315,14 @@ export const IntradayTradingPage: React.FC = () => {
 
                             <SignalBadge action={signal.action} />
 
-                            <div className="w-full h-px bg-white/5" />
+                            <div className="w-full h-px bg-border-dim" />
 
                             {/* Guardrail Gates */}
                             {gateDisplay.length > 0 && (
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-center gap-2">
-                                        <ShieldCheck className="w-4 h-4 text-text-muted" />
-                                        <h3 className="text-[10px] font-bold text-text-muted tracking-[0.2em] uppercase font-data">Neural Guardrails</h3>
+                                        <ShieldCheck className="w-4 h-4 text-muted" />
+                                        <h3 className="text-[10px] font-bold text-muted tracking-[0.2em] uppercase font-data">Neural Guardrails</h3>
                                     </div>
                                     <div className="grid grid-cols-1 gap-3">
                                         {gateDisplay.map(g => (
@@ -332,20 +332,20 @@ export const IntradayTradingPage: React.FC = () => {
                                 </div>
                             )}
 
-                            <div className="w-full h-px bg-white/5" />
+                            <div className="w-full h-px bg-border-dim" />
 
                             <div className="flex flex-col gap-4">
                                 <div className="flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                    <h3 className="text-[10px] font-bold text-text-muted tracking-[0.2em] uppercase font-data">Strategy Metrics</h3>
+                                    <h3 className="text-[10px] font-bold text-muted tracking-[0.2em] uppercase font-data">Strategy Metrics</h3>
                                 </div>
                                 <MetricGrid metrics={metrics} />
                             </div>
 
-                            <div className="w-full h-px bg-white/5" />
+                            <div className="w-full h-px bg-border-dim" />
                             <XAIPanel report={xai} explanation={signal?.explanation || 'Neural explanation unavailable.'} />
 
-                            <div className="w-full h-px bg-white/5" />
+                            <div className="w-full h-px bg-border-dim" />
                             <SentimentPanel
                                 data={sentiment}
                                 gatePassed={signal?.gate_results?.gate2_sentiment ?? false}

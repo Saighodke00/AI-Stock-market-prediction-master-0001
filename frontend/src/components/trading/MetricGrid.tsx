@@ -39,7 +39,7 @@ const AnimatedNumber: React.FC<{ value: number, format?: string }> = ({ value, f
         requestAnimationFrame(animate);
     }, [value]);
 
-    if (isNaN(value)) return <span className="text-slate-600">——</span>;
+    if (isNaN(value)) return <span className="text-muted">——</span>;
 
     let formatted = '';
     if (format === 'percent') formatted = (displayValue ?? 0).toFixed(1) + '%';
@@ -59,12 +59,12 @@ export const MetricGrid: React.FC<MetricGridProps> = ({ metrics }) => {
                 if (metric.format === 'percent' || metric.delta !== undefined) {
                     const positiveObj = metric.inverseColors ? !isPositiveValue : isPositiveValue;
                     const isNeutral = metric.value === 0;
-                    valColor = isNeutral ? 'text-slate-300' : positiveObj ? 'text-emerald-400' : 'text-rose-400';
+                    valColor = isNeutral ? 'text-secondary' : positiveObj ? 'text-emerald-400' : 'text-rose-400';
                 }
 
                 return (
-                    <div key={i} className="glass-card hover:border-white/10 hover:bg-white/[0.04] p-4 group transition-all duration-300">
-                        <div className="text-[9px] font-bold text-slate-500 tracking-[0.2em] uppercase mb-1.5 whitespace-pre-wrap leading-tight h-[28px] flex items-end font-body">
+                    <div key={i} className="glass-card hover:border-mid hover:bg-white/[0.04] p-4 group transition-all duration-300">
+                        <div className="text-[9px] font-bold text-muted tracking-[0.2em] uppercase mb-1.5 whitespace-pre-wrap leading-tight h-[28px] flex items-end font-body">
                             {metric.label === 'Accuracy' ? 'Forecast ACU' : metric.label}
                         </div>
 

@@ -50,7 +50,7 @@ const LogicCard = ({ id, label, value, onChange }: { id: string; label: string; 
   const pct = (value / max) * 100;
 
   return (
-    <div className="group/gate relative p-6 rounded-3xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-500 overflow-hidden">
+    <div className="group/gate relative p-6 rounded-3xl border border-dim bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-500 overflow-hidden">
       <div className="relative z-10 flex flex-col gap-6">
         <div className="flex justify-between items-start">
           <div className="flex flex-col gap-1">
@@ -64,11 +64,11 @@ const LogicCard = ({ id, label, value, onChange }: { id: string; label: string; 
           <div className="flex items-center gap-3">
              <button 
                 onClick={() => setShowIntel(!showIntel)}
-                className={`p-2 rounded-xl border transition-all ${showIntel ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : 'border-white/5 text-slate-600 hover:text-white'}`}
+                className={`p-2 rounded-xl border transition-all ${showIntel ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : 'border-dim text-muted hover:text-white'}`}
              >
                 <Info size={14} />
              </button>
-             <div className="px-4 py-2 bg-void/50 border border-white/10 rounded-xl font-mono font-black text-cyan-400 text-sm shadow-inner glow-cyan">
+             <div className="px-4 py-2 bg-void/50 border border-mid rounded-xl font-mono font-black text-cyan-400 text-sm shadow-inner glow-cyan">
                 {value}
              </div>
           </div>
@@ -77,12 +77,12 @@ const LogicCard = ({ id, label, value, onChange }: { id: string; label: string; 
         {showIntel && (
           <div className="p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 space-y-2 animate-in slide-in-from-top-2 duration-300">
              <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">{intel.logic}</p>
-             <p className="text-slate-400 text-[10px] font-bold leading-relaxed uppercase opacity-80">{intel.impact}</p>
+             <p className="text-secondary text-[10px] font-bold leading-relaxed uppercase opacity-80">{intel.impact}</p>
           </div>
         )}
 
         <div className="relative h-2 flex items-center">
-            <div className="absolute inset-x-0 h-1.5 bg-void rounded-full border border-white/5 overflow-hidden">
+            <div className="absolute inset-x-0 h-1.5 bg-void rounded-full border border-dim overflow-hidden">
                 <div 
                     className="h-full bg-gradient-to-r from-cyan-600 via-cyan-400 to-indigo-500 transition-all duration-500" 
                     style={{ width: `${pct}%` }}
@@ -111,9 +111,9 @@ const LogicCard = ({ id, label, value, onChange }: { id: string; label: string; 
 };
 
 const MetricHub = ({ label, value, sub, color, loading }: { label: string; value: string | number; sub: string; color: string; loading?: boolean }) => (
-    <div className={`p-6 rounded-3xl border border-white/10 bg-void shadow-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform ${loading ? 'opacity-50 grayscale' : ''}`}>
+    <div className={`p-6 rounded-3xl border border-mid bg-void shadow-2xl relative overflow-hidden group hover:scale-[1.02] transition-transform ${loading ? 'opacity-50 grayscale' : ''}`}>
         <div className="relative z-10 flex flex-col gap-1">
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">{label}</span>
+            <span className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">{label}</span>
             <div className={`text-3xl font-display font-black tracking-tighter ${color}`}>{value}</div>
             <span className="text-[9px] font-bold text-slate-700 uppercase tracking-widest mt-1 italic">{sub}</span>
         </div>
@@ -200,7 +200,7 @@ export const HyperTunerPage: React.FC = () => {
     return (
         <div className="p-8 max-w-[1600px] mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             {/* Header Terminal */}
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 border-b border-white/5 pb-8">
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 border-b border-dim pb-8">
                 <div className="space-y-4">
                     <div className="flex items-center gap-4">
                         <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-2xl shadow-indigo-500/5 group hover:border-indigo-500/50 transition-all">
@@ -210,7 +210,7 @@ export const HyperTunerPage: React.FC = () => {
                             <h1 className="text-5xl font-display font-black text-white tracking-tighter uppercase leading-none">
                                 Hyper <span className="text-cyan-400 italic">Tuner</span>
                             </h1>
-                            <p className="text-slate-600 text-[10px] font-black uppercase tracking-[0.4em] mt-2 flex items-center gap-2">
+                            <p className="text-muted text-[10px] font-black uppercase tracking-[0.4em] mt-2 flex items-center gap-2">
                                 <Terminal size={12} className="text-indigo-500" />
                                 Apex_AI // Parametric_Strategy_Synthesizer
                             </p>
@@ -218,7 +218,7 @@ export const HyperTunerPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 p-2 bg-void/50 border border-white/5 rounded-3xl backdrop-blur-3xl shadow-inner">
+                <div className="flex flex-wrap items-center gap-4 p-2 bg-void/50 border border-dim rounded-3xl backdrop-blur-3xl shadow-inner">
                     <div className="relative">
                         <Target size={14} className="absolute left-6 top-1/2 -translate-y-1/2 text-cyan-400 opacity-50" />
                         <input 
@@ -226,7 +226,7 @@ export const HyperTunerPage: React.FC = () => {
                             value={ticker}
                             onChange={(e) => setTicker(e.target.value.toUpperCase())}
                             onBlur={loadData}
-                            className="bg-void/50 border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-xs font-mono font-black text-white focus:outline-none focus:border-cyan-500/30 transition-all w-48 uppercase"
+                            className="bg-void/50 border border-dim rounded-2xl py-4 pl-12 pr-6 text-xs font-mono font-black text-white focus:outline-none focus:border-cyan-500/30 transition-all w-48 uppercase"
                             placeholder="LOAD_TICKER"
                         />
                     </div>
@@ -256,7 +256,7 @@ export const HyperTunerPage: React.FC = () => {
                 <MetricHub label="Simulation Success" value={`${stats?.win_rate || 0}%`} sub="Backtested Win Rate" color="text-emerald-400" />
                 <MetricHub label="Total Alpha" value={`${stats?.total_return_pct || 0}%`} sub="Net Cumulative Return" color="text-cyan-400" />
                 <MetricHub label="Signal Density" value={stats?.total_trades || 0} sub="Ops per 30D Window" color="text-indigo-400" />
-                <MetricHub label="Execution Logic" value="GRIT_V4" sub="Ensemble Confluence" color="text-slate-400" />
+                <MetricHub label="Execution Logic" value="GRIT_V4" sub="Ensemble Confluence" color="text-secondary" />
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch pt-4">
@@ -267,7 +267,7 @@ export const HyperTunerPage: React.FC = () => {
                           <Sliders className="text-cyan-400" size={20} />
                           Intelligence Gates
                        </h2>
-                       <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-2 px-1 text-center lg:text-left">
+                       <p className="text-muted text-[10px] font-bold uppercase tracking-widest mt-2 px-1 text-center lg:text-left">
                           Adjusting these thresholds will modify the signal confluence criteria in real-time across the entire Apex AI platform.
                        </p>
                     </div>
@@ -284,7 +284,7 @@ export const HyperTunerPage: React.FC = () => {
                          </div>
                          <div className="flex-1 text-center lg:text-left">
                             <h4 className="text-white font-display font-black text-xs uppercase tracking-widest mb-2 font-mono">Neural Inference Engine Stats (v4.3)</h4>
-                            <p className="text-[10px] text-slate-500 font-bold leading-relaxed uppercase tracking-tight max-w-2xl font-body">
+                            <p className="text-[10px] text-muted font-bold leading-relaxed uppercase tracking-tight max-w-2xl font-body">
                                 Your current configuration requires a confluence of {Object.keys(settings?.gate_thresholds || {}).length} unique data gates. This ensures that every BUY/SELL signal is backed by a harmonic resonance of technical, social, and institutional telemetry. 
                                 <span className="text-cyan-400 opacity-60 ml-2 italic">Expect lower signal density with more conservative thresholds.</span>
                             </p>
@@ -312,11 +312,11 @@ export const HyperTunerPage: React.FC = () => {
                                 { label: "Kernal Variant", value: "Apex_v4.2", icon: <Binary size={14} /> }
                             ].map((spec, i) => (
                                 <div key={i} className="flex justify-between items-center group/spec py-2">
-                                    <div className="flex items-center gap-3 text-slate-600 group-hover/spec:text-slate-400 transition-colors">
+                                    <div className="flex items-center gap-3 text-muted group-hover/spec:text-secondary transition-colors">
                                         {spec.icon}
                                         <span className="text-[10px] font-black uppercase tracking-widest leading-none">{spec.label}</span>
                                     </div>
-                                    <span className="font-mono text-[10px] font-black text-white px-3 py-1 bg-white/5 border border-white/5 rounded-lg group-hover/spec:border-cyan-500/30 transition-all">{spec.value}</span>
+                                    <span className="font-mono text-[10px] font-black text-white px-3 py-1 bg-white/5 border border-dim rounded-lg group-hover/spec:border-cyan-500/30 transition-all">{spec.value}</span>
                                 </div>
                             ))}
                         </div>

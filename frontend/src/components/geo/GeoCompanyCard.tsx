@@ -76,7 +76,7 @@ const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
             }}
         >
             {/* Intel Header */}
-            <div className="flex items-center justify-between p-4 pb-3 border-b border-white/5 bg-white/[0.02]">
+            <div className="flex items-center justify-between p-4 pb-3 border-b border-dim bg-white/[0.02]">
                 <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
                         <Globe size={12} className={loading ? "animate-spin" : ""} />
@@ -87,7 +87,7 @@ const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
                 </div>
                 <button
                     onClick={onClose}
-                    className="p-2 rounded-xl bg-white/5 border border-white/10 text-slate-500 hover:text-white hover:bg-rose-500/10 transition-all"
+                    className="p-2 rounded-xl bg-white/5 border border-mid text-muted hover:text-white hover:bg-rose-500/10 transition-all"
                 >
                     <X size={16} />
                 </button>
@@ -96,7 +96,7 @@ const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
             {loading ? (
                 <div className="flex flex-col items-center justify-center p-20 gap-4">
                     <Activity className="text-cyan-500/40 animate-pulse" size={40} />
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Accessing Node Data...</span>
+                    <span className="text-[10px] font-black text-muted uppercase tracking-widest">Accessing Node Data...</span>
                 </div>
             ) : !data ? (
                 <div className="p-20 text-center text-rose-500 font-black text-[10px] uppercase tracking-widest">
@@ -107,7 +107,7 @@ const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
                     {/* Primary Identifier */}
                     <div className="space-y-4">
                         <div className="flex items-start gap-3">
-                            <div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center shadow-inner overflow-hidden relative group">
+                            <div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-mid flex items-center justify-center shadow-inner overflow-hidden relative group">
                                 <Building2 className="text-white/40 group-hover:scale-110 transition-transform" size={24} />
                                 <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-transparent" />
                             </div>
@@ -126,14 +126,14 @@ const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
                                     >
                                         {data.sector}
                                     </span>
-                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/5 border border-white/5 text-slate-500">
+                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/5 border border-dim text-muted">
                                         <MapPin size={10} />
                                         <span className="text-[9px] font-bold uppercase">{data.city}, {data.state}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <p className="text-[11px] text-slate-400 font-bold leading-relaxed uppercase tracking-tight italic opacity-80 border-l-2 border-white/10 pl-4 py-2 bg-white/[0.01]">
+                        <p className="text-[11px] text-secondary font-bold leading-relaxed uppercase tracking-tight italic opacity-80 border-l-2 border-mid pl-4 py-2 bg-white/[0.01]">
                             {data.description}
                         </p>
                     </div>
@@ -147,14 +147,14 @@ const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
                             </div>
                             
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 rounded-xl bg-void/50 border border-white/5 space-y-1.5 group hover:border-cyan-500/30 transition-all">
-                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none">Market_Val</span>
+                                <div className="p-4 rounded-xl bg-void/50 border border-dim space-y-1.5 group hover:border-cyan-500/30 transition-all">
+                                    <span className="text-[8px] font-black text-muted uppercase tracking-widest leading-none">Market_Val</span>
                                     <div className="text-lg font-display font-black text-white tracking-tighter">
                                         ₹{data.stock.current_price?.toLocaleString()}
                                     </div>
                                 </div>
-                                <div className="p-4 rounded-xl bg-void/50 border border-white/5 space-y-1.5 group hover:border-cyan-500/30 transition-all">
-                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none">Net_Alpha</span>
+                                <div className="p-4 rounded-xl bg-void/50 border border-dim space-y-1.5 group hover:border-cyan-500/30 transition-all">
+                                    <span className="text-[8px] font-black text-muted uppercase tracking-widest leading-none">Net_Alpha</span>
                                     <div className={`text-lg font-display font-black tracking-tighter flex items-center gap-1.5 ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
                                         {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                                         {Math.abs(data.stock.change_pct ?? 0).toFixed(2)}%
@@ -162,12 +162,12 @@ const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
                                 </div>
                             </div>
 
-                            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-center px-6">
+                            <div className="p-4 rounded-2xl bg-white/[0.02] border border-dim flex justify-between items-center px-6">
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[9px] font-black text-slate-700 uppercase tracking-widest">Gross_Volume</span>
-                                    <span className="text-xs font-mono font-black text-slate-400">{data.stock.volume?.toLocaleString()}</span>
+                                    <span className="text-xs font-mono font-black text-secondary">{data.stock.volume?.toLocaleString()}</span>
                                 </div>
-                                <div className="h-8 w-px bg-white/5" />
+                                <div className="h-8 w-px bg-border-dim" />
                                 <div className="flex flex-col gap-1 text-right">
                                     <span className="text-[9px] font-black text-slate-700 uppercase tracking-widest">Capitalization</span>
                                     <span className="text-xs font-mono font-black text-white">₹{(data.stock.market_cap / 1e7).toFixed(0)} Cr</span>
@@ -190,10 +190,10 @@ const GeoCompanyCard: React.FC<Props> = ({ companyId, onClose }) => {
                                         href={item.url}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="block p-4 rounded-2xl bg-white/[0.01] border border-white/5 hover:bg-white/[0.04] hover:border-indigo-500/20 transition-all group relative overflow-hidden"
+                                        className="block p-4 rounded-2xl bg-white/[0.01] border border-dim hover:bg-white/[0.04] hover:border-indigo-500/20 transition-all group relative overflow-hidden"
                                     >
                                         <div className="flex justify-between items-start gap-4">
-                                            <div className="text-[11px] font-black text-slate-300 uppercase italic tracking-tight leading-relaxed group-hover:text-white transition-colors">
+                                            <div className="text-[11px] font-black text-secondary uppercase italic tracking-tight leading-relaxed group-hover:text-white transition-colors">
                                                 {item.title}
                                             </div>
                                             <ArrowUpRight size={14} className="text-slate-700 group-hover:text-indigo-400 transition-colors shrink-0" />

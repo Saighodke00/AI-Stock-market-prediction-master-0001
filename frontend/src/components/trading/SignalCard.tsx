@@ -69,8 +69,8 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <span className="font-mono text-xl text-slate-200 font-bold tracking-tight">₹{data.current_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            <div className={`flex items-center gap-1 font-mono text-[11px] font-bold ${priceColor} bg-white/5 px-2 py-1 rounded-lg border border-white/5`}>
+                            <span className="font-mono text-xl text-primary font-bold tracking-tight">₹{data.current_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            <div className={`flex items-center gap-1 font-mono text-[11px] font-bold ${priceColor} bg-white/5 px-2 py-1 rounded-lg border border-dim`}>
                                 <PriceIcon className="w-3 h-3" />
                                 {Math.abs(sentiment * 100).toFixed(2)}%
                             </div>
@@ -79,7 +79,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                     <div className="flex flex-col items-end gap-1.5">
                         <div className="px-3 py-1.5 bg-white/[0.03] border border-white/[0.1] rounded-xl flex items-center gap-2">
                              <Activity className="w-3.5 h-3.5 text-indigo-400" />
-                             <span className="font-body text-[10px] text-slate-400 font-bold tracking-widest uppercase">Stream: <span className="text-white">{timeframe}</span></span>
+                             <span className="font-body text-[10px] text-secondary font-bold tracking-widest uppercase">Stream: <span className="text-white">{timeframe}</span></span>
                         </div>
                     </div>
                 </div>
@@ -89,7 +89,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                     <div className="flex items-center gap-6">
                         <div className={`w-1 h-20 rounded-full ${stateBg} shadow-[0_0_20px_rgba(255,255,255,0.1)]`} />
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-500 tracking-[0.3em] uppercase mb-1">Recommended Action</span>
+                            <span className="text-[10px] font-bold text-muted tracking-[0.3em] uppercase mb-1">Recommended Action</span>
                             <span className={`font-display font-black text-6xl tracking-tighter leading-none uppercase ${stateColor} italic`}>
                                 {(data?.action as string) || 'HOLD'}
                             </span>
@@ -99,10 +99,10 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                     <div className="w-full md:w-[280px] flex flex-col gap-3">
                         <div className="flex justify-between items-end">
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mb-1">Inference Confidence</span>
+                                <span className="text-[10px] font-bold text-muted tracking-widest uppercase mb-1">Inference Confidence</span>
                                 <div className="flex items-baseline gap-1">
                                     <span className="font-display text-3xl font-bold text-white tracking-tighter">{Math.round(data.confidence * 100)}</span>
-                                    <span className="text-xs font-bold text-slate-500">%</span>
+                                    <span className="text-xs font-bold text-muted">%</span>
                                 </div>
                             </div>
                             <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-bold ${isBuy ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-rose-400 border-rose-500/20 bg-rose-500/5'}`}>
@@ -110,7 +110,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                                 RET: {(data?.expected_return ?? 0).toFixed(2)}%
                             </div>
                         </div>
-                        <div className="h-2 w-full bg-void rounded-full overflow-hidden border border-white/5 relative shadow-inner">
+                        <div className="h-2 w-full bg-void rounded-full overflow-hidden border border-dim relative shadow-inner">
                             <div
                                 className={`h-full ${stateBg} bg-gradient-to-r from-transparent via-white/10 to-transparent bg-[length:200%_100%] animate-shimmer shadow-[0_0_15px_rgba(255,255,255,0.2)] transition-all ease-out duration-1000 relative z-10`}
                                 style={{ width: `${fillWidth}%` }}
@@ -121,26 +121,26 @@ export const SignalCard: React.FC<SignalCardProps> = ({ data, isLoading, timefra
                 </div>
 
                 {/* Price Targets Row */}
-                <div className="grid grid-cols-3 divide-x divide-white/5 border-t border-b border-white/5 bg-white/[0.01]">
+                <div className="grid grid-cols-3 divide-x divide-white/5 border-t border-b border-dim bg-white/[0.01]">
                     <div className="p-6 text-center flex flex-col gap-2 group hover:bg-white/[0.02] transition-colors cursor-default">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] font-body">Bear (P10)</span>
-                        <span className="font-mono text-xl text-slate-300 group-hover:text-white transition-colors">₹{Math.round(data?.p10 || 0).toLocaleString('en-IN')}</span>
+                        <span className="text-[9px] font-bold text-muted uppercase tracking-[0.2em] font-body">Bear (P10)</span>
+                        <span className="font-mono text-xl text-secondary group-hover:text-white transition-colors">₹{Math.round(data?.p10 || 0).toLocaleString('en-IN')}</span>
                     </div>
-                    <div className="p-6 text-center flex flex-col gap-2 group hover:bg-white/[0.02] transition-colors cursor-default border-x border-white/5">
+                    <div className="p-6 text-center flex flex-col gap-2 group hover:bg-white/[0.02] transition-colors cursor-default border-x border-dim">
                         <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-[0.2em] font-body">Base (P50)</span>
                         <span className="font-mono text-2xl text-white font-bold">₹{Math.round(data?.p50 || 0).toLocaleString('en-IN')}</span>
                     </div>
                     <div className="p-6 text-center flex flex-col gap-2 group hover:bg-white/[0.02] transition-colors cursor-default">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] font-body">Bull (P90)</span>
-                        <span className="font-mono text-xl text-slate-300 group-hover:text-white transition-colors">₹{Math.round(data?.p90 || 0).toLocaleString('en-IN')}</span>
+                        <span className="text-[9px] font-bold text-muted uppercase tracking-[0.2em] font-body">Bull (P90)</span>
+                        <span className="font-mono text-xl text-secondary group-hover:text-white transition-colors">₹{Math.round(data?.p90 || 0).toLocaleString('en-IN')}</span>
                     </div>
                 </div>
 
                 {/* Reasoning Row — Plain English explanation from backend */}
-                <div className="p-5 bg-black/20 border-t border-white/5">
+                <div className="p-5 bg-black/20 border-t border-dim">
                     <div className="flex gap-3 items-start">
                         <Info className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
-                        <p className="font-body text-xs text-slate-300 leading-relaxed italic">
+                        <p className="font-body text-xs text-secondary leading-relaxed italic">
                             {data.reason || "Analyzing neural gates and market confluence..."}
                         </p>
                     </div>

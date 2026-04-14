@@ -16,17 +16,17 @@ interface SentimentTimelineProps {
 
 export const SentimentTimeline: React.FC<SentimentTimelineProps> = ({ data, isLoading }) => {
   if (isLoading) {
-    return <div className="h-64 bg-white/5 animate-pulse rounded-xl border border-white/5" />;
+    return <div className="h-64 bg-white/5 animate-pulse rounded-xl border border-dim" />;
   }
 
   // Split data for gradient thresholds if needed, but simple area with a reference line is more terminal-accurate
   return (
     <div className="w-full h-72 bg-[#020409] border border-cyan/10 rounded-xl p-4 relative overflow-hidden group">
       <div className="flex justify-between items-center mb-6 z-10 relative">
-        <h4 className="text-[10px] font-black text-slate-500 tracking-[0.2em] uppercase">Historical Sentiment Pulse</h4>
+        <h4 className="text-[10px] font-black text-muted tracking-[0.2em] uppercase">Historical Sentiment Pulse</h4>
         <div className="flex gap-2">
            {['7D', '30D', '90D'].map(t => (
-             <button key={t} className={`px-2 py-0.5 rounded text-[9px] font-bold border ${t === '7D' ? 'bg-cyan text-void border-cyan' : 'border-white/10 text-slate-500 hover:border-white/20'}`}>
+             <button key={t} className={`px-2 py-0.5 rounded text-[9px] font-bold border ${t === '7D' ? 'bg-cyan text-void border-cyan' : 'border-mid text-muted hover:border-bright'}`}>
                {t}
              </button>
            ))}

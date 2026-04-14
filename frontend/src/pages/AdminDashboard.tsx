@@ -63,7 +63,7 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-display font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-500">
             SYSTEM ADMINISTRATION
           </h1>
-          <p className="text-sm text-gray-400">Level 5 Clearance Authorized</p>
+          <p className="text-sm text-secondary">Level 5 Clearance Authorized</p>
         </div>
       </div>
 
@@ -71,7 +71,7 @@ export default function AdminDashboard() {
         <GlassCard>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400 font-medium">Core Status</p>
+              <p className="text-sm text-secondary font-medium">Core Status</p>
               <h3 className="text-2xl font-bold text-green-400 mt-1 uppercase">{stats?.status || 'UNKNOWN'}</h3>
             </div>
             <Cpu className="w-8 h-8 text-green-400 opacity-50" />
@@ -81,7 +81,7 @@ export default function AdminDashboard() {
         <GlassCard>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400 font-medium">Total Agents</p>
+              <p className="text-sm text-secondary font-medium">Total Agents</p>
               <h3 className="text-2xl font-bold text-blue-400 mt-1">{stats?.total_users || 0}</h3>
             </div>
             <Users className="w-8 h-8 text-blue-400 opacity-50" />
@@ -91,7 +91,7 @@ export default function AdminDashboard() {
         <GlassCard>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400 font-medium">Active (24H)</p>
+              <p className="text-sm text-secondary font-medium">Active (24H)</p>
               <h3 className="text-2xl font-bold text-yellow-400 mt-1">{stats?.active_users_24h || 0}</h3>
             </div>
             <Activity className="w-8 h-8 text-yellow-400 opacity-50" />
@@ -101,7 +101,7 @@ export default function AdminDashboard() {
         <GlassCard>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400 font-medium">Simulations Executed</p>
+              <p className="text-sm text-secondary font-medium">Simulations Executed</p>
               <h3 className="text-2xl font-bold text-purple-400 mt-1">{stats?.total_paper_trades || 0}</h3>
             </div>
             <Database className="w-8 h-8 text-purple-400 opacity-50" />
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
         <div className="col-span-2">
           <GlassCard title="REGISTERED OPERATIVES" icon={<Users className="w-4 h-4 text-blue-400" />}>
             <div className="overflow-x-auto mt-4">
-              <table className="w-full text-sm text-left text-gray-400">
+              <table className="w-full text-sm text-left text-secondary">
                 <thead className="text-xs uppercase bg-[#0d1320]/50 border-b border-[#1f2937]">
                   <tr>
                     <th className="px-4 py-3">ID</th>
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
                     <tr key={u.id} className="border-b border-[#1f2937]/50 hover:bg-[#1f2937]/20 transition-colors">
                       <td className="px-4 py-3 font-mono text-xs">{u.id}</td>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-gray-200">{u.username}</div>
+                        <div className="font-medium text-primary">{u.username}</div>
                         <div className="text-xs opacity-70">{u.email}</div>
                       </td>
                       <td className="px-4 py-3">
@@ -174,17 +174,17 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-200">{act.username}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">{act.action_type}</span>
+                      <span className="font-medium text-primary">{act.username}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-white/5 text-secondary border border-mid">{act.action_type}</span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-muted mt-1">
                       {new Date(act.timestamp).toLocaleString()}
                     </div>
                   </div>
                 </div>
               ))}
               {activities.length === 0 && (
-                <div className="text-center py-8 text-gray-500 text-sm">No activity recorded.</div>
+                <div className="text-center py-8 text-muted text-sm">No activity recorded.</div>
               )}
             </div>
           </GlassCard>

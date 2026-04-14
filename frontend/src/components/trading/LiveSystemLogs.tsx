@@ -43,8 +43,8 @@ export const LiveSystemLogs: React.FC = () => {
                     const isSuccess = log.level === 'SUCCESS';
                     
                     return (
-                        <div key={i} className="font-data text-[9px] mb-2.5 whitespace-pre-wrap flex gap-4 border-l border-white/5 pl-4 hover:border-cyan/40 hover:bg-white/[0.02] transition-all group/line animate-slide-in-right py-0.5">
-                            <span className="text-slate-600 shrink-0 font-bold tracking-tighter">[{log.timestamp}]</span>
+                        <div key={i} className="font-data text-[9px] mb-2.5 whitespace-pre-wrap flex gap-4 border-l border-dim pl-4 hover:border-cyan/40 hover:bg-white/[0.02] transition-all group/line animate-slide-in-right py-0.5">
+                            <span className="text-muted shrink-0 font-bold tracking-tighter">[{log.timestamp}]</span>
                             <span className={`${isAlert ? 'text-rose glow-rose' : isSuccess ? 'text-emerald glow-emerald' : 'text-cyan'} tracking-wide leading-relaxed`}>
                                 {log.message}
                             </span>

@@ -15,7 +15,7 @@ export const WinLossPie: React.FC<WinLossPieProps> = ({ wins, losses }) => {
     return (
         <div className="h-56 w-full relative flex items-center justify-center">
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Efficiency</span>
+                <span className="text-[10px] font-black text-muted uppercase tracking-widest">Efficiency</span>
                 <span className="text-2xl font-display font-black text-white tracking-tighter">
                     {((wins / (wins + losses || 1)) * 100).toFixed(0)}%
                 </span>
@@ -43,7 +43,7 @@ export const WinLossPie: React.FC<WinLossPieProps> = ({ wins, losses }) => {
                         content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                                 return (
-                                    <div className="bg-void/90 backdrop-blur-md border border-white/10 p-3 rounded-xl shadow-2xl">
+                                    <div className="bg-void/90 backdrop-blur-md border border-mid p-3 rounded-xl shadow-2xl">
                                         <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: payload[0].payload.color }}>
                                             {payload[0].name}
                                         </p>

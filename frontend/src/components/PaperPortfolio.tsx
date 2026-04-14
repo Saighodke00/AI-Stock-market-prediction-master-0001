@@ -54,17 +54,17 @@ const PaperPortfolio: React.FC = () => {
         }
     };
 
-    if (loading) return <div className="p-8 text-center text-slate-400 animate-pulse">Loading Paper Portfolio...</div>;
+    if (loading) return <div className="p-8 text-center text-secondary animate-pulse">Loading Paper Portfolio...</div>;
     if (error) return <div className="p-8 text-center text-rose-500">Error: {error}</div>;
     if (!portfolio) return null;
 
     return (
-        <div className="flex flex-col space-y-6 w-full max-w-6xl mx-auto p-6 bg-slate-900/40 backdrop-blur-2xl rounded-3xl border border-slate-800 shadow-3xl animate-in fade-in zoom-in-95 duration-500">
+        <div className="flex flex-col space-y-6 w-full max-w-6xl mx-auto p-6 bg-base/40 backdrop-blur-2xl rounded-3xl border border-dim shadow-3xl animate-in fade-in zoom-in-95 duration-500">
 
             {/* Header Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex flex-col justify-center">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Total Portfolio Value</p>
+                <div className="p-6 rounded-2xl bg-white/5/50 border border-mid/50 flex flex-col justify-center">
+                    <p className="text-[10px] text-muted uppercase tracking-widest font-bold mb-1">Total Portfolio Value</p>
                     <p className="text-3xl font-black text-white tracking-tighter">
                         ${(portfolio.total_value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
@@ -73,24 +73,24 @@ const PaperPortfolio: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="p-6 rounded-2xl bg-slate-800/20 border border-slate-800/50">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Available Cash</p>
-                    <p className="text-xl font-bold text-slate-200">
+                <div className="p-6 rounded-2xl bg-white/5/20 border border-dim/50">
+                    <p className="text-[10px] text-muted uppercase tracking-widest font-bold mb-1">Available Cash</p>
+                    <p className="text-xl font-bold text-primary">
                         ${(portfolio.cash_balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </p>
                 </div>
 
-                <div className="p-6 rounded-2xl bg-slate-800/20 border border-slate-800/50">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Market Value</p>
-                    <p className="text-xl font-bold text-slate-200">
+                <div className="p-6 rounded-2xl bg-white/5/20 border border-dim/50">
+                    <p className="text-[10px] text-muted uppercase tracking-widest font-bold mb-1">Market Value</p>
+                    <p className="text-xl font-bold text-primary">
                         ${(portfolio.market_value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </p>
                 </div>
 
-                <div className="p-6 rounded-2xl bg-slate-800/20 border border-slate-800/50">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Signal Win Rate</p>
+                <div className="p-6 rounded-2xl bg-white/5/20 border border-dim/50">
+                    <p className="text-[10px] text-muted uppercase tracking-widest font-bold mb-1">Signal Win Rate</p>
                     <p className="text-xl font-bold text-emerald-400">
-                        {(portfolio.win_rate ?? 0).toFixed(1)}% <span className="text-[10px] text-slate-500 ml-1">({portfolio.num_trades ?? 0} trades)</span>
+                        {(portfolio.win_rate ?? 0).toFixed(1)}% <span className="text-[10px] text-muted ml-1">({portfolio.num_trades ?? 0} trades)</span>
                     </p>
                 </div>
             </div>
@@ -107,9 +107,9 @@ const PaperPortfolio: React.FC = () => {
                         </h3>
                     </div>
 
-                    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/40">
+                    <div className="overflow-hidden rounded-2xl border border-dim bg-void/40">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-900/80 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            <thead className="bg-base/80 text-[10px] font-black uppercase tracking-widest text-muted">
                                 <tr>
                                     <th className="px-4 py-3">Ticker</th>
                                     <th className="px-4 py-3">Shares</th>
@@ -125,15 +125,15 @@ const PaperPortfolio: React.FC = () => {
                                     if (positions.length === 0) {
                                         return (
                                             <tr>
-                                                <td colSpan={5} className="px-4 py-12 text-center text-slate-600 italic">No open positions. Follow a signal to start.</td>
+                                                <td colSpan={5} className="px-4 py-12 text-center text-muted italic">No open positions. Follow a signal to start.</td>
                                             </tr>
                                         );
                                     }
                                     return positions.map((pos) => (
-                                        <tr key={pos.ticker} className="hover:bg-slate-800/30 transition-colors group">
+                                        <tr key={pos.ticker} className="hover:bg-white/5/30 transition-colors group">
                                             <td className="px-4 py-4 font-bold text-white">{pos.ticker}</td>
-                                            <td className="px-4 py-4 text-slate-400 font-mono text-xs">{(pos.shares ?? 0).toFixed(4)}</td>
-                                            <td className="px-4 py-4 text-right text-slate-300">${(pos.entry ?? 0).toFixed(2)}</td>
+                                            <td className="px-4 py-4 text-secondary font-mono text-xs">{(pos.shares ?? 0).toFixed(4)}</td>
+                                            <td className="px-4 py-4 text-right text-secondary">${(pos.entry ?? 0).toFixed(2)}</td>
                                             <td className="px-4 py-4 text-right text-white font-semibold">${(pos.current ?? 0).toFixed(2)}</td>
                                             <td className={`px-4 py-4 text-right font-black ${pos.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                                 <div className="flex flex-col items-end">
@@ -166,22 +166,22 @@ const PaperPortfolio: React.FC = () => {
                             const safeArray = <T,>(val: unknown): T[] => Array.isArray(val) ? (val as T[]) : [];
                             const safeTrades = safeArray<PaperTradeSchema>(trades);
                             if (safeTrades.length === 0) {
-                                return <div className="p-8 text-center text-slate-600 text-xs italic border border-dashed border-slate-800 rounded-xl">History is empty.</div>;
+                                return <div className="p-8 text-center text-muted text-xs italic border border-dashed border-dim rounded-xl">History is empty.</div>;
                             }
                             return safeTrades.map((trade, idx) => (
-                                <div key={idx} className="p-3 rounded-xl bg-slate-800/30 border border-slate-800/50 hover:border-slate-700 transition-all">
+                                <div key={idx} className="p-3 rounded-xl bg-white/5/30 border border-dim/50 hover:border-mid transition-all">
                                     <div className="flex justify-between items-start mb-1">
                                         <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${trade.action === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
                                             {trade.action}
                                         </span>
-                                        <span className="text-[10px] text-slate-500 font-mono">
+                                        <span className="text-[10px] text-muted font-mono">
                                             {new Date(trade.opened_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-end">
                                         <div>
                                             <p className="text-sm font-bold text-white leading-tight">{trade.ticker}</p>
-                                            <p className="text-[10px] text-slate-500">{(trade.shares ?? 0).toFixed(2)} shares @ ${(trade.price ?? 0).toFixed(2)}</p>
+                                            <p className="text-[10px] text-muted">{(trade.shares ?? 0).toFixed(2)} shares @ ${(trade.price ?? 0).toFixed(2)}</p>
                                         </div>
                                         {trade.pnl !== null && (
                                             <div className={`text-xs font-bold ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -198,10 +198,10 @@ const PaperPortfolio: React.FC = () => {
 
             {/* Reset Confirmation Overlay */}
             {showResetConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-3xl max-w-sm w-full text-center space-y-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-base border border-dim p-8 rounded-3xl shadow-3xl max-w-sm w-full text-center space-y-4">
                         <h4 className="text-xl font-bold text-white">Reset Portfolio?</h4>
-                        <p className="text-sm text-slate-400 leading-relaxed">
+                        <p className="text-sm text-secondary leading-relaxed">
                             This will permanently delete all positions and trade history, and reset your cash balance to $100,000.
                         </p>
                         <div className="flex flex-col space-y-3 pt-2">
@@ -213,7 +213,7 @@ const PaperPortfolio: React.FC = () => {
                             </button>
                             <button
                                 onClick={() => setShowResetConfirm(false)}
-                                className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition-all"
+                                className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-secondary font-bold transition-all"
                             >
                                 Keep Trading
                             </button>

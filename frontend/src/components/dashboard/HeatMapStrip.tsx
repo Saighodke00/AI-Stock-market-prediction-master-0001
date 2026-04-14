@@ -21,10 +21,10 @@ export const HeatMapStrip: React.FC = () => {
     return (
         <div className="flex flex-col gap-3 px-6 select-none mt-2">
             <div className="flex justify-between items-end">
-                <h2 className="font-data text-[9px] text-slate-400 tracking-[0.3em] uppercase font-bold">
+                <h2 className="font-data text-[9px] text-secondary tracking-[0.3em] uppercase font-bold">
                     // Sector Liquidity Heatmap
                 </h2>
-                <span className="font-data text-[8px] text-slate-500 uppercase font-bold">20 Global Tickers Active</span>
+                <span className="font-data text-[8px] text-muted uppercase font-bold">20 Global Tickers Active</span>
             </div>
             
             <div className="flex gap-1.5 h-12 w-full">
@@ -33,7 +33,7 @@ export const HeatMapStrip: React.FC = () => {
                     const isSell = stock.action === 'SELL';
                     
                     const color = isBuy ? 'bg-emerald/40 hover:bg-emerald/60' : isSell ? 'bg-rose/40 hover:bg-rose/60' : 'bg-surface/40 hover:bg-surface/60';
-                    const border = isBuy ? 'border-emerald/50' : isSell ? 'border-rose/50' : 'border-white/5';
+                    const border = isBuy ? 'border-emerald/50' : isSell ? 'border-rose/50' : 'border-dim';
                     const shadow = isBuy ? 'hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]' : isSell ? 'hover:shadow-[0_0_20px_rgba(244,63,94,0.2)]' : '';
                     
                     // Confidence-based width weighting
@@ -50,7 +50,7 @@ export const HeatMapStrip: React.FC = () => {
                             <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
                             
                             {/* Tooltip */}
-                            <div className="opacity-0 group-hover:opacity-100 absolute -top-12 left-1/2 -translate-x-1/2 bg-raised/90 backdrop-blur-md border border-white/10 px-3 py-2 rounded-xl text-[10px] font-data text-white z-50 shadow-2xl pointer-events-none transition-all scale-75 group-hover:scale-100 flex flex-col items-center min-w-[120px]">
+                            <div className="opacity-0 group-hover:opacity-100 absolute -top-12 left-1/2 -translate-x-1/2 bg-raised/90 backdrop-blur-md border border-mid px-3 py-2 rounded-xl text-[10px] font-data text-white z-50 shadow-2xl pointer-events-none transition-all scale-75 group-hover:scale-100 flex flex-col items-center min-w-[120px]">
                                 <span className="text-muted tracking-widest text-[8px] mb-1">{stock.ticker}</span>
                                 <div className="flex items-center gap-2">
                                      <span className={isBuy ? 'text-emerald' : isSell ? 'text-rose' : 'text-primary'}>{stock.action}</span>

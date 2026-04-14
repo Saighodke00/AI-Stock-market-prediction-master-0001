@@ -57,7 +57,7 @@ export const TopMetricsBar: React.FC<{ stats?: any, pulse?: any }> = ({ stats, p
                 <div className="flex items-center justify-between">
                     <div className="flex items-baseline gap-2">
                         <span className="text-xl font-display font-black text-white tracking-tight">₹{Math.abs(flow.net_cr)}</span>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">CR</span>
+                        <span className="text-[10px] font-bold text-muted uppercase">CR</span>
                     </div>
                     <span className={`px-2 py-0.5 border rounded text-[8px] font-bold uppercase glow-emerald ${
                         flow.bias === 'Bullish' ? 'bg-emerald/10 border-emerald/20 text-emerald' : 'bg-rose/10 border-rose/20 text-rose'

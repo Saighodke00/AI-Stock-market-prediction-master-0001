@@ -12,7 +12,7 @@ const CorrelationHeatmap: React.FC<Props> = ({ data }) => {
     // Helper to get color based on correlation value
     // -1.0 (Dark Red) -> 0.0 (White) -> +1.0 (Dark Green)
     const getCellColor = (value: number) => {
-        if (value === 1 && Math.abs(value) === 1) return 'bg-gray-800'; // Actually handled by isDiagonal
+        if (value === 1 && Math.abs(value) === 1) return 'bg-white/5'; // Actually handled by isDiagonal
 
         // Scaling logic for Tailwind-friendly or inline styles
         // Since Tailwind doesn't support arbitrary dynamic colors well without JIT or pre-defined classes,
@@ -43,21 +43,21 @@ const CorrelationHeatmap: React.FC<Props> = ({ data }) => {
     };
 
     return (
-        <div className="flex flex-col space-y-6 w-full max-w-4xl mx-auto p-6 bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex flex-col space-y-6 w-full max-w-4xl mx-auto p-6 bg-base/50 backdrop-blur-xl rounded-2xl border border-dim shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-white tracking-tight">Portfolio Correlation Heatmap</h2>
-                <span className="text-xs text-slate-400 bg-slate-800/50 px-2 py-1 rounded-full border border-slate-700">
+                <span className="text-xs text-secondary bg-white/5/50 px-2 py-1 rounded-full border border-mid">
                     Last updated: {new Date(correlation.computed_at).toLocaleTimeString()}
                 </span>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/20 p-4">
+            <div className="overflow-x-auto rounded-xl border border-dim bg-void/20 p-4">
                 <table className="min-w-full border-separate border-spacing-1">
                     <thead>
                         <tr>
                             <th className="p-2"></th>
                             {tickers.map(tkr => (
-                                <th key={tkr} className="p-2 text-xs font-semibold text-slate-400 text-center uppercase tracking-wider">
+                                <th key={tkr} className="p-2 text-xs font-semibold text-secondary text-center uppercase tracking-wider">
                                     {tkr}
                                 </th>
                             ))}
@@ -66,7 +66,7 @@ const CorrelationHeatmap: React.FC<Props> = ({ data }) => {
                     <tbody>
                         {tickers.map((tkrRow, i) => (
                             <tr key={tkrRow}>
-                                <td className="p-2 text-xs font-bold text-slate-400 text-right uppercase pr-4 border-r border-slate-800">
+                                <td className="p-2 text-xs font-bold text-secondary text-right uppercase pr-4 border-r border-dim">
                                     {tkrRow}
                                 </td>
                                 {tickers.map((tkrCol, j) => {
@@ -76,7 +76,7 @@ const CorrelationHeatmap: React.FC<Props> = ({ data }) => {
                                     return (
                                         <td
                                             key={`${tkrRow}-${tkrCol}`}
-                                            className={`relative group p-0 w-16 h-16 rounded-md transition-all duration-300 hover:scale-105 hover:z-10 cursor-help shadow-sm overflow-hidden ${isDiagonal ? 'bg-slate-800 border border-slate-700' : ''}`}
+                                            className={`relative group p-0 w-16 h-16 rounded-md transition-all duration-300 hover:scale-105 hover:z-10 cursor-help shadow-sm overflow-hidden ${isDiagonal ? 'bg-white/5 border border-mid' : ''}`}
                                             style={!isDiagonal ? { backgroundColor: getCellColor(val) } : {}}
                                         >
                                             <div className={`flex items-center justify-center w-full h-full text-xs font-bold mix-blend-difference invert antialiased`}>
@@ -84,13 +84,13 @@ const CorrelationHeatmap: React.FC<Props> = ({ data }) => {
                                             </div>
 
                                             {/* Tooltip */}
-                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
-                                                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Correlation Analysis</p>
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-base border border-mid rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                                                <p className="text-[10px] text-muted uppercase tracking-widest mb-1">Correlation Analysis</p>
                                                 <p className="text-xs font-bold text-white mb-1">
                                                     {tkrRow} vs {tkrCol}
                                                 </p>
-                                                <div className="h-px bg-slate-800 my-1 w-full" />
-                                                <p className="text-[11px] text-slate-300 leading-tight">
+                                                <div className="h-px bg-border-dim my-1 w-full" />
+                                                <p className="text-[11px] text-secondary leading-tight">
                                                     Value: <span className="text-white font-mono">{val.toFixed(2)}</span>
                                                 </p>
                                                 <p className="text-[10px] text-emerald-400 font-medium mt-1 uppercase">
@@ -122,21 +122,21 @@ const CorrelationHeatmap: React.FC<Props> = ({ data }) => {
                     </div>
                     <div className="space-y-2">
                         <div className="flex justify-between text-xs">
-                            <span className="text-slate-400">Avg Correlation</span>
+                            <span className="text-secondary">Avg Correlation</span>
                             <span className="text-white font-mono font-bold">{(risk.avg_correlation * 100).toFixed(1)}%</span>
                         </div>
                         {risk.most_correlated_pair && (
                             <div className="flex justify-between text-xs">
-                                <span className="text-slate-400">Most Correlated Pair</span>
+                                <span className="text-secondary">Most Correlated Pair</span>
                                 <span className="text-white font-bold">{risk.most_correlated_pair[0]} & {risk.most_correlated_pair[1]}</span>
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="p-5 rounded-xl border border-slate-700 bg-slate-800/30 flex flex-col justify-center">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1 font-bold">Portfolio Suggestion</p>
-                    <p className="text-sm text-slate-200 leading-relaxed italic">
+                <div className="p-5 rounded-xl border border-mid bg-white/5/30 flex flex-col justify-center">
+                    <p className="text-[10px] text-muted uppercase tracking-widest mb-1 font-bold">Portfolio Suggestion</p>
+                    <p className="text-sm text-primary leading-relaxed italic">
                         "{risk.suggestion}"
                     </p>
                 </div>

@@ -43,7 +43,7 @@ const GeoSectorFilter: React.FC<Props> = ({ activeSectors, onToggle }) => {
                 boxShadow: '0 10px 30px rgba(0,0,0,0.4)'
             }}
         >
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-dim">
                 <Layers size={12} className="text-cyan-400" />
                 <span className="text-[9px] font-black text-white uppercase tracking-[0.2em] font-mono whitespace-nowrap">
                    Sector_Layers
@@ -58,8 +58,8 @@ const GeoSectorFilter: React.FC<Props> = ({ activeSectors, onToggle }) => {
                             key={sector}
                             onClick={() => onToggle(sector)}
                             className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all duration-300 ${
-                                isActive ? 'bg-white/[0.03] border-white/10' : 'opacity-40 grayscale hover:opacity-70'
-                            } border border-transparent hover:border-white/5`}
+                                isActive ? 'bg-white/[0.03] border-mid' : 'opacity-40 grayscale hover:opacity-70'
+                            } border border-transparent hover:border-dim`}
                         >
                             <div className="flex items-center gap-2">
                                 <div
@@ -70,7 +70,7 @@ const GeoSectorFilter: React.FC<Props> = ({ activeSectors, onToggle }) => {
                                         transform: isActive ? 'scale(1.1)' : 'scale(1)'
                                     }}
                                 />
-                                <span className={`text-[10px] font-bold uppercase tracking-tight transition-colors ${isActive ? 'text-white' : 'text-slate-500'}`}>
+                                <span className={`text-[10px] font-bold uppercase tracking-tight transition-colors ${isActive ? 'text-white' : 'text-muted'}`}>
                                     {sector}
                                 </span>
                             </div>
@@ -85,7 +85,7 @@ const GeoSectorFilter: React.FC<Props> = ({ activeSectors, onToggle }) => {
                 })}
             </div>
 
-            <div className="mt-8 pt-6 border-t border-white/5 flex flex-col gap-3">
+            <div className="mt-8 pt-6 border-t border-dim flex flex-col gap-3">
                 <button
                     onClick={() => sectors.forEach((s) => { if (!activeSectors.includes(s)) onToggle(s); })}
                     className="flex items-center justify-center gap-2 py-3 px-4 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-cyan-500/20 transition-all group"
@@ -103,7 +103,7 @@ const GeoSectorFilter: React.FC<Props> = ({ activeSectors, onToggle }) => {
             </div>
 
             <div className="mt-8 p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10">
-                <p className="text-[8px] text-slate-500 font-bold uppercase leading-relaxed tracking-tight text-center">
+                <p className="text-[8px] text-muted font-bold uppercase leading-relaxed tracking-tight text-center">
                     Neural layer system v4.0. Filtering active for regional cluster isolation.
                 </p>
             </div>

@@ -34,7 +34,7 @@ export const SentimentGauge: React.FC<SentimentGaugeProps> = ({ score, label, is
       
       <div className="relative w-48 h-24 overflow-hidden mb-2">
         {/* Gauge Background Track */}
-        <div className="absolute top-0 left-0 w-48 h-48 border-[12px] border-white/5 rounded-full" />
+        <div className="absolute top-0 left-0 w-48 h-48 border-[12px] border-dim rounded-full" />
         
         {/* Gauge Fill (Optional visual flare) */}
         <svg className="absolute top-0 left-0 w-48 h-48 -rotate-90">
@@ -64,13 +64,13 @@ export const SentimentGauge: React.FC<SentimentGaugeProps> = ({ score, label, is
         <div className="text-3xl font-black font-display tracking-tighter" style={{ color: activeColor }}>
           {displayScore > 0 ? '+' : ''}{displayScore.toFixed(2)}
         </div>
-        <div className="text-[10px] font-bold text-slate-500 tracking-[0.3em] uppercase mt-1">
+        <div className="text-[10px] font-bold text-muted tracking-[0.3em] uppercase mt-1">
           {label || 'CALIBRATING'}
         </div>
       </div>
 
       {/* Ticks */}
-      <div className="absolute top-full -mt-24 left-1/2 -translate-x-1/2 w-48 flex justify-between px-4 text-[8px] font-mono text-slate-600">
+      <div className="absolute top-full -mt-24 left-1/2 -translate-x-1/2 w-48 flex justify-between px-4 text-[8px] font-mono text-muted">
         <span>PANIC</span>
         <span>NEUTRAL</span>
         <span>EUPHORIA</span>

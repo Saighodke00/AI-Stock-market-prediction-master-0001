@@ -316,19 +316,19 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     };
 
     return (
-        <div className="w-full glass-card overflow-hidden flex flex-col min-h-[500px] relative border-white/5 shadow-2xl group hover:border-white/10 transition-all duration-500">
+        <div className="w-full glass-card overflow-hidden flex flex-col min-h-[500px] relative border-dim shadow-2xl group hover:border-mid transition-all duration-500">
             {/* Gloss Effect Overlay */}
             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 via-transparent to-transparent pointer-events-none" />
             
             {/* Header / Legend */}
-            <div className="flex items-center justify-between p-6 border-b border-white/5 shrink-0 z-10 bg-void/40 backdrop-blur-xl">
+            <div className="flex items-center justify-between p-6 border-b border-dim shrink-0 z-10 bg-void/40 backdrop-blur-xl">
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
                          <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
                              <Monitor className="w-3.5 h-3.5 text-indigo-400" />
                          </div>
                          <h3 className="font-display font-bold text-white text-[10px] tracking-[0.2em] uppercase flex items-center gap-2">
-                            Neural Terminal <span className="text-slate-500">Inference</span>
+                            Neural Terminal <span className="text-muted">Inference</span>
                             {isLive && (
                                 <span className="flex items-center gap-1.5 ml-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -339,12 +339,12 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                     </div>
                     {legendData && (
                         <div className="flex items-center gap-4 font-mono text-[10px] tracking-tight font-bold">
-                            <span className="flex items-center gap-1.5"><span className="text-slate-500">O</span> <span className="text-white">{formatPrice(legendData.open)}</span></span>
-                            <span className="flex items-center gap-1.5"><span className="text-slate-500">H</span> <span className="text-white">{formatPrice(legendData.high)}</span></span>
-                            <span className="flex items-center gap-1.5"><span className="text-slate-500">L</span> <span className="text-white">{formatPrice(legendData.low)}</span></span>
-                            <span className="flex items-center gap-1.5"><span className="text-slate-500">C</span> <span className={legendData.close >= legendData.open ? 'text-emerald-400' : 'text-rose-400'}>{formatPrice(legendData.close)}</span></span>
+                            <span className="flex items-center gap-1.5"><span className="text-muted">O</span> <span className="text-white">{formatPrice(legendData.open)}</span></span>
+                            <span className="flex items-center gap-1.5"><span className="text-muted">H</span> <span className="text-white">{formatPrice(legendData.high)}</span></span>
+                            <span className="flex items-center gap-1.5"><span className="text-muted">L</span> <span className="text-white">{formatPrice(legendData.low)}</span></span>
+                            <span className="flex items-center gap-1.5"><span className="text-muted">C</span> <span className={legendData.close >= legendData.open ? 'text-emerald-400' : 'text-rose-400'}>{formatPrice(legendData.close)}</span></span>
                             <div className="w-px h-3 bg-white/10 mx-1" />
-                            <span className="flex items-center gap-1.5"><span className="text-slate-500">V</span> <span className="text-white tracking-widest">{formatVol(legendData.volume)}</span></span>
+                            <span className="flex items-center gap-1.5"><span className="text-muted">V</span> <span className="text-white tracking-widest">{formatVol(legendData.volume)}</span></span>
                         </div>
                     )}
                 </div>

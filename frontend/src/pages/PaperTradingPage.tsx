@@ -167,7 +167,7 @@ const TradePanel: React.FC<{
     setFetching(true);
     try {
       const t = ticker.trim().toUpperCase();
-      const fullTicker = t.includes(".NS") || t.includes(".BO") ? t : ${t}.NS;
+      const fullTicker = t.includes(".NS") || t.includes(".BO") ? t : `${t}.NS`;
       const res = await fetch("/api/signal/?mode=swing");
       if (res.ok) {
         const d = await res.json();
@@ -183,10 +183,10 @@ const TradePanel: React.FC<{
     setExecuting(true);
     setMsg(null);
     const fullTicker = ticker.trim().toUpperCase();
-    const t = fullTicker.includes(".NS") || fullTicker.includes(".BO") ? fullTicker : ${fullTicker}.NS;
+    const t = fullTicker.includes(".NS") || fullTicker.includes(".BO") ? fullTicker : `${fullTicker}.NS`;
     try {
       await onTrade(t, action, qty, Number(price));
-      setMsg({ text: ${action} executed —  ×  @ ₹, ok: true });
+      setMsg({ text: `${action} executed — ${qty} × ${t} @ ₹${price}`, ok: true });
       setTimeout(() => setMsg(null), 4000);
     } catch (err: any) {
       setMsg({ text: err.message || "Trade failed", ok: false });
@@ -201,7 +201,7 @@ const TradePanel: React.FC<{
     <div className="glass-card p-5">
       <div className="flex items-center gap-2 mb-4">
         <Zap size={15} className="text-cyan" />
-        <span className="neon-label text-text-muted">
+        <span className="neon-label text-muted">
           Neural Order Entry
         </span>
       </div>
@@ -226,7 +226,7 @@ const TradePanel: React.FC<{
           onChange={e => setTicker(e.target.value)}
           onKeyDown={e => e.key === "Enter" && fetchPrice()}
           placeholder="Ticker (e.g. RELIANCE)"
-          className="flex-1 bg-white/5 border border-border-dim rounded-lg p-2.5 text-text-primary text-sm font-data outline-none focus:border-border-bright"
+          className="flex-1 bg-white/5 border border-dim rounded-lg p-2.5 text-primary text-sm font-data outline-none focus:border-bright"
         />
         <button
           onClick={fetchPrice}
@@ -240,7 +240,7 @@ const TradePanel: React.FC<{
       {/* Price & Qty */}
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div>
-          <label className="block text-[10px] text-text-muted font-data mb-1.5">
+          <label className="block text-[10px] text-muted font-data mb-1.5">
             PRICE (₹)
           </label>
           <input
@@ -248,17 +248,17 @@ const TradePanel: React.FC<{
             value={price}
             onChange={e => setPrice(e.target.value)}
             placeholder="0.00"
-            className="w-full bg-white/5 border border-border-dim rounded-lg p-2.5 text-text-primary text-sm font-data outline-none focus:border-border-bright"
+            className="w-full bg-white/5 border border-dim rounded-lg p-2.5 text-primary text-sm font-data outline-none focus:border-bright"
           />
         </div>
         <div>
-          <label className="block text-[10px] text-text-muted font-data mb-1.5">
+          <label className="block text-[10px] text-muted font-data mb-1.5">
             QUANTITY
           </label>
           <div className="flex items-center">
             <button
               onClick={() => setQty(Math.max(1, qty - 1))}
-              className="px-3 py-2.5 bg-white/5 border border-border-dim rounded-l-lg text-text-muted hover:bg-white/10"
+              className="px-3 py-2.5 bg-white/5 border border-dim rounded-l-lg text-muted hover:bg-white/10"
             >
               <Minus size={12} />
             </button>
@@ -266,11 +266,11 @@ const TradePanel: React.FC<{
               type="number"
               value={qty}
               onChange={e => setQty(Math.max(1, Number(e.target.value)))}
-              className="flex-1 text-center bg-white/5 border-y border-border-dim border-x-0 py-2.5 text-text-primary text-sm font-data outline-none w-full"
+              className="flex-1 text-center bg-white/5 border-y border-dim border-x-0 py-2.5 text-primary text-sm font-data outline-none w-full"
             />
             <button
               onClick={() => setQty(qty + 1)}
-              className="px-3 py-2.5 bg-white/5 border border-border-dim rounded-r-lg text-text-muted hover:bg-white/10"
+              className="px-3 py-2.5 bg-white/5 border border-dim rounded-r-lg text-muted hover:bg-white/10"
             >
               <Plus size={12} />
             </button>
@@ -281,7 +281,7 @@ const TradePanel: React.FC<{
       {/* Total cost */}
       {totalCost > 0 && (
         <div className={"flex justify-between items-center p-3 rounded-lg mb-4 border "}>
-          <span className="text-xs text-text-muted font-data">Total Cost</span>
+          <span className="text-xs text-muted font-data">Total Cost</span>
           <span className={"text-sm font-bold font-data "}>
             {fmtCur(totalCost)}
             {!canAfford && <span className="text-[10px] ml-1.5 opacity-80">— Insufficient funds</span>}
@@ -331,7 +331,7 @@ const PaperTradingPage: React.FC = () => {
 
   const headers = {
     "Content-Type": "application/json",
-    Authorization: "Bearer ",
+    Authorization: `Bearer ${token}`,
   };
 
   const fetchAll = useCallback(async () => {
@@ -390,20 +390,20 @@ const PaperTradingPage: React.FC = () => {
   return (
     <div className="page-container py-8 animate-page-in">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-5 mb-5 border-b border-border-dim">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-5 mb-5 border-b border-dim">
         <div className="flex items-center gap-3">
           <Wallet size={24} className="text-cyan" />
           <div>
-            <h1 className="m-0 text-2xl font-display font-bold text-text-primary tracking-wide">
+            <h1 className="m-0 text-2xl font-display font-bold text-primary tracking-wide">
               PAPER TRADING
             </h1>
-            <div className="text-xs text-text-muted font-data">
+            <div className="text-xs text-muted font-data">
               Neural Ledger — Zero-Risk Simulation
             </div>
           </div>
         </div>
         <div className="flex gap-3">
-          <button onClick={fetchAll} className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-border-dim rounded-lg text-text-muted font-data text-xs hover:text-text-primary hover:border-border-bright transition-all">
+          <button onClick={fetchAll} className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-dim rounded-lg text-muted font-data text-xs hover:text-primary hover:border-bright transition-all">
             <RefreshCw size={12} /> REFRESH
           </button>
           <button onClick={() => setShowReset(!showReset)} className="flex items-center gap-1.5 px-3 py-2 bg-rose/5 border border-rose/10 rounded-lg text-rose font-data text-xs hover:bg-rose/10 transition-all">
@@ -417,7 +417,7 @@ const PaperTradingPage: React.FC = () => {
         <div className="flex items-center justify-between p-4 mb-6 bg-rose/5 border border-rose/20 rounded-xl">
           <span className="text-rose/80 text-sm">Reset portfolio to ₹10,00,000? All trades will be deleted.</span>
           <div className="flex gap-2">
-            <button onClick={() => setShowReset(false)} className="px-3 py-1.5 bg-transparent border border-white/10 rounded-lg text-text-muted text-xs font-data hover:text-text-primary">
+            <button onClick={() => setShowReset(false)} className="px-3 py-1.5 bg-transparent border border-mid rounded-lg text-muted text-xs font-data hover:text-primary">
               Cancel
             </button>
             <button onClick={resetPortfolio} disabled={resetting} className="px-3 py-1.5 bg-rose/10 border border-rose/30 rounded-lg text-rose text-xs font-data hover:bg-rose/20">
@@ -437,11 +437,11 @@ const PaperTradingPage: React.FC = () => {
               <>
                 {/* Main value */}
                 <div className="mb-5">
-                  <div className="font-data-small text-text-muted mb-1">
+                  <div className="font-data-small text-muted mb-1">
                     TOTAL NET ASSET VALUE
                   </div>
                   <div className="flex items-baseline flex-wrap gap-4">
-                    <span className="font-display font-black text-4xl text-text-primary tracking-tight">
+                    <span className="font-display font-black text-4xl text-primary tracking-tight">
                       {fmtCur(summary.portfolio_value)}
                     </span>
                     <span className={"flex items-center gap-1 font-bold text-sm "}>
@@ -449,7 +449,7 @@ const PaperTradingPage: React.FC = () => {
                       {summary.total_return_pct >= 0 ? "+" : ""}{fmt(summary.total_return_pct)}%
                     </span>
                   </div>
-                  <div className="text-xs text-text-muted mt-1">
+                  <div className="text-xs text-muted mt-1">
                     Started with {fmtCur(summary.initial_capital || 1000000)}
                   </div>
                 </div>
@@ -463,16 +463,16 @@ const PaperTradingPage: React.FC = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     { label: "CASH", value: fmtCur(summary.cash_balance), colorClass: "text-cyan", icon: <Wallet size={12} /> },
-                    { label: "INVESTED", value: fmtCur(summary.invested_value), colorClass: "text-indigo", icon: <BarChart2 size={12} /> },
-                    { label: "UNREALISED", value: ${summary.unrealised_pnl >= 0 ? '+' : ''}, colorClass: summary.unrealised_pnl >= 0 ? "text-emerald" : "text-rose", icon: summary.unrealised_pnl >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} /> },
-                    { label: "REALISED", value: ${summary.realised_pnl >= 0 ? '+' : ''}, colorClass: summary.realised_pnl >= 0 ? "text-emerald" : "text-rose", icon: <Target size={12} /> },
+                    { label: "INVESTED", value: fmtCur(summary.invested_value), colorClass: "text-indigo-400", icon: <BarChart2 size={12} /> },
+                    { label: "UNREALISED", value: `${summary.unrealised_pnl >= 0 ? '+' : ''}${fmtCur(summary.unrealised_pnl)}`, colorClass: summary.unrealised_pnl >= 0 ? "text-emerald" : "text-rose", icon: summary.unrealised_pnl >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} /> },
+                    { label: "REALISED", value: `${summary.realised_pnl >= 0 ? '+' : ''}${fmtCur(summary.realised_pnl)}`, colorClass: summary.realised_pnl >= 0 ? "text-emerald" : "text-rose", icon: <Target size={12} /> },
                   ].map(s => (
                     <div key={s.label} className="glass-card p-3 rounded-xl">
-                      <div className={"flex items-center gap-1.5 mb-1 "}>
+                      <div className="flex items-center gap-1.5 mb-1 text-muted">
                         {s.icon}
-                        <span className="font-data-tiny text-text-muted">{s.label}</span>
+                        <span className="font-data-tiny uppercase tracking-tight">{s.label}</span>
                       </div>
-                      <div className={"font-data font-bold text-sm "}>
+                      <div className={`font-data font-bold text-sm ${s.colorClass}`}>
                         {s.value}
                       </div>
                     </div>
@@ -480,15 +480,15 @@ const PaperTradingPage: React.FC = () => {
                 </div>
 
                 {/* Bottom meta */}
-                <div className="flex gap-6 mt-4 pt-4 border-t border-border-dim">
+                <div className="flex gap-6 mt-4 pt-4 border-t border-dim">
                   {[
-                    { label: "WIN RATE", value: ${fmt(summary.win_rate)}%, good: summary.win_rate >= 50 },
-                    { label: "OPEN POSITIONS", value: summary.open_positions, good: null },
-                    { label: "TOTAL TRADES", value: summary.trade_count, good: null },
+                    { label: "WIN RATE", value: `${fmt(summary.win_rate)}%`, good: summary.win_rate >= 50 },
+                    { label: "OPEN POSITIONS", value: summary.open_positions.toString(), good: null },
+                    { label: "TOTAL TRADES", value: summary.trade_count.toString(), good: null },
                   ].map(s => (
                     <div key={s.label} className="flex flex-col gap-0.5">
-                      <div className="font-data-tiny text-text-muted">{s.label}</div>
-                      <div className={"font-display text-2xl font-bold "}>
+                      <div className="font-data-tiny text-muted">{s.label}</div>
+                      <div className={`font-display text-2xl font-bold ${s.good === null ? 'text-primary' : s.good ? 'text-emerald' : 'text-rose'}`}>
                         {s.value}
                       </div>
                     </div>
@@ -496,24 +496,28 @@ const PaperTradingPage: React.FC = () => {
                 </div>
               </>
             ) : (
-              <div className="py-10 text-center text-text-muted">
+              <div className="py-10 text-center text-muted">
                 <div className="inline-block w-6 h-6 border-2 border-cyan/20 border-t-cyan rounded-full animate-spin" />
               </div>
             )}
           </div>
 
           {/* ── Positions / History Tabs ─────────────────────────────────────── */}
-          <div className="glass-card overflow-hidden !p-0 border border-border-mid rounded-2xl">
+          <div className="glass-card overflow-hidden !p-0 border border-mid rounded-2xl">
             {/* Tab header */}
-            <div className="flex border-b border-border-dim">
+            <div className="flex border-b border-dim">
               {(["positions", "history"] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={"flex-1 flex items-center justify-center gap-2 p-3 font-data text-xs font-bold uppercase transition-all "}
+                  className={`flex-1 flex items-center justify-center gap-2 p-3 font-data text-xs font-bold uppercase transition-all ${
+                    activeTab === tab 
+                      ? 'bg-cyan/10 text-cyan border-b-2 border-cyan shadow-[0_0_15px_rgba(0,210,255,0.05)]' 
+                      : 'text-muted hover:text-primary hover:bg-white/5'
+                   }`}
                 >
                   {tab === "positions" ? <Activity size={13} /> : <Clock size={13} />}
-                  {tab} {tab === "positions" ? () : ()}
+                  {tab} ({tab === "positions" ? positions.length : history.length})
                 </button>
               ))}
             </div>
@@ -522,7 +526,7 @@ const PaperTradingPage: React.FC = () => {
             <div className="overflow-x-auto max-h-80 overflow-y-auto custom-scrollbar">
               {activeTab === "positions" ? (
                 positions.length === 0 ? (
-                  <div className="py-10 text-center text-text-muted">
+                  <div className="py-10 text-center text-muted">
                     <Activity size={28} className="mx-auto mb-2 opacity-40" />
                     <p className="text-xs font-data m-0">
                       No open positions. Execute a BUY order to begin.
@@ -533,19 +537,19 @@ const PaperTradingPage: React.FC = () => {
                     <thead className="bg-white/5 sticky top-0 backdrop-blur-md">
                       <tr>
                         {["Ticker", "Qty", "Avg Cost", "Mkt Value", "P&L", "Return %"].map(h => (
-                          <th key={h} className="p-3 text-text-muted font-bold tracking-wider">{h}</th>
+                          <th key={h} className="p-3 text-muted font-bold tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-dim">
                       {positions.map((p) => (
                         <tr key={p.ticker} className="hover:bg-white/5 transition-colors">
-                          <td className="p-3 text-text-primary font-bold">
+                          <td className="p-3 text-primary font-bold">
                             {p.ticker.replace(".NS", "").replace(".BO", "")}
                           </td>
-                          <td className="p-3 text-text-secondary">{p.quantity}</td>
-                          <td className="p-3 text-text-secondary">₹{fmt(p.avg_cost)}</td>
-                          <td className="p-3 text-text-secondary">₹{fmt(p.market_value)}</td>
+                          <td className="p-3 text-secondary">{p.quantity}</td>
+                          <td className="p-3 text-secondary">₹{fmt(p.avg_cost)}</td>
+                          <td className="p-3 text-secondary">₹{fmt(p.market_value)}</td>
                           <td className={"p-3 font-bold "}>
                             {p.unrealised_pnl >= 0 ? "+" : ""}₹{fmt(p.unrealised_pnl)}
                           </td>
@@ -559,7 +563,7 @@ const PaperTradingPage: React.FC = () => {
                 )
               ) : (
                 history.length === 0 ? (
-                  <div className="py-10 text-center text-text-muted">
+                  <div className="py-10 text-center text-muted">
                     <Clock size={28} className="mx-auto mb-2 opacity-40" />
                     <p className="text-xs font-data m-0">No trade history yet.</p>
                   </div>
@@ -568,28 +572,28 @@ const PaperTradingPage: React.FC = () => {
                     <thead className="bg-white/5 sticky top-0 backdrop-blur-md">
                       <tr>
                         {["Ticker", "Action", "Qty", "Price", "Total", "P&L", "Time"].map(h => (
-                          <th key={h} className="p-3 text-text-muted font-bold tracking-wider">{h}</th>
+                          <th key={h} className="p-3 text-muted font-bold tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-dim">
                       {history.slice(0, 30).map((t) => (
                         <tr key={t.id} className="hover:bg-white/5 transition-colors">
-                          <td className="p-3 text-text-primary font-bold">
+                          <td className="p-3 text-primary font-bold">
                             {t.ticker.replace(".NS", "").replace(".BO", "")}
                           </td>
                           <td className="p-3">
-                            <span className={"px-2 py-0.5 rounded font-bold "}>
+                            <span className={`px-2 py-0.5 rounded font-bold ${t.action === 'BUY' ? 'bg-emerald/10 text-emerald' : 'bg-rose/10 text-rose'}`}>
                               {t.action}
                             </span>
                           </td>
-                          <td className="p-3 text-text-secondary">{t.quantity}</td>
-                          <td className="p-3 text-text-secondary">₹{fmt(t.price)}</td>
-                          <td className="p-3 text-text-secondary">₹{fmt(t.total)}</td>
-                          <td className={"p-3 font-bold "}>
-                            {t.action === "SELL" ? ${t.realised_pnl >= 0 ? "+" : ""}₹ : "─"}
+                          <td className="p-3 text-secondary">{t.quantity}</td>
+                          <td className="p-3 text-secondary">₹{fmt(t.price)}</td>
+                          <td className="p-3 text-secondary">₹{fmt(t.total)}</td>
+                          <td className={`p-3 font-bold ${t.realised_pnl >= 0 ? 'text-emerald' : 'text-rose'}`}>
+                            {t.action === "SELL" ? `${t.realised_pnl >= 0 ? "+" : ""}₹${fmt(t.realised_pnl)}` : "─"}
                           </td>
-                          <td className="p-3 text-text-muted">{fmtDate(t.executed_at)}</td>
+                          <td className="p-3 text-muted">{fmtDate(t.executed_at)}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -32,8 +32,8 @@ export const EquityCurveChart: React.FC<EquityCurveProps> = ({ data }) => {
                         content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                                 return (
-                                    <div className="bg-void/90 backdrop-blur-md border border-white/10 p-3 rounded-xl shadow-2xl">
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{payload[0].payload.date}</p>
+                                    <div className="bg-void/90 backdrop-blur-md border border-mid p-3 rounded-xl shadow-2xl">
+                                        <p className="text-[10px] font-black text-muted uppercase tracking-widest mb-1">{payload[0].payload.date}</p>
                                         <p className="text-white font-mono font-bold">₹{(payload[0].value as number)?.toLocaleString("en-IN")}</p>
                                     </div>
                                 );

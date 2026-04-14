@@ -49,7 +49,7 @@ export const SignalBadge: React.FC<SignalBadgeProps> = ({ action }) => {
                     {action}
                 </h2>
                 
-                <div className="mt-6 flex items-center gap-2.5 px-5 py-2 bg-void/60 rounded-full border border-white/5 backdrop-blur-md">
+                <div className="mt-6 flex items-center gap-2.5 px-5 py-2 bg-void/60 rounded-full border border-dim backdrop-blur-md">
                     <Activity size={14} className={`${s.color} animate-pulse`} />
                     <span className="text-[9px] font-black text-white/50 uppercase tracking-[0.2em]">Neural Confirmation Sync</span>
                 </div>

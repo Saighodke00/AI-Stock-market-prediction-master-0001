@@ -26,13 +26,13 @@ export const AISummaryCard: React.FC<AISummaryCardProps> = ({ summary, score, la
           <Brain className="w-5 h-5 text-cyan" />
         </div>
         <div>
-          <h4 className="text-[10px] font-black text-slate-500 tracking-[0.2em] uppercase">Neural Synthesis Engine</h4>
+          <h4 className="text-[10px] font-black text-muted tracking-[0.2em] uppercase">Neural Synthesis Engine</h4>
           <span className="text-[9px] font-mono text-cyan/70 font-bold uppercase tracking-wider">Apex v3.1 Inference</span>
         </div>
       </div>
 
-      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-5 mb-6 relative">
-          <p className="text-sm font-body text-slate-200 leading-relaxed italic">
+      <div className="bg-white/[0.02] border border-dim rounded-xl p-5 mb-6 relative">
+          <p className="text-sm font-body text-primary leading-relaxed italic">
             "{summary}"
           </p>
           <div className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2">
@@ -43,7 +43,7 @@ export const AISummaryCard: React.FC<AISummaryCardProps> = ({ summary, score, la
       </div>
 
       <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest px-1">
+          <div className="flex items-center justify-between text-[10px] font-mono font-bold text-muted uppercase tracking-widest px-1">
              <span>Layer Component</span>
              <span>Weight</span>
              <span>Vector</span>
@@ -55,9 +55,9 @@ export const AISummaryCard: React.FC<AISummaryCardProps> = ({ summary, score, la
             { name: 'Social Momentum', weight: '20%', score: layers.social.score },
             { name: 'Institutional Alpha', weight: '10%', score: layers.deals.score },
           ].map((layer, i) => (
-            <div key={i} className="flex items-center justify-between p-3 bg-white/[0.03] border border-white/5 rounded-lg group/row hover:bg-white/[0.05] transition-colors">
-               <span className="text-xs font-bold text-slate-300 group-hover/row:text-white transition-colors">{layer.name}</span>
-               <span className="text-[9px] font-mono text-slate-500">{layer.weight}</span>
+            <div key={i} className="flex items-center justify-between p-3 bg-white/[0.03] border border-dim rounded-lg group/row hover:bg-white/[0.05] transition-colors">
+               <span className="text-xs font-bold text-secondary group-hover/row:text-white transition-colors">{layer.name}</span>
+               <span className="text-[9px] font-mono text-muted">{layer.weight}</span>
                <div className={`flex items-center gap-2 font-mono text-xs font-bold ${layer.score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                   <ChevronRight size={12} className={layer.score >= 0 ? 'rotate-0' : 'rotate-90'} />
                   {layer.score > 0 ? '+' : ''}{layer.score.toFixed(2)}

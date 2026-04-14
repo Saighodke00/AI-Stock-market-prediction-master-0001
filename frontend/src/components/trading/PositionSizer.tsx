@@ -83,46 +83,46 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
         isNaN(n) || n === null ? '—' : n.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
     return (
-        <div className="w-full mt-6 flex flex-col font-body border-t border-white/5 pt-4">
+        <div className="w-full mt-6 flex flex-col font-body border-t border-dim pt-4">
             {/* Header Toggle */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="group flex items-center justify-between p-4 w-full glass-card hover:bg-white/[0.04] transition-all duration-300 outline-none border-white/10"
+                className="group flex items-center justify-between p-4 w-full glass-card hover:bg-white/[0.04] transition-all duration-300 outline-none border-mid"
             >
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 group-hover:scale-110 transition-transform">
                         <Target size={16} className="text-indigo-400" />
                     </div>
                     <div className="flex flex-col items-start text-left">
-                        <span className="font-display font-bold text-sm tracking-widest text-slate-300 group-hover:text-white transition-colors uppercase">
+                        <span className="font-display font-bold text-sm tracking-widest text-secondary group-hover:text-white transition-colors uppercase">
                             Trade Architect
                         </span>
-                        <span className="text-[9px] text-slate-600 uppercase tracking-widest font-medium">Position sizing & risk intelligence</span>
+                        <span className="text-[9px] text-muted uppercase tracking-widest font-medium">Position sizing & risk intelligence</span>
                     </div>
                 </div>
-                {isOpen ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronRight size={16} className="text-slate-500" />}
+                {isOpen ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
             </button>
 
             {/* Collapsible Content */}
             <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isOpen ? 'max-h-[1600px] mt-4 opacity-100' : 'max-h-0 opacity-0'}`}>
-                <div className="flex flex-col gap-8 p-6 glass-card border-white/5 bg-white/[0.01]">
+                <div className="flex flex-col gap-8 p-6 glass-card border-dim bg-white/[0.01]">
 
                     {/* ─── SECTION 1: CAPITAL INPUTS ─── */}
                     <div>
                         <div className="flex items-center gap-2 mb-4">
                             <Wallet className="w-3.5 h-3.5 text-indigo-400" />
-                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Personal Capital Configuration</p>
+                            <p className="text-[9px] font-black text-muted uppercase tracking-[0.25em]">Personal Capital Configuration</p>
                         </div>
                         <div className="flex flex-col md:flex-row gap-8">
                             <div className="flex-1 flex flex-col gap-2">
-                                <label className="text-slate-400 text-[10px] font-bold tracking-widest uppercase ml-1">Total Portfolio Value</label>
+                                <label className="text-secondary text-[10px] font-bold tracking-widest uppercase ml-1">Total Portfolio Value</label>
                                 <div className="relative group">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-sm">₹</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-mono text-sm">₹</span>
                                     <input
                                         type="number"
                                         value={portfolioValue}
                                         onChange={(e) => setPortfolioValue(Number(e.target.value))}
-                                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-8 pr-4 py-3.5 text-white font-mono text-lg outline-none focus:border-indigo-500/50 focus:bg-white/[0.05] transition-all"
+                                        className="w-full bg-white/[0.03] border border-mid rounded-2xl pl-8 pr-4 py-3.5 text-white font-mono text-lg outline-none focus:border-indigo-500/50 focus:bg-white/[0.05] transition-all"
                                         step="10000"
                                     />
                                     <div className="absolute inset-x-0 bottom-0 h-0.5 bg-indigo-500/0 group-focus-within:bg-indigo-500/50 transition-all rounded-b-2xl" />
@@ -131,7 +131,7 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
 
                             <div className="flex-1 flex flex-col gap-2">
                                 <div className="flex justify-between items-center ml-1">
-                                    <label className="text-slate-400 text-[10px] font-bold tracking-widest uppercase">Max Risk Per Trade</label>
+                                    <label className="text-secondary text-[10px] font-bold tracking-widest uppercase">Max Risk Per Trade</label>
                                     <span className="font-mono text-indigo-300 text-sm font-bold bg-indigo-500/10 px-3 py-1 rounded-xl border border-indigo-500/20 shadow-lg shadow-indigo-500/5">
                                         {riskPct.toFixed(1)}%  =  ₹{Math.round(riskAmount).toLocaleString('en-IN')}
                                     </span>
@@ -145,7 +145,7 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
                                         className="w-full accent-indigo-500 bg-white/10 rounded-full h-1.5 appearance-none cursor-pointer"
                                     />
                                 </div>
-                                <div className="flex justify-between text-[9px] font-bold text-slate-600 uppercase tracking-widest px-1">
+                                <div className="flex justify-between text-[9px] font-bold text-muted uppercase tracking-widest px-1">
                                     <span>Conservative</span>
                                     <span>Standard</span>
                                     <span>Aggressive</span>
@@ -160,21 +160,21 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
                         
                         {/* Top Intelligence Row */}
                         <div className="flex flex-wrap items-center gap-4 mb-6">
-                            <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-3 py-1.5">
+                            <div className="flex items-center gap-2 bg-black/40 border border-mid rounded-xl px-3 py-1.5">
                                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Confidence: <span className="text-white ml-1">{confidence}%</span></span>
+                                <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Confidence: <span className="text-white ml-1">{confidence}%</span></span>
                             </div>
-                            <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-3 py-1.5">
+                            <div className="flex items-center gap-2 bg-black/40 border border-mid rounded-xl px-3 py-1.5">
                                 <Target className="w-3.5 h-3.5 text-emerald-400" />
-                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Accuracy: <span className="text-white ml-1">{accuracy}%</span></span>
+                                <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Accuracy: <span className="text-white ml-1">{accuracy}%</span></span>
                             </div>
                             <div className="flex-1 min-w-[140px] flex items-center gap-3">
                                 <div className="flex flex-col gap-1 w-full">
-                                    <div className="flex justify-between text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                                    <div className="flex justify-between text-[8px] font-black text-muted uppercase tracking-[0.2em]">
                                         <span>Sentiment Intensity</span>
                                         <span className={sentimentScore > 0 ? 'text-emerald-400' : 'text-rose-400'}>{sentimentScore.toFixed(2)}</span>
                                     </div>
-                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-dim">
                                         <div 
                                             className={`h-full transition-all duration-1000 ${sentimentScore > 0 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`} 
                                             style={{ width: `${sentimentWidth}%` }} 
@@ -187,34 +187,34 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
                         {/* Main Recommendation Callout */}
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                             <div className="flex flex-col">
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3">Prime Recommendation</p>
+                                <p className="text-[10px] font-black text-muted uppercase tracking-[0.3em] mb-3">Prime Recommendation</p>
                                 <div className="flex items-baseline gap-4 flex-wrap">
                                     <span className={`font-display font-black text-6xl italic uppercase tracking-tighter ${actionColor}`}>{actionLabel}</span>
                                     {!isHold && (
                                         <>
                                             <span className="font-mono text-white text-4xl font-black">{shares.toLocaleString('en-IN')}</span>
-                                            <span className="text-slate-400 text-xl font-medium tracking-wide">shares of <span className="text-white font-bold">{data.ticker}</span></span>
+                                            <span className="text-secondary text-xl font-medium tracking-wide">shares of <span className="text-white font-bold">{data.ticker}</span></span>
                                         </>
                                     )}
                                 </div>
                             </div>
 
                             {/* Safety Checklist (Guardrails) */}
-                            <div className="flex items-center gap-3 bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-white/5">
+                            <div className="flex items-center gap-3 bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-dim">
                                 <div className="flex flex-col gap-2">
-                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest text-center">Safety Gates</span>
+                                    <span className="text-[8px] font-black text-muted uppercase tracking-widest text-center">Safety Gates</span>
                                     <div className="flex gap-2">
                                         <div className="flex flex-col items-center gap-1" title="Volatility Cone Gate">
                                             {gates.gate1_cone ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <XCircle className="w-5 h-5 text-rose-500" />}
-                                            <span className="text-[7px] font-medium text-slate-500 uppercase">Cone</span>
+                                            <span className="text-[7px] font-medium text-muted uppercase">Cone</span>
                                         </div>
                                         <div className="flex flex-col items-center gap-1" title="Sentiment Alignment Gate">
                                             {gates.gate2_sentiment ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <XCircle className="w-5 h-5 text-rose-500" />}
-                                            <span className="text-[7px] font-medium text-slate-500 uppercase">Sent</span>
+                                            <span className="text-[7px] font-medium text-muted uppercase">Sent</span>
                                         </div>
                                         <div className="flex flex-col items-center gap-1" title="Technical Zone Gate">
                                             {gates.gate3_technical ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <XCircle className="w-5 h-5 text-rose-500" />}
-                                            <span className="text-[7px] font-medium text-slate-500 uppercase">Tech</span>
+                                            <span className="text-[7px] font-medium text-muted uppercase">Tech</span>
                                         </div>
                                     </div>
                                 </div>
@@ -223,31 +223,31 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
 
                         {/* Position Summary Chips */}
                         {!isHold && (
-                            <div className="flex flex-wrap gap-4 pt-6 border-t border-white/10">
+                            <div className="flex flex-wrap gap-4 pt-6 border-t border-mid">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                                        <Wallet size={18} className="text-slate-400" />
+                                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-mid flex items-center justify-center">
+                                        <Wallet size={18} className="text-secondary" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-[9px] text-slate-500 uppercase tracking-widest font-black">Total Commitment</span>
+                                        <span className="text-[9px] text-muted uppercase tracking-widest font-black">Total Commitment</span>
                                         <span className="text-white font-mono font-bold text-sm">₹{Math.round(totalPositionValue).toLocaleString('en-IN')}</span>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-xl bg-white/5 border ${isOversized ? 'border-amber-500/20' : 'border-white/10'} flex items-center justify-center`}>
-                                        <BarChart3 size={18} className={isOversized ? 'text-amber-400' : 'text-slate-400'} />
+                                    <div className={`w-10 h-10 rounded-xl bg-white/5 border ${isOversized ? 'border-amber-500/20' : 'border-mid'} flex items-center justify-center`}>
+                                        <BarChart3 size={18} className={isOversized ? 'text-amber-400' : 'text-secondary'} />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-[9px] text-slate-500 uppercase tracking-widest font-black">% Exposure</span>
+                                        <span className="text-[9px] text-muted uppercase tracking-widest font-black">% Exposure</span>
                                         <span className={`font-mono font-bold text-sm ${isOversized ? 'text-amber-400' : 'text-white'}`}>{posPctOfPortfolio.toFixed(1)}%</span>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-mid flex items-center justify-center">
                                         <ShieldCheck size={18} className="text-indigo-400" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-[9px] text-slate-500 uppercase tracking-widest font-black">Kelly Limit</span>
+                                        <span className="text-[9px] text-muted uppercase tracking-widest font-black">Kelly Limit</span>
                                         <span className="text-indigo-300 font-mono font-bold text-sm">{kellyCapPct}%</span>
                                     </div>
                                 </div>
@@ -255,12 +255,12 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
                         )}
 
                         {/* Reasoning Section (Visible for all actions including HOLD) */}
-                        <div className="mt-8 p-5 bg-black/40 rounded-2xl border border-white/5 shadow-inner">
+                        <div className="mt-8 p-5 bg-black/40 rounded-2xl border border-dim shadow-inner">
                             <div className="flex items-center gap-2 mb-3">
                                 <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Neural Logic & Deduction</span>
+                                <span className="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Neural Logic & Deduction</span>
                             </div>
-                            <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                            <p className="text-xs text-secondary leading-relaxed font-medium">
                                 {reason}
                             </p>
                         </div>
@@ -272,7 +272,7 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
                             <div>
                                 <div className="flex items-center gap-2 mb-6">
                                     <Activity className="w-3.5 h-3.5 text-indigo-400" />
-                                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.25em]">Precision Price Ladder</p>
+                                    <p className="text-[9px] font-black text-muted uppercase tracking-[0.25em]">Precision Price Ladder</p>
                                 </div>
 
                                 <div className="relative flex flex-col gap-0 px-2">
@@ -284,10 +284,10 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
                                             </div>
                                             <div className="flex-1 w-0.5 bg-gradient-to-b from-emerald-500/40 via-indigo-500/10 to-transparent my-1" />
                                         </div>
-                                        <div className="flex-1 flex justify-between items-start pb-8 border-b border-white/5">
+                                        <div className="flex-1 flex justify-between items-start pb-8 border-b border-dim">
                                             <div className="flex flex-col gap-1">
                                                 <p className="text-[11px] font-black text-emerald-400 uppercase tracking-widest">Target Profit Level</p>
-                                                <p className="text-[10px] text-slate-600 leading-relaxed font-medium">Neural P50 median forecast — automated exit zone.</p>
+                                                <p className="text-[10px] text-muted leading-relaxed font-medium">Neural P50 median forecast — automated exit zone.</p>
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <p className="font-mono text-xl font-black text-emerald-400">₹{fmt(p50)}</p>
@@ -304,14 +304,14 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
                                             </div>
                                             <div className="flex-1 w-0.5 bg-gradient-to-b from-transparent via-indigo-500/10 to-rose-500/40 my-1" />
                                         </div>
-                                        <div className="flex-1 flex justify-between items-start py-8 border-b border-white/5">
+                                        <div className="flex-1 flex justify-between items-start py-8 border-b border-dim">
                                             <div className="flex flex-col gap-1">
                                                 <p className="text-[11px] font-black text-indigo-300 uppercase tracking-widest">Entry Execution</p>
-                                                <p className="text-[10px] text-slate-600 leading-relaxed font-medium">Current live market data — institutional base price.</p>
+                                                <p className="text-[10px] text-muted leading-relaxed font-medium">Current live market data — institutional base price.</p>
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <p className="font-mono text-xl font-black text-white">₹{fmt(currentPrice)}</p>
-                                                <p className="text-[11px] text-slate-500 font-bold">LTP Execution</p>
+                                                <p className="text-[11px] text-muted font-bold">LTP Execution</p>
                                             </div>
                                         </div>
                                     </div>
@@ -326,7 +326,7 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
                                         <div className="flex-1 flex justify-between items-start pt-8">
                                             <div className="flex flex-col gap-1">
                                                 <p className="text-[11px] font-black text-rose-400 uppercase tracking-widest">Stop Sacrifice</p>
-                                                <p className="text-[10px] text-slate-600 leading-relaxed font-medium">Hard safety floor based on ATR volatility buffers.</p>
+                                                <p className="text-[10px] text-muted leading-relaxed font-medium">Hard safety floor based on ATR volatility buffers.</p>
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <p className="font-mono text-xl font-black text-rose-400">₹{fmt(stopLossPrice)}</p>
@@ -342,27 +342,27 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
                                 {/* R:R Visual */}
                                 <div>
                                     <div className="flex justify-between items-center mb-6">
-                                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.25em]">Risk Optimization Ratio</p>
+                                        <p className="text-[9px] font-black text-muted uppercase tracking-[0.25em]">Risk Optimization Ratio</p>
                                         <div className="flex gap-4">
                                             <div className="flex flex-col items-end">
-                                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">RSI</span>
-                                                <span className={`text-xs font-mono font-bold ${data.rsi > 70 ? 'text-rose-400' : data.rsi < 30 ? 'text-emerald-400' : 'text-slate-300'}`}>{data.rsi?.toFixed(1) ?? '—'}</span>
+                                                <span className="text-[8px] font-black text-muted uppercase tracking-widest">RSI</span>
+                                                <span className={`text-xs font-mono font-bold ${data.rsi > 70 ? 'text-rose-400' : data.rsi < 30 ? 'text-emerald-400' : 'text-secondary'}`}>{data.rsi?.toFixed(1) ?? '—'}</span>
                                             </div>
                                             <div className="flex flex-col items-end">
-                                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">ADX</span>
-                                                <span className="text-xs font-mono font-bold text-slate-300">{data.adx?.toFixed(1) ?? '—'}</span>
+                                                <span className="text-[8px] font-black text-muted uppercase tracking-widest">ADX</span>
+                                                <span className="text-xs font-mono font-bold text-secondary">{data.adx?.toFixed(1) ?? '—'}</span>
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 transition-all hover:bg-white/[0.04]">
+                                    <div className="bg-white/[0.02] border border-dim rounded-3xl p-8 transition-all hover:bg-white/[0.04]">
                                         <div className="flex items-center justify-between mb-4">
-                                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.15em]">Profit Multiplier</span>
+                                            <span className="text-[10px] text-secondary font-black uppercase tracking-[0.15em]">Profit Multiplier</span>
                                             <span className={`text-2xl font-mono font-black ${rrRatio >= 2 ? 'text-emerald-400' : rrRatio >= 1 ? 'text-amber-400' : 'text-rose-400'}`}>
                                                 1 : {rrRatio.toFixed(2)}
                                             </span>
                                         </div>
-                                        <div className="flex gap-1.5 h-4 rounded-full overflow-hidden mb-6 p-0.5 bg-black/40 border border-white/5">
+                                        <div className="flex gap-1.5 h-4 rounded-full overflow-hidden mb-6 p-0.5 bg-black/40 border border-dim">
                                             <div
                                                 className="bg-rose-500/80 rounded-l-full transition-all duration-1000 flex items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
                                                 style={{ width: `${riskBarWidth}%` }}
@@ -385,10 +385,10 @@ export const PositionSizer: React.FC<PositionSizerProps> = ({ data }) => {
                                         </div>
                                     </div>
                                     
-                                    <div className="mt-4 px-4 py-3 bg-white/[0.02] rounded-xl border border-white/5 flex items-center justify-between">
+                                    <div className="mt-4 px-4 py-3 bg-white/[0.02] rounded-xl border border-dim flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <Info size={14} className="text-slate-500" />
-                                            <span className="text-[10px] text-slate-500 font-medium tracking-wide">Signal Grade:</span>
+                                            <Info size={14} className="text-muted" />
+                                            <span className="text-[10px] text-muted font-medium tracking-wide">Signal Grade:</span>
                                         </div>
                                         <span className={`text-[10px] font-black uppercase tracking-widest ${rrRatio >= 2 ? 'text-emerald-400' : rrRatio >= 1 ? 'text-amber-400' : 'text-rose-400'}`}>
                                             {rrRatio >= 2 ? 'Institutional Grade' : rrRatio >= 1 ? 'Speculative Entry' : 'Risk Outlier'}

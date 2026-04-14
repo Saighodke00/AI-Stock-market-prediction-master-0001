@@ -17,7 +17,7 @@ export const GateCard: React.FC<GateCardProps> = ({ label, passed, title, icon: 
             <div className={`p-2.5 rounded-xl bg-void border transition-all duration-500 ${passed ? 'text-emerald-400 border-emerald-500/20 group-hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'text-rose-400 border-rose-500/20 group-hover:shadow-[0_0_15px_rgba(244,63,94,0.2)]'}`}>
                 <Icon size={20} />
             </div>
-            <div className={`p-1 rounded-full ${passed ? 'bg-emerald-500/10' : 'bg-rose-500/10'} border border-white/5`}>
+            <div className={`p-1 rounded-full ${passed ? 'bg-emerald-500/10' : 'bg-rose-500/10'} border border-dim`}>
                 {passed 
                     ? <CheckCircle2 size={14} className="text-emerald-400 animate-in zoom-in duration-500" /> 
                     : <XCircle size={14} className="text-rose-400 animate-in zoom-in duration-500" />

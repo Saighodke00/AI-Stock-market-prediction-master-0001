@@ -26,7 +26,7 @@ export const LeftSidebar: React.FC = () => {
     }, []);
 
     return (
-        <div className="w-[240px] bg-bg-base border-r border-border-dim shrink-0 hidden lg:flex flex-col h-full z-40 relative">
+        <div className="w-[240px] bg-base border-r border-dim shrink-0 hidden lg:flex flex-col h-full z-40 relative">
             {/* Branding Area */}
             <div className="p-6 mb-2">
                 <div className="flex items-center gap-2 group cursor-pointer">
@@ -34,10 +34,10 @@ export const LeftSidebar: React.FC = () => {
                         <Triangle className="w-5 h-5 fill-current" />
                     </div>
                     <div>
-                        <span className="font-display font-black text-xl text-text-primary tracking-tight uppercase leading-none block">
+                        <span className="font-display font-black text-xl text-primary tracking-tight uppercase leading-none block">
                             APEX <span className="text-cyan">AI</span>
                         </span>
-                        <span className="font-data-tiny text-[8px] text-text-muted uppercase tracking-[0.3em]">Neural Terminal</span>
+                        <span className="font-data-tiny text-[8px] text-muted uppercase tracking-[0.3em]">Neural Terminal</span>
                     </div>
                 </div>
             </div>
@@ -47,7 +47,7 @@ export const LeftSidebar: React.FC = () => {
                 <div className="mb-8">
                     <div className="px-4 mb-4 flex items-center gap-2">
                         <div className="w-1 h-3 bg-cyan/40 rounded-full" />
-                        <h3 className="font-data-tiny text-text-muted uppercase tracking-[0.2em] font-black">Mainframe Control</h3>
+                        <h3 className="font-data-tiny text-muted uppercase tracking-[0.2em] font-black">Mainframe Control</h3>
                     </div>
                     <ul className="space-y-1">
                         {navItems.map((item) => (
@@ -58,7 +58,7 @@ export const LeftSidebar: React.FC = () => {
                                         flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden
                                         ${isActive 
                                             ? 'bg-cyan/5 border border-cyan/20 text-cyan' 
-                                            : 'text-text-muted hover:text-text-primary hover:bg-white/[0.03]'}
+                                            : 'text-muted hover:text-primary hover:bg-white/[0.03]'}
                                     `}
                                 >
                                     {({ isActive }) => (
@@ -80,7 +80,7 @@ export const LeftSidebar: React.FC = () => {
                         ))}
 
                         {user?.role === 'ADMIN' && (
-                            <li key="/admin" className="mt-4 pt-4 border-t border-white/5">
+                            <li key="/admin" className="mt-4 pt-4 border-t border-dim">
                                 <NavLink
                                     to="/admin"
                                     className={({ isActive }) => `
@@ -109,16 +109,16 @@ export const LeftSidebar: React.FC = () => {
             </nav>
 
             {/* User Profile */}
-            <div className="p-4 bg-white/[0.02] border-t border-white/5 shrink-0">
-                <div className="flex items-center gap-3 mb-4 p-2 rounded-xl border border-transparent hover:border-white/5 transition-all">
+            <div className="p-4 bg-white/[0.02] border-t border-dim shrink-0">
+                <div className="flex items-center gap-3 mb-4 p-2 rounded-xl border border-transparent hover:border-dim transition-all">
                     <div className="w-10 h-10 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center shrink-0">
                         <User className="w-5 h-5 text-cyan" />
                     </div>
                     <div className="overflow-hidden">
-                        <p className="text-sm font-bold text-text-primary truncate uppercase font-display tracking-tight">{user?.username || 'OPERATIVE'}</p>
+                        <p className="text-sm font-bold text-primary truncate uppercase font-display tracking-tight">{user?.username || 'OPERATIVE'}</p>
                         <div className="flex items-center gap-1.5">
                             <div className="w-1 h-1 rounded-full bg-emerald animate-pulse" />
-                            <p className="text-[10px] font-data text-text-muted truncate uppercase tracking-widest">{user?.role || 'LEVEL_0'}</p>
+                            <p className="text-[10px] font-data text-muted truncate uppercase tracking-widest">{user?.role || 'LEVEL_0'}</p>
                         </div>
                     </div>
                 </div>

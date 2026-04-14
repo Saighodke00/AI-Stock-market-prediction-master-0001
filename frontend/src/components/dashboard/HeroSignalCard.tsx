@@ -17,7 +17,7 @@ export const HeroSignalCard: React.FC<HeroSignalCardProps> = ({ signal, onClick 
     return (
         <div 
             onClick={onClick}
-            className={`relative overflow-hidden bg-surface/60 backdrop-blur-xl border border-white/10 rounded-3xl p-8 cursor-pointer group transition-all duration-500 hover:scale-[1.02] hover:border-white/20 ${glow}`}
+            className={`relative overflow-hidden bg-surface/60 backdrop-blur-xl border border-mid rounded-3xl p-8 cursor-pointer group transition-all duration-500 hover:scale-[1.02] hover:border-bright ${glow}`}
         >
             <div className={`absolute -right-20 -top-20 w-64 h-64 ${isBuy ? 'bg-emerald' : 'bg-rose'} opacity-[0.03] rounded-full blur-[100px] group-hover:opacity-[0.07] transition-opacity`} />
             
@@ -38,12 +38,12 @@ export const HeroSignalCard: React.FC<HeroSignalCardProps> = ({ signal, onClick 
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-10 relative z-10">
                 <div className="flex flex-col gap-2">
-                    <span className="font-data text-[10px] text-slate-400 uppercase tracking-widest font-bold">Confidence Index</span>
+                    <span className="font-data text-[10px] text-secondary uppercase tracking-widest font-bold">Confidence Index</span>
                     <div className="flex items-center gap-4">
                         <span className={`font-display text-4xl font-black ${color}`}>
                             {Math.round((signal.conf || signal.confidence || 0) * (signal.conf ? 1 : 100))}%
                         </span>
-                        <div className="flex-1 h-2 bg-void/50 rounded-full overflow-hidden border border-white/10">
+                        <div className="flex-1 h-2 bg-void/50 rounded-full overflow-hidden border border-mid">
                             <div 
                                 className={`h-full ${isBuy ? 'bg-emerald' : 'bg-rose'} shadow-[0_0_10px_rgba(16,185,129,0.3)] transition-all duration-1000`} 
                                 style={{ width: `${(signal.conf || signal.confidence * 100)}%` }} 
@@ -53,21 +53,21 @@ export const HeroSignalCard: React.FC<HeroSignalCardProps> = ({ signal, onClick 
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <span className="font-data text-[10px] text-slate-400 uppercase tracking-widest font-bold">Market Entry</span>
+                    <span className="font-data text-[10px] text-secondary uppercase tracking-widest font-bold">Market Entry</span>
                     <span className="font-display text-4xl font-black text-white">
                         ₹{(signal.current_price || signal.price || 0).toLocaleString('en-IN')}
                     </span>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <span className="font-data text-[10px] text-slate-400 uppercase tracking-widest font-bold">AI Reasoning</span>
-                    <p className="font-body text-xs text-slate-300 leading-relaxed line-clamp-2 italic">
+                    <span className="font-data text-[10px] text-secondary uppercase tracking-widest font-bold">AI Reasoning</span>
+                    <p className="font-body text-xs text-secondary leading-relaxed line-clamp-2 italic">
                         "High probability trend reversal detected via neural attention gates. Volatility compression suggests iminent breakout."
                     </p>
                 </div>
             </div>
 
-            <div className="mt-8 flex items-center justify-between pt-6 border-t border-white/5 relative z-10">
+            <div className="mt-8 flex items-center justify-between pt-6 border-t border-dim relative z-10">
                 <div className="flex gap-6 text-[10px] font-data text-secondary uppercase tracking-widest">
                     <span className="flex items-center gap-2"><Target size={12} className="text-cyan" /> P90 Strategy: Optimistic</span>
                     <span className="flex items-center gap-2"><TrendingUp size={12} className="text-emerald" /> RSI Confluence: High</span>

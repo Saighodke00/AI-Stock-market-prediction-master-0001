@@ -17,11 +17,11 @@ export const TickerTape: React.FC = () => {
     const doubledTickers = [...mockTickers, ...mockTickers, ...mockTickers];
 
     return (
-        <div className="h-[40px] bg-bg-base border-t border-border-dim shrink-0 flex items-center overflow-hidden w-full relative z-50">
+        <div className="h-[40px] bg-base border-t border-dim shrink-0 flex items-center overflow-hidden w-full relative z-50">
             {/* HUD Prefix */}
-            <div className="flex-none px-6 h-full flex items-center gap-3 bg-white/5 border-r border-border-dim z-10 relative">
+            <div className="flex-none px-6 h-full flex items-center gap-3 bg-base border-r border-dim z-20 relative shadow-[10px_0_20px_rgba(0,0,0,0.5)]">
                 <Activity size={12} className="text-cyan animate-pulse" />
-                <span className="font-data-tiny text-[8px] text-text-muted uppercase tracking-[0.3em] font-black">Market Stream</span>
+                <span className="font-data-tiny text-[8px] text-muted uppercase tracking-[0.3em] font-black">Market Stream</span>
             </div>
 
             {/* Scrolling Tape */}
@@ -29,16 +29,17 @@ export const TickerTape: React.FC = () => {
                 {doubledTickers.map((item, index) => {
                     const isPositive = item.change.startsWith('+');
                     const isVolatile = item.type === 'VOLATILE';
-                    const color = isVolatile ? 'text-amber' : isPositive ? 'text-emerald' : 'text-rose';
+                    const colorName = isVolatile ? 'amber' : isPositive ? 'emerald' : 'rose';
+                    const textColor = `text-${colorName}`;
                     const Icon = isVolatile ? Activity : isPositive ? TrendingUp : BarChart;
 
                     return (
-                        <div key={index} className="flex items-center gap-4 px-10 shrink-0 group border-l border-white/[0.02] first:border-none">
-                            <span className="font-display font-black text-[11px] text-text-primary tracking-[0.1em] group-hover:text-cyan transition-colors uppercase">{item.symbol}</span>
-                            <span className="font-data font-bold text-[10px] text-text-muted tabular-nums">{item.price}</span>
-                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded border ${color}/10 border-${color}/20`}>
-                                <Icon size={8} className={color} />
-                                <span className={`font-data-tiny font-black text-[9px] ${color} tracking-tighter`}>
+                        <div key={index} className="flex items-center gap-4 px-10 shrink-0 group border-l border-dim first:border-none">
+                            <span className="font-display font-black text-[11px] text-primary tracking-[0.1em] group-hover:text-cyan transition-colors uppercase">{item.symbol}</span>
+                            <span className="font-data font-bold text-[10px] text-muted tabular-nums">{item.price}</span>
+                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded border bg-${colorName}/10 border-${colorName}/20`}>
+                                <Icon size={8} className={textColor} />
+                                <span className={`font-data-tiny font-black text-[9px] ${textColor} tracking-tighter`}>
                                     {item.change}
                                 </span>
                             </div>

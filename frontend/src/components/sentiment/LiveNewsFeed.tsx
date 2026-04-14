@@ -25,7 +25,7 @@ export const LiveNewsFeed: React.FC<LiveNewsFeedProps> = ({ items, isLoading }) 
     return (
       <div className="flex flex-col gap-3">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-20 bg-white/5 animate-pulse rounded-lg border border-white/5" />
+          <div key={i} className="h-20 bg-white/5 animate-pulse rounded-lg border border-dim" />
         ))}
       </div>
     );
@@ -44,9 +44,9 @@ export const LiveNewsFeed: React.FC<LiveNewsFeedProps> = ({ items, isLoading }) 
     return (
       <div className="flex flex-col gap-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
         {items.length === 0 ? (
-          <div className="py-12 text-center border border-dashed border-white/10 rounded-xl">
-            <Newspaper className="w-8 h-8 text-slate-600 mx-auto mb-3 opacity-20" />
-            <p className="text-xs text-slate-500 font-mono italic">AWAITING SYNCHRONIZATION...</p>
+          <div className="py-12 text-center border border-dashed border-mid rounded-xl">
+            <Newspaper className="w-8 h-8 text-muted mx-auto mb-3 opacity-20" />
+            <p className="text-xs text-muted font-mono italic">AWAITING SYNCHRONIZATION...</p>
           </div>
         ) : (
           items.map((item, idx) => (
@@ -55,7 +55,7 @@ export const LiveNewsFeed: React.FC<LiveNewsFeedProps> = ({ items, isLoading }) 
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group block p-4 bg-[#0a0f1d] border border-white/5 hover:border-cyan/30 rounded-xl transition-all hover:translate-x-1"
+              className="group block p-4 bg-[#0a0f1d] border border-dim hover:border-cyan/30 rounded-xl transition-all hover:translate-x-1"
             >
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
@@ -67,11 +67,11 @@ export const LiveNewsFeed: React.FC<LiveNewsFeedProps> = ({ items, isLoading }) 
                 </span>
               </div>
               
-              <h3 className="text-sm font-body text-slate-200 leading-snug line-clamp-2 mb-3 group-hover:text-white transition-colors">
+              <h3 className="text-sm font-body text-primary leading-snug line-clamp-2 mb-3 group-hover:text-white transition-colors">
                 {item.title}
               </h3>
   
-              <div className="flex items-center gap-4 text-[9px] text-slate-500 font-mono">
+              <div className="flex items-center gap-4 text-[9px] text-muted font-mono">
                 <div className="flex items-center gap-1.5">
                   <Clock className="w-3 h-3" />
                   {formatPublishedDate(item.published)}

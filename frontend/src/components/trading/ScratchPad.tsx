@@ -41,20 +41,20 @@ export const ScratchPad: React.FC<ScratchPadProps> = ({ isOpen, onClose, current
     const status = getRRStatus();
 
     return (
-        <div className="fixed inset-y-0 right-0 w-[400px] bg-slate-900/95 backdrop-blur-xl border-l border-white/10 z-[100] shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+        <div className="fixed inset-y-0 right-0 w-[400px] bg-base/95 backdrop-blur-xl border-l border-mid z-[100] shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
+            <div className="p-6 border-b border-mid flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
                         <Calculator className="w-4 h-4 text-indigo-400" />
                     </div>
                     <div>
                         <h2 className="font-display font-black text-xs text-white uppercase tracking-widest">Scratch Pad</h2>
-                        <p className="text-[10px] text-slate-500 font-medium">Manual Trade Planner</p>
+                        <p className="text-[10px] text-muted font-medium">Manual Trade Planner</p>
                     </div>
                 </div>
                 <button 
                     onClick={onClose}
-                    className="p-2 hover:bg-white/5 rounded-xl transition-colors text-slate-500 hover:text-white"
+                    className="p-2 hover:bg-white/5 rounded-xl transition-colors text-muted hover:text-white"
                 >
                     <X size={18} />
                 </button>
@@ -65,20 +65,20 @@ export const ScratchPad: React.FC<ScratchPadProps> = ({ isOpen, onClose, current
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Entry Price</label>
+                            <label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Entry Price</label>
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-bold">₹</span>
                                 <input 
                                     type="number" 
                                     value={entry}
                                     onChange={(e) => setEntry(parseFloat(e.target.value) || 0)}
-                                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-3 pl-8 pr-4 text-white font-display font-bold text-sm focus:border-indigo-500/50 outline-none transition-all"
+                                    className="w-full bg-white/[0.03] border border-mid rounded-xl py-3 pl-8 pr-4 text-white font-display font-bold text-sm focus:border-indigo-500/50 outline-none transition-all"
                                 />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Current</label>
-                            <div className="w-full bg-white/[0.01] border border-dashed border-white/5 rounded-xl py-3 px-4 text-slate-400 font-display font-bold text-sm">
+                            <label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Current</label>
+                            <div className="w-full bg-white/[0.01] border border-dashed border-dim rounded-xl py-3 px-4 text-secondary font-display font-bold text-sm">
                                 ₹{currentPrice.toFixed(2)}
                             </div>
                         </div>
@@ -113,21 +113,21 @@ export const ScratchPad: React.FC<ScratchPadProps> = ({ isOpen, onClose, current
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Quantity</label>
+                            <label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Quantity</label>
                             <input 
                                 type="number" 
                                 value={quantity}
                                 onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                                className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-3 px-4 text-white font-display font-bold text-sm focus:border-indigo-500/50 outline-none transition-all"
+                                className="w-full bg-white/[0.03] border border-mid rounded-xl py-3 px-4 text-white font-display font-bold text-sm focus:border-indigo-500/50 outline-none transition-all"
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Capital (Total)</label>
+                            <label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Capital (Total)</label>
                             <input 
                                 type="number" 
                                 value={capital}
                                 onChange={(e) => setCapital(parseFloat(e.target.value) || 0)}
-                                className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-3 px-4 text-white font-display font-bold text-sm focus:border-indigo-500/50 outline-none transition-all"
+                                className="w-full bg-white/[0.03] border border-mid rounded-xl py-3 px-4 text-white font-display font-bold text-sm focus:border-indigo-500/50 outline-none transition-all"
                             />
                         </div>
                     </div>
@@ -137,12 +137,12 @@ export const ScratchPad: React.FC<ScratchPadProps> = ({ isOpen, onClose, current
                 <div className="space-y-6">
                     <div className="flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-indigo-500" />
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-display">Risk Analysis</h3>
+                        <h3 className="text-[10px] font-black text-secondary uppercase tracking-widest font-display">Risk Analysis</h3>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
                         <div className={`p-6 rounded-[2rem] border-2 ${status.bg} flex flex-col items-center justify-center text-center gap-2`}>
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Risk : Reward</span>
+                            <span className="text-[10px] font-black text-muted uppercase tracking-[0.3em]">Risk : Reward</span>
                             <div className={`text-4xl font-black font-display ${status.color}`}>1 : {rr}</div>
                             <div className={`px-4 py-1.5 rounded-full text-[9px] font-black border uppercase tracking-widest mt-2 ${status.bg} ${status.color}`}>
                                 {status.label} SETUP
@@ -167,9 +167,9 @@ export const ScratchPad: React.FC<ScratchPadProps> = ({ isOpen, onClose, current
                         </div>
                     </div>
 
-                    <div className="bg-void/40 border border-white/5 rounded-2xl p-6">
+                    <div className="bg-void/40 border border-dim rounded-2xl p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Position Exposure</span>
+                            <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Position Exposure</span>
                             <span className="text-[10px] font-bold text-white uppercase tracking-widest">₹{(quantity * entry).toLocaleString()}</span>
                         </div>
                         <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -179,15 +179,15 @@ export const ScratchPad: React.FC<ScratchPadProps> = ({ isOpen, onClose, current
                             />
                         </div>
                         <div className="flex justify-between mt-2">
-                             <span className="text-[9px] text-slate-600 font-medium">0%</span>
-                             <span className="text-[9px] text-slate-600 font-medium">Leverage: {((quantity * entry) / capital).toFixed(1)}x</span>
-                             <span className="text-[9px] text-slate-600 font-medium">100%</span>
+                             <span className="text-[9px] text-muted font-medium">0%</span>
+                             <span className="text-[9px] text-muted font-medium">Leverage: {((quantity * entry) / capital).toFixed(1)}x</span>
+                             <span className="text-[9px] text-muted font-medium">100%</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="p-6 border-t border-white/10 bg-void/50 backdrop-blur-md">
+            <div className="p-6 border-t border-mid bg-void/50 backdrop-blur-md">
                 <button 
                     onClick={onClose}
                     className="w-full py-4 bg-white text-slate-900 rounded-2xl font-display font-black text-xs tracking-widest uppercase hover:bg-indigo-500 hover:text-white transition-all shadow-2xl shadow-white/10 active:scale-95"

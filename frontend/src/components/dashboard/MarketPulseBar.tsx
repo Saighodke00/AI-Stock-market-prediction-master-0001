@@ -40,7 +40,7 @@ export const MarketPulseBar: React.FC = () => {
             {/* NIFTY 50 */}
             <div className="flex items-center gap-8 shrink-0">
                 <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-data text-slate-400 uppercase tracking-[0.4em] font-bold">Market Index</span>
+                    <span className="text-[10px] font-data text-secondary uppercase tracking-[0.4em] font-bold">Market Index</span>
                     <div className="flex items-center gap-4">
                         <span className="font-display font-black text-white uppercase tracking-tighter text-3xl">
                             {(data.nifty.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 1 })}
@@ -63,7 +63,7 @@ export const MarketPulseBar: React.FC = () => {
 
             {/* INDIA VIX */}
             <div className="flex flex-col items-center gap-1.5 hidden md:flex shrink-0">
-                <span className="text-[10px] font-data text-slate-400 uppercase tracking-[0.4em] font-bold">Volatility</span>
+                <span className="text-[10px] font-data text-secondary uppercase tracking-[0.4em] font-bold">Volatility</span>
                 <span className={`font-display font-black uppercase tracking-tighter text-2xl ${data.vix.color === 'red' ? 'text-rose glow-rose' : data.vix.color === 'yellow' ? 'text-amber' : 'text-emerald'}`}>
                     {(data.vix.price || 0).toFixed(2)}
                 </span>
@@ -73,7 +73,7 @@ export const MarketPulseBar: React.FC = () => {
 
             {/* FII FLOW */}
             <div className="flex flex-col items-center gap-1.5 hidden lg:flex shrink-0">
-                <span className="text-[10px] font-data text-slate-400 uppercase tracking-[0.4em] font-bold">Institutional Flow</span>
+                <span className="text-[10px] font-data text-secondary uppercase tracking-[0.4em] font-bold">Institutional Flow</span>
                 <div className="flex items-center gap-4">
                     <span className={`font-display font-black uppercase tracking-tighter text-lg ${data.fii_flow.fii_net >= 0 ? 'text-emerald' : 'text-rose'}`}>
                         {data.fii_flow.fii_net >= 0 ? '▲' : '▼'} ₹{Math.abs(data.fii_flow.fii_net || 0).toLocaleString('en-IN')} Cr
@@ -89,7 +89,7 @@ export const MarketPulseBar: React.FC = () => {
             {/* MARKET STATUS & COUNTDOWN */}
             <div className="flex items-center gap-6 shrink-0 ml-auto">
                 <div className="flex flex-col items-end gap-1.5">
-                    <span className="text-[10px] font-data text-slate-400 uppercase tracking-[0.4em] font-bold">{isLive ? 'Session Active' : 'Next Session'}</span>
+                    <span className="text-[10px] font-data text-secondary uppercase tracking-[0.4em] font-bold">{isLive ? 'Session Active' : 'Next Session'}</span>
                     <span className={`font-display font-black text-base tracking-widest uppercase ${statusColor} opacity-100`}>
                         {isLive ? '2h 15m' : '09:15 IST'}
                     </span>

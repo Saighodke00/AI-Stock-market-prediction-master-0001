@@ -27,8 +27,8 @@ export const NeuralSignalHeader: React.FC<NeuralSignalHeaderProps> = ({ data, mo
                     <div className={`w-1.5 h-24 rounded-full ${stateBg} hidden sm:block`} />
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2 mb-2">
-                            <Activity size={14} className="text-slate-500" />
-                            <span className="text-[10px] font-black text-slate-500 tracking-[0.4em] uppercase">Neural Deployment • {mode}</span>
+                            <Activity size={14} className="text-muted" />
+                            <span className="text-[10px] font-black text-muted tracking-[0.4em] uppercase">Neural Deployment • {mode}</span>
                         </div>
                         <h2 className={`text-8xl font-display font-black tracking-tighter leading-none uppercase ${stateColor} italic`}>
                             {data.action}
@@ -47,7 +47,7 @@ export const NeuralSignalHeader: React.FC<NeuralSignalHeaderProps> = ({ data, mo
                 {/* Right Side: Key Prices */}
                 <div className="flex flex-col sm:flex-row items-center gap-12 text-center sm:text-left">
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-slate-500 tracking-[0.2em] uppercase mb-1 font-body">Current Price</span>
+                        <span className="text-[10px] font-bold text-muted tracking-[0.2em] uppercase mb-1 font-body">Current Price</span>
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-4xl font-display font-bold text-white tracking-tight">
                                 ₹{data.current_price.toLocaleString('en-IN', { minimumFractionDigits: 1 })}
@@ -72,9 +72,9 @@ export const NeuralSignalHeader: React.FC<NeuralSignalHeaderProps> = ({ data, mo
             </div>
 
             {/* Bottom Insight */}
-            <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-center sm:justify-start gap-3">
+            <div className="mt-8 pt-6 border-t border-dim flex items-center justify-center sm:justify-start gap-3">
                 <div className={`w-2 h-2 rounded-full ${stateBg} animate-pulse`} />
-                <p className="text-[13px] font-medium text-slate-400 italic">
+                <p className="text-[13px] font-medium text-secondary italic">
                     {isBuy ? "Bullish geometric alignment detected. Support structure holding firm." : 
                      isSell ? "Bearish pressure mounting. Distribution patterns confirmed by neural gates." : 
                      "Neutral zone. Waiting for volume breakout or pattern completion."}

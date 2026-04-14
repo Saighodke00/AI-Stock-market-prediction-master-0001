@@ -83,12 +83,12 @@ const ArticleCard: React.FC<{ article: NewsArticle; index: number; featured?: bo
       href={article.url || "#"}
       target="_blank"
       rel="noopener noreferrer"
-      className={"flex  hover:border-border-bright hover:bg-white/10 transition-all cursor-[] group"}
-      style={{ animation: "slide-in-right 0.3s ease-out s backwards" }}
+      className={`flex h-full p-4 glass border border-dim hover:border-bright hover:bg-white/10 transition-all cursor-pointer group rounded-2xl ${featured ? 'flex-col gap-4' : 'gap-4'}`}
+      style={{ animation: `slide-in-right 0.3s ease-out ${index * 0.05}s backwards` }}
     >
       {/* Left: sentiment bar */}
       {!featured && (
-        <div className={"w-[3px] rounded-full shrink-0 min-h-[48px] opacity-80 `} />
+        <div className={`w-[3px] rounded-full shrink-0 min-h-[48px] opacity-80 ${sm.bgClass.split(' ')[0]}`} />
       )}
 
       <div className="flex-1 min-w-0">
@@ -104,13 +104,13 @@ const ArticleCard: React.FC<{ article: NewsArticle; index: number; featured?: bo
               {article.ticker.replace(".NS", "").replace(".BO", "")}
             </span>
           )}
-          <span className="font-data-small text-text-muted">
+          <span className="font-data-small text-muted">
             {article.source}
           </span>
           {article.published && (
             <>
-              <span className="text-[10px] text-text-muted opacity-50">·</span>
-              <span className="font-data-small text-text-muted flex items-center gap-1">
+              <span className="text-[10px] text-muted opacity-50">·</span>
+              <span className="font-data-small text-muted flex items-center gap-1">
                 <Clock size={9} /> {timeAgo(article.published)}
               </span>
             </>
@@ -121,24 +121,24 @@ const ArticleCard: React.FC<{ article: NewsArticle; index: number; featured?: bo
         </div>
 
         {/* Title */}
-        <p className={"m-0 text-text-primary leading-relaxed "}>
+        <p className={"m-0 text-primary leading-relaxed "}>
           {article.title}
         </p>
 
         {/* Summary */}
         {featured && article.summary && (
-          <p className="mt-2 text-xs text-text-secondary leading-relaxed line-clamp-2">
+          <p className="mt-2 text-xs text-secondary leading-relaxed line-clamp-2">
             {article.summary}
           </p>
         )}
 
         {/* Footer */}
         <div className="flex items-center gap-2 mt-2">
-          <span className="font-data-small text-text-muted">
+          <span className="font-data-small text-muted">
             Score: {article.score > 0 ? "+" : ""}{fmt(article.score)}
           </span>
           {article.url && (
-            <span className="ml-auto flex items-center gap-1 font-data text-[10px] text-text-muted group-hover:text-cyan transition-colors">
+            <span className="ml-auto flex items-center gap-1 font-data text-[10px] text-muted group-hover:text-cyan transition-colors">
               Read more <ExternalLink size={9} />
             </span>
           )}
@@ -158,7 +158,7 @@ const TickerQuickCard: React.FC<{
 }> = ({ ticker, label, active, onClick }) => (
   <button
     onClick={onClick}
-    className={"font-data-small px-3 py-1.5 rounded-lg border transition-all shrink-0 "}
+    className={`font-data-small px-3 py-1.5 rounded-lg border transition-all shrink-0 ${active ? 'bg-cyan/10 border-cyan/30 text-cyan shadow-[0_0_15px_rgba(0,210,255,0.1)]' : 'bg-white/5 border-dim text-muted hover:text-primary hover:border-bright'}`}
   >
     {label}
   </button>
@@ -229,7 +229,7 @@ const StockNewsPage: React.FC = () => {
     e.preventDefault();
     const q = customSearch.trim().toUpperCase();
     if (!q) return;
-    const ticker = q.includes(".NS") || q.includes(".BO") ? q : ${q}.NS;
+    const ticker = q.includes(".NS") || q.includes(".BO") ? q : `${q}.NS`;
     setActiveTicker(ticker);
     setSearchParams({ ticker: q });
     setCustomSearch("");
@@ -247,10 +247,10 @@ const StockNewsPage: React.FC = () => {
   return (
     <div className="page-container py-8 animate-page-in">
       {/* ── Page Header ─────────────────────────────────────────────────────── */}
-      <div className="pb-6 mb-6 border-b border-border-dim">
+      <div className="pb-6 mb-6 border-b border-dim">
         <div className="flex items-center gap-3 mb-5">
           <Newspaper size={24} className="text-cyan" />
-          <h1 className="m-0 text-2xl font-display font-bold text-text-primary tracking-wide">
+          <h1 className="m-0 text-2xl font-display font-bold text-primary tracking-wide">
             STOCK INTELLIGENCE
           </h1>
           <span className="font-data-tiny bg-emerald/10 text-emerald px-1.5 py-0.5 rounded tracking-widest ml-2">
@@ -261,20 +261,20 @@ const StockNewsPage: React.FC = () => {
         {/* ── Search Bar ──────────────────────────────────────────────────────── */}
         <form onSubmit={handleSearch} className="flex flex-wrap gap-3 mb-5">
           <div className="flex-1 flex items-center gap-2 bg-white/5 border border-cyan/20 rounded-lg px-3 py-2 min-w-[200px] focus-within:border-cyan/50 transition-colors">
-            <Search size={15} className="text-text-muted" />
+            <Search size={15} className="text-muted" />
             <input
               ref={searchRef}
               type="text"
               value={customSearch}
               onChange={e => setCustomSearch(e.target.value)}
               placeholder="Search ticker... (e.g. RELIANCE, TCS)"
-              className="w-full bg-transparent border-none outline-none text-text-primary text-sm font-data"
+              className="w-full bg-transparent border-none outline-none text-primary text-sm font-data"
             />
             {customSearch && (
               <button
                 type="button"
                 onClick={() => setCustomSearch("")}
-                className="bg-transparent border-none text-text-muted hover:text-white cursor-pointer"
+                className="bg-transparent border-none text-muted hover:text-white cursor-pointer"
               >
                 <X size={13} />
               </button>
@@ -289,7 +289,7 @@ const StockNewsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => fetchNews(activeTicker)}
-            className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-border-dim rounded-lg text-text-muted font-data text-xs hover:text-text-primary hover:border-border-bright transition-all"
+            className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-dim rounded-lg text-muted font-data text-xs hover:text-primary hover:border-bright transition-all"
           >
             <RefreshCw size={13} />
           </button>
@@ -316,15 +316,15 @@ const StockNewsPage: React.FC = () => {
         <div className="flex flex-col">
           {/* Section header */}
           <div className="flex items-center flex-wrap gap-3 mb-5">
-            <h2 className="m-0 text-xl font-display font-bold text-text-primary tracking-wide">
+            <h2 className="m-0 text-xl font-display font-bold text-primary tracking-wide">
               {activeLabel} News
             </h2>
             {sentMeta && (
-              <span className={"font-data-small px-2 py-1 rounded-md flex items-center gap-1  `}>
+              <span className={`font-data-small px-2 py-1 rounded-md flex items-center gap-1 ${sentMeta.bgClass}`}>
                 {sentMeta.icon} {sentMeta.label}
               </span>
             )}
-            <span className="ml-auto text-xs text-text-muted font-data">
+            <span className="ml-auto text-xs text-muted font-data">
               {articles.length} articles
             </span>
           </div>
@@ -332,12 +332,12 @@ const StockNewsPage: React.FC = () => {
           {loading ? (
             <div className="py-16 text-center">
               <div className="inline-block w-8 h-8 border-2 border-cyan/20 border-t-cyan rounded-full animate-spin mb-4" />
-              <p className="text-text-muted font-data text-sm">
+              <p className="text-muted font-data text-sm">
                 Fetching {activeLabel} news...
               </p>
             </div>
           ) : articles.length === 0 ? (
-            <div className="py-16 text-center text-text-muted">
+            <div className="py-16 text-center text-muted">
               <Newspaper size={40} className="mx-auto mb-4 opacity-40" />
               <p className="font-data text-sm">No news found for {activeLabel}</p>
             </div>
@@ -359,22 +359,22 @@ const StockNewsPage: React.FC = () => {
         {/* RIGHT: Stock Info Panel */}
         <div className="flex flex-col gap-5">
           {/* Stock Snapshot */}
-          <div className="glass border border-border-mid rounded-xl p-5">
-            <div className="neon-label text-text-muted mb-2">
+          <div className="glass border border-mid rounded-xl p-5">
+            <div className="neon-label text-muted mb-2">
               {activeLabel} Overview
             </div>
             {stockData ? (
               <>
-                <div className="font-display text-3xl font-black text-text-primary tracking-tight">
+                <div className="font-display text-3xl font-black text-primary tracking-tight">
                   ₹{fmt(stockData.price)}
                 </div>
-                <div className={"flex items-center gap-1.5 mt-1 font-bold text-sm "}>
+                <div className={`flex items-center gap-1.5 mt-1 font-bold text-sm ${stockData.change_pct >= 0 ? 'text-emerald' : 'text-rose'}`}>
                   {stockData.change_pct >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                   {stockData.change_pct >= 0 ? "+" : ""}{fmt(stockData.change_pct)}% today
                 </div>
               </>
             ) : (
-              <div className="text-text-muted text-xs font-data flex items-center gap-2 mt-2 h-8">
+              <div className="text-muted text-xs font-data flex items-center gap-2 mt-2 h-8">
                 {loading ? (
                   <><RefreshCw size={12} className="animate-spin" /> Loading price...</>
                 ) : "Price unavailable"}
@@ -384,16 +384,16 @@ const StockNewsPage: React.FC = () => {
 
           {/* Sentiment Summary */}
           {sentimentData && (
-            <div className="glass border border-border-mid rounded-xl p-5">
-              <div className="neon-label text-text-muted mb-3">
+            <div className="glass border border-mid rounded-xl p-5">
+              <div className="neon-label text-muted mb-3">
                 AI Sentiment Matrix
               </div>
 
               {/* Score gauge */}
               <div className="mb-4">
-                <div className="flex items-center justify-between font-data-small text-text-muted mb-1.5">
+                <div className="flex items-center justify-between font-data-small text-muted mb-1.5">
                   <span>BEARISH</span>
-                  <span className={"font-data font-bold text-sm `}>
+                  <span className={`font-data font-bold text-sm ${sentimentData.aggregate.score > 0 ? 'text-emerald' : 'text-rose'}`}>
                     {sentimentData.aggregate.score > 0 ? "+" : ""}{fmt(sentimentData.aggregate.score)}
                   </span>
                   <span>BULLISH</span>
@@ -402,8 +402,8 @@ const StockNewsPage: React.FC = () => {
                   <div
                     className="h-full rounded-full transition-all duration-700"
                     style={{
-                      width: ${Math.min(Math.max((sentimentData.aggregate.score + 1) / 2 * 100, 2), 98)}%,
-                      background: linear-gradient(90deg, #f43f5e, )
+                      width: `${Math.min(Math.max((sentimentData.aggregate.score + 1) / 2 * 100, 2), 98)}%`,
+                      background: `linear-gradient(90deg, #f43f5e 0%, #00e5ff 50%, #10b981 100%)`
                     }}
                   />
                 </div>
@@ -411,13 +411,13 @@ const StockNewsPage: React.FC = () => {
 
               <div className="flex justify-between items-end">
                 <div>
-                  <div className="font-data-tiny text-text-muted">SIGNAL</div>
-                  <div className={"font-data font-bold text-base `}>
+                  <div className="font-data-tiny text-muted">SIGNAL</div>
+                  <div className={`font-data font-bold text-base ${sentimentData.aggregate.score > 0 ? 'text-emerald' : 'text-rose'}`}>
                     {sentimentData.aggregate.label}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-data-tiny text-text-muted">CONFIDENCE</div>
+                  <div className="font-data-tiny text-muted">CONFIDENCE</div>
                   <div className="font-data font-bold text-base text-cyan">
                     {fmt(sentimentData.aggregate.confidence * 100)}%
                   </div>
@@ -425,15 +425,15 @@ const StockNewsPage: React.FC = () => {
               </div>
 
               {/* Article count */}
-              <div className="mt-4 pt-3 border-t border-border-dim font-data text-[10px] text-text-muted">
+              <div className="mt-4 pt-3 border-t border-dim font-data text-[10px] text-muted">
                 Analyzed {sentimentData.layers.news.article_count} real-time news sources
               </div>
             </div>
           )}
 
           {/* Explore other tickers */}
-          <div className="glass border border-border-mid rounded-xl p-5">
-            <div className="neon-label text-text-muted mb-3">
+          <div className="glass border border-mid rounded-xl p-5">
+            <div className="neon-label text-muted mb-3">
               Hot Sectors
             </div>
             <div className="flex flex-col gap-1.5">
@@ -441,7 +441,7 @@ const StockNewsPage: React.FC = () => {
                 <button
                   key={t.ticker}
                   onClick={() => setActiveTicker(t.ticker)}
-                  className="flex items-center justify-between w-full bg-white/5 border border-border-dim rounded-lg px-3 py-2 text-text-muted font-data text-xs hover:border-border-bright hover:text-text-primary hover:bg-white/10 cursor-pointer transition-all"
+                  className="flex items-center justify-between w-full bg-white/5 border border-dim rounded-lg px-3 py-2 text-muted font-data text-xs hover:border-bright hover:text-primary hover:bg-white/10 cursor-pointer transition-all"
                 >
                   {t.label}
                   <ChevronRight size={12} className="opacity-50" />
@@ -452,7 +452,7 @@ const StockNewsPage: React.FC = () => {
 
           {/* Quick action */}
           <button
-            onClick={() => navigate(/swing?ticker=)}
+            onClick={() => navigate(`/swing?ticker=${activeTicker}`)}
             className="w-full flex items-center justify-center gap-2 p-3 bg-cyan/10 border border-cyan/30 rounded-xl text-cyan font-data text-sm font-bold glow-border-cyan hover:bg-cyan/20 transition-all shadow-[0_0_15px_rgba(0,210,255,0.15)]"
           >
             <Activity size={14} /> Analyze {activeLabel} 

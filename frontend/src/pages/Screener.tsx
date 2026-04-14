@@ -43,11 +43,11 @@ function ActionBadge({ action }: { action: string }) {
 function ConfidenceSparkBar({ value }: { value: number }) {
   return (
     <div className="w-full space-y-1">
-      <div className="flex justify-between items-center text-[9px] font-black text-slate-500 uppercase tracking-widest">
+      <div className="flex justify-between items-center text-[9px] font-black text-muted uppercase tracking-widest">
         <span>Confidence</span>
         <span>{(value * 100).toFixed(0)}%</span>
       </div>
-      <div className="h-1 w-full bg-void rounded-full overflow-hidden border border-white/5">
+      <div className="h-1 w-full bg-void rounded-full overflow-hidden border border-dim">
         <div 
           className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 animate-shimmer bg-[length:200%_100%]" 
           style={{ width: `${value * 100}%` }} 
@@ -87,19 +87,19 @@ function SignalCard({ row, rank }: { row: ScreenerResult; rank: number }) {
   const cardStyles: Record<string, string> = {
     BUY:  "border-emerald-500/20 bg-emerald-500/[0.02] hover:bg-emerald-500/[0.05]",
     SELL: "border-rose-500/20    bg-rose-500/[0.02]    hover:bg-rose-500/[0.05]",
-    HOLD: "border-white/5        bg-white/[0.01]        hover:bg-white/[0.03]",
+    HOLD: "border-dim        bg-white/[0.01]        hover:bg-white/[0.03]",
   };
 
   return (
     <div className={`group flex flex-col md:flex-row items-center gap-6 p-5 rounded-2xl border transition-all duration-300 cursor-pointer mb-4 ${cardStyles[row.action] ?? ""}`}>
       {/* Rank & Symbol */}
       <div className="flex items-center gap-4 w-full md:w-64 shrink-0">
-        <span className="font-mono text-[10px] font-bold text-slate-600 tracking-tighter w-6">{rank.toString().padStart(2, '0')}</span>
+        <span className="font-mono text-[10px] font-bold text-muted tracking-tighter w-6">{rank.toString().padStart(2, '0')}</span>
         <div className="flex flex-col">
           <span className="font-display font-black text-white text-lg tracking-tight group-hover:text-cyan transition-colors uppercase leading-none mb-1">
             {row.ticker}
           </span>
-          <span className="text-[9px] text-slate-600 font-bold tracking-widest uppercase opacity-60">National Stock Exchange</span>
+          <span className="text-[9px] text-muted font-bold tracking-widest uppercase opacity-60">National Stock Exchange</span>
         </div>
       </div>
 
@@ -107,7 +107,7 @@ function SignalCard({ row, rank }: { row: ScreenerResult; rank: number }) {
       <div className="flex items-center gap-6 w-full md:w-auto flex-1">
         <ActionBadge action={row.action} />
         <ConfidenceSparkBar value={row.confidence} />
-        <div className="hidden lg:block border-l border-white/5 h-8 mx-2" />
+        <div className="hidden lg:block border-l border-dim h-8 mx-2" />
         <GateDots gates={row.gate_results} />
         {row.pattern && (
           <div className={`hidden xl:flex items-center gap-2 px-3 py-1 rounded-lg border border-indigo-500/20 bg-indigo-500/5 text-indigo-400 font-mono text-[9px] font-black uppercase tracking-widest animate-pulse-glow`}>
@@ -125,9 +125,9 @@ function SignalCard({ row, rank }: { row: ScreenerResult; rank: number }) {
         </div>
 
         <div className="flex flex-col items-end">
-          <h4 className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Neural Target</h4>
+          <h4 className="text-[9px] font-black text-muted uppercase tracking-widest mb-1">Neural Target</h4>
           <span className={`font-mono font-black ${p50Color} text-md tracking-tight`}>₹{(row.p50 || 0).toLocaleString("en-IN", { minimumFractionDigits: 1 })}</span>
-          <span className="text-[10px] text-slate-600 font-bold tracking-tighter">({p50Sign}{p50Chg.toFixed(1)}%)</span>
+          <span className="text-[10px] text-muted font-bold tracking-tighter">({p50Sign}{p50Chg.toFixed(1)}%)</span>
         </div>
 
         <RSIBadge value={row.rsi} />
@@ -146,13 +146,13 @@ function SignalCard({ row, rank }: { row: ScreenerResult; rank: number }) {
 function DealRow({ deal }: { deal: BulkDeal }) {
   const isBuy = deal.buy_sell.toUpperCase().startsWith("B");
   return (
-    <tr className="border-b border-white/5 hover:bg-white/[0.04] transition-all">
-      <td className="py-4 px-6 font-mono text-slate-500 text-[10px] font-bold uppercase tracking-widest">{deal.trade_date}</td>
+    <tr className="border-b border-dim hover:bg-white/[0.04] transition-all">
+      <td className="py-4 px-6 font-mono text-muted text-[10px] font-bold uppercase tracking-widest">{deal.trade_date}</td>
       <td className="py-4 px-6">
         <span className="font-display font-black text-white text-sm">{deal.symbol}</span>
       </td>
       <td className="py-4 px-6">
-        <span className="text-slate-400 text-xs font-medium max-w-xs truncate block italic">
+        <span className="text-secondary text-xs font-medium max-w-xs truncate block italic">
             "{deal.client}"
         </span>
       </td>
@@ -165,11 +165,11 @@ function DealRow({ deal }: { deal: BulkDeal }) {
       <td className="py-4 px-6 font-mono text-white text-xs font-black text-right">
         {deal.quantity.toLocaleString("en-IN")}
       </td>
-      <td className="py-4 px-6 font-mono text-slate-300 text-xs font-bold text-right">
+      <td className="py-4 px-6 font-mono text-secondary text-xs font-bold text-right">
         ₹{deal.price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
       </td>
       <td className="py-4 px-6">
-        <span className="font-display text-[9px] font-black tracking-widest text-slate-500 bg-white/5 px-2.5 py-1 rounded-lg uppercase">
+        <span className="font-display text-[9px] font-black tracking-widest text-muted bg-white/5 px-2.5 py-1 rounded-lg uppercase">
           {deal.deal_type}
         </span>
       </td>
@@ -225,16 +225,16 @@ export default function Screener() {
              <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
                 <Database className="w-5 h-5 text-indigo-400" />
              </div>
-             <h1 className="text-3xl font-display font-black text-white tracking-tight uppercase">Quant Screener <span className="text-slate-600 ml-1 font-normal italic">/ Prime</span></h1>
+             <h1 className="text-3xl font-display font-black text-white tracking-tight uppercase">Quant Screener <span className="text-muted ml-1 font-normal italic">/ Prime</span></h1>
           </div>
-          <p className="text-slate-500 text-xs font-bold font-body tracking-[0.1em] uppercase max-w-xl leading-relaxed">
+          <p className="text-muted text-xs font-bold font-body tracking-[0.1em] uppercase max-w-xl leading-relaxed">
             Neural filtering engine processing NSE top 20 liquidity &middot; <span className="text-indigo-400">5.4s avg inference latency</span> &middot; Neural probability sort
           </p>
         </div>
         {lastUpdate && (
-          <div className="flex items-center gap-2 bg-white/[0.03] border border-white/10 px-4 py-2 rounded-2xl shadow-xl backdrop-blur-md">
+          <div className="flex items-center gap-2 bg-white/[0.03] border border-mid px-4 py-2 rounded-2xl shadow-xl backdrop-blur-md">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-slate-400 text-[10px] font-black tracking-widest uppercase">
+            <span className="text-secondary text-[10px] font-black tracking-widest uppercase">
                 Synchronized: <span className="text-white">{lastUpdate.toLocaleTimeString("en-IN")}</span>
             </span>
           </div>
@@ -265,12 +265,12 @@ export default function Screener() {
       )}
 
       <div className="glass-card shadow-2xl p-0 overflow-hidden">
-        <div className="flex flex-col md:flex-row items-center justify-between border-b border-white/5 bg-white/[0.02]">
+        <div className="flex flex-col md:flex-row items-center justify-between border-b border-dim bg-white/[0.02]">
           <div className="flex w-full md:w-auto overflow-x-auto no-scrollbar">
             {(["signals","deals"] as Tab[]).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`flex items-center gap-3 px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative ${
-                  tab === t ? "text-indigo-400" : "text-slate-500 hover:text-white"
+                  tab === t ? "text-indigo-400" : "text-muted hover:text-white"
                 }`}>
                 {t === "signals" ? <BarChart2 size={14} /> : <Gavel size={14} />}
                 {t === "signals" ? "Strategy Lab" : "Institutional Deals"}
@@ -282,11 +282,11 @@ export default function Screener() {
           </div>
           {tab === "signals" && (
             <div className="flex flex-wrap items-center gap-3 p-3 ml-auto">
-              <div className="flex items-center gap-1.5 bg-black/20 p-1 rounded-xl border border-white/5">
+              <div className="flex items-center gap-1.5 bg-black/20 p-1 rounded-xl border border-dim">
                 {(["ALL","BUY","SELL","HOLD"] as const).map(f => (
                     <button key={f} onClick={() => setFilter(f)}
                     className={`px-4 py-1.5 rounded-lg text-[9px] font-black tracking-widest uppercase transition-all ${
-                        filterAction === f ? "bg-indigo-500 text-white shadow-lg" : "text-slate-500 hover:text-white hover:bg-white/5"
+                        filterAction === f ? "bg-indigo-500 text-white shadow-lg" : "text-muted hover:text-white hover:bg-white/5"
                     }`}>{f}</button>
                 ))}
               </div>
@@ -309,7 +309,7 @@ export default function Screener() {
             {loading && signals.length === 0 ? (
               <div className="p-20 flex flex-col items-center justify-center">
                 <NeuralSpinner />
-                <span className="text-[10px] font-black tracking-[0.3em] text-slate-500 uppercase mt-6 animate-pulse">Scanning Global Orderbooks...</span>
+                <span className="text-[10px] font-black tracking-[0.3em] text-muted uppercase mt-6 animate-pulse">Scanning Global Orderbooks...</span>
               </div>
             ) : (
               <div className="flex flex-col">
@@ -322,11 +322,11 @@ export default function Screener() {
                 
                 {filtered.length === 0 && !loading && (
                   <div className="p-32 text-center flex flex-col items-center justify-center">
-                      <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10">
-                          <Filter className="w-8 h-8 text-slate-600" />
+                      <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-mid">
+                          <Filter className="w-8 h-8 text-muted" />
                       </div>
                       <h3 className="text-white font-display font-black text-xl mb-2 uppercase tracking-tight">Zone Depletion</h3>
-                      <p className="text-slate-500 font-body text-xs max-w-xs mx-auto leading-relaxed">The engine found zero {filterAction !== "ALL" ? filterAction : ""} signals matching your current liquidity and risk parameters.</p>
+                      <p className="text-muted font-body text-xs max-w-xs mx-auto leading-relaxed">The engine found zero {filterAction !== "ALL" ? filterAction : ""} signals matching your current liquidity and risk parameters.</p>
                   </div>
                 )}
               </div>
@@ -336,15 +336,15 @@ export default function Screener() {
           dealsLoading ? (
              <div className="p-20 flex flex-col items-center justify-center">
                 <NeuralSpinner />
-                <span className="text-[10px] font-black tracking-[0.3em] text-slate-500 uppercase mt-6 animate-pulse">Intercepting Block Trajectory...</span>
+                <span className="text-[10px] font-black tracking-[0.3em] text-muted uppercase mt-6 animate-pulse">Intercepting Block Trajectory...</span>
               </div>
           ) : (
             <div className="overflow-x-auto no-scrollbar">
               <table className="w-full">
                 <thead className="bg-white/[0.01]">
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-dim">
                     {["Protocol Date","Symbol","Counterparty","Intent","Quantity","NAV","Strategy"].map(h => (
-                      <th key={h} className="py-4 px-6 text-slate-500 text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap">{h}</th>
+                      <th key={h} className="py-4 px-6 text-muted text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -353,10 +353,10 @@ export default function Screener() {
               {deals.length === 0 && !dealsLoading && (
                 <div className="text-center py-20 bg-white/[0.01]">
                   <div className="w-16 h-16 rounded-full bg-slate-500/10 flex items-center justify-center mx-auto mb-6">
-                      <Search className="w-8 h-8 text-slate-600" />
+                      <Search className="w-8 h-8 text-muted" />
                   </div>
                   <h3 className="text-white font-display font-black text-xl mb-2">No Institutional Activity</h3>
-                  <p className="text-slate-500 font-body text-xs mb-8 max-w-xs mx-auto leading-relaxed">No high-value bulk deals detected within the specified lookback horizon (7D).</p>
+                  <p className="text-muted font-body text-xs mb-8 max-w-xs mx-auto leading-relaxed">No high-value bulk deals detected within the specified lookback horizon (7D).</p>
                   <button onClick={loadDeals} className="px-8 py-3 text-[10px] font-black uppercase tracking-widest bg-white text-slate-900 rounded-xl hover:bg-indigo-500 hover:text-white transition-all shadow-2xl">
                     Re-scan Dark Pools
                   </button>

@@ -44,22 +44,22 @@ export const Topbar: React.FC = () => {
     const isMarketOpen = true; // Hardcoded or dynamic via status API
 
     return (
-        <div className="h-[64px] bg-bg-base border-b border-border-dim shrink-0 flex items-center justify-between px-8 z-50 relative">
+        <div className="h-[64px] bg-base border-b border-dim shrink-0 flex items-center justify-between px-8 z-50 relative">
             {/* Left: Terminal Status */}
             <div className="flex items-center gap-6 min-w-[300px]">
-                <div className="flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-border-dim shadow-inner">
+                <div className="flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-dim shadow-inner">
                     <div className="w-1 h-1 rounded-full bg-cyan animate-pulse shadow-[0_0_5px_#00d2ff]" />
-                    <span className="font-data-tiny text-[8px] text-text-muted uppercase tracking-[0.2em]">Connection: STABLE</span>
+                    <span className="font-data-tiny text-[8px] text-muted uppercase tracking-[0.2em]">Connection: STABLE</span>
                 </div>
                 
                 <div className="hidden xl:flex items-center gap-4">
                     <div className="flex items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity cursor-help">
-                        <Cpu size={12} className="text-text-muted" />
-                        <span className="font-data-tiny text-[8px] text-text-muted uppercase">Neural Core v3.0</span>
+                        <Cpu size={12} className="text-muted" />
+                        <span className="font-data-tiny text-[8px] text-muted uppercase">Neural Core v3.0</span>
                     </div>
                     <div className="flex items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity cursor-help">
                         <Shield size={12} className="text-emerald" />
-                        <span className="font-data-tiny text-[8px] text-text-muted uppercase">Protected</span>
+                        <span className="font-data-tiny text-[8px] text-muted uppercase">Protected</span>
                     </div>
                 </div>
             </div>
@@ -68,34 +68,34 @@ export const Topbar: React.FC = () => {
             <div className="flex flex-col items-center">
                 <div className="flex items-center gap-3">
                     <div className="h-px w-6 bg-cyan/20" />
-                    <h1 className="font-display font-black text-sm text-text-primary tracking-[0.1em] uppercase leading-none">
+                    <h1 className="font-display font-black text-sm text-primary tracking-[0.1em] uppercase leading-none">
                         {title}
                     </h1>
                     <div className="h-px w-6 bg-cyan/20" />
                 </div>
                 <div className="flex items-center gap-1 mt-1.5">
-                    <span className="text-[8px] text-text-muted font-bold tracking-[0.3em] uppercase font-data">{breadcrumb}</span>
+                    <span className="text-[8px] text-muted font-bold tracking-[0.3em] uppercase font-data">{breadcrumb}</span>
                 </div>
             </div>
 
             {/* Right: Status & Time */}
             <div className="flex items-center gap-8 min-w-[300px] justify-end">
-                <div className="flex items-center gap-4 px-4 py-1.5 rounded-xl bg-bg-base border border-border-dim shadow-xl backdrop-blur-md">
-                    <div className="flex items-center gap-2 border-r border-white/5 pr-4 mr-2">
+                <div className="flex items-center gap-4 px-4 py-1.5 rounded-xl bg-base border border-dim shadow-xl backdrop-blur-md">
+                    <div className="flex items-center gap-2 border-r border-dim pr-4 mr-2">
                         <div className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-emerald shadow-[0_0_8px_currentColor] animate-pulse' : 'bg-rose shadow-[0_0_8px_currentColor]'}`} />
-                        <span className="font-data-tiny text-[8px] font-black text-text-muted tracking-widest uppercase">
+                        <span className="font-data-tiny text-[8px] font-black text-muted tracking-widest uppercase">
                             {isMarketOpen ? 'NSE LIVE' : 'NSE CLOSED'}
                         </span>
                     </div>
                     <div className="flex flex-col items-end">
-                        <span className="font-data font-bold text-text-primary text-[10px] tracking-widest tabular-nums">
+                        <span className="font-data font-bold text-primary text-[10px] tracking-widest tabular-nums">
                             {time}
                         </span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <button className="p-2 rounded-lg bg-white/5 border border-border-dim text-text-muted hover:text-cyan hover:border-cyan hover:glow-cyan transition-all hover:rotate-90 duration-500">
+                    <button className="p-2 rounded-lg bg-white/5 border border-dim text-muted hover:text-cyan hover:border-cyan hover:glow-cyan transition-all hover:rotate-90 duration-500">
                         <Settings size={16} />
                     </button>
                 </div>
