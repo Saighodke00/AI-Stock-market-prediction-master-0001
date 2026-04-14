@@ -11,7 +11,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import useAuthStore from "@/store/useAuthStore";
+import useAuthStore from "../store/useAuthStore";
 import {
   TrendingUp, TrendingDown, Minus, RefreshCw, ExternalLink,
   Clock, Newspaper, Activity, Shield, Zap, BarChart2,
@@ -265,7 +265,7 @@ const Dashboard: React.FC = () => {
 
   const token = useAuthStore((s: any) => s.token);
 
-  const authHeaders = token
+  const authHeaders: Record<string, string> = token
     ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
     : { "Content-Type": "application/json" };
 

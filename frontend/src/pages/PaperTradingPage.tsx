@@ -11,7 +11,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import useAuthStore from "@/store/useAuthStore";
+import { useAuthStore } from "../store/useAuthStore";
 import {
   TrendingUp, TrendingDown, Wallet, BarChart2, Target,
   RefreshCw, ArrowUpRight, ArrowDownRight, Plus, Minus,
@@ -594,8 +594,6 @@ const PaperTradingPage: React.FC = () => {
       <div style={{
         display: "grid",
         gridTemplateColumns: "1fr 320px",
-        gap: 0,
-        padding: "24px 40px",
         gap: "24px",
       }}>
         {/* LEFT: Summary + Chart + Positions */}
