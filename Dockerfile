@@ -33,11 +33,7 @@ ENV MODEL_PATH="models/tft_model.ckpt"
 ENV PYTHONUNBUFFERED=1
 
 # Copy Backend Code
-COPY ./utils ./utils
-COPY ./models ./models
-COPY signal_gate.py .
-COPY train_tft.py .
-COPY main.py .
+COPY . .
 
 # Copy built frontend from Stage 1 into the backend container
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist

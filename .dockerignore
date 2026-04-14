@@ -1,0 +1,12 @@
+.git
+.github
+.pytest_cache
+__pycache__
+venv
+frontend/node_modules
+frontend/dist
+paper_trading.db
+*.log
+requirements_freeze.txt
+render-build.sh
+render.yaml
