@@ -287,7 +287,6 @@ export const IntradayTradingPage: React.FC = () => {
                                 <div className="flex flex-col gap-6">
                                     <SignalCard data={signal} isLoading={false} timeframe={`${tf} SCALP`} />
                                 </div>
-                            </div>
                                 <div className="mt-4">
                                     <PositionSizer data={signal} />
                                 </div>
