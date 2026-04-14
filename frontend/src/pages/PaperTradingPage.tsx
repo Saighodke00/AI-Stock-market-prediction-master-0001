@@ -168,7 +168,7 @@ const TradePanel: React.FC<{
     try {
       const t = ticker.trim().toUpperCase();
       const fullTicker = t.includes(".NS") || t.includes(".BO") ? t : `${t}.NS`;
-      const res = await fetch("/api/signal/?mode=swing");
+      const res = await fetch(`/api/signal/${fullTicker}?mode=swing`);
       if (res.ok) {
         const d = await res.json();
         const p = d.current_price || d.price;
@@ -212,7 +212,7 @@ const TradePanel: React.FC<{
           <button
             key={a}
             onClick={() => setAction(a)}
-            className={"p-2.5 rounded-lg border font-data font-bold text-sm transition-all "}
+            className={`p-2.5 rounded-lg border font-data font-bold text-sm transition-all ${action === a ? (a === 'BUY' ? 'bg-emerald/10 border-emerald/30 text-emerald' : 'bg-rose/10 border-rose/30 text-rose') : 'bg-white/5 border-dim text-muted hover:text-primary'}`}
           >
             {a === "BUY" ? "↑ BUY" : "↓ SELL"}
           </button>
@@ -280,9 +280,9 @@ const TradePanel: React.FC<{
 
       {/* Total cost */}
       {totalCost > 0 && (
-        <div className={"flex justify-between items-center p-3 rounded-lg mb-4 border "}>
+        <div className={`flex justify-between items-center p-3 rounded-lg mb-4 border ${canAfford ? 'bg-white/5 border-dim' : 'bg-rose/5 border-rose/20'}`}>
           <span className="text-xs text-muted font-data">Total Cost</span>
-          <span className={"text-sm font-bold font-data "}>
+          <span className={`text-sm font-bold font-data ${canAfford ? 'text-primary' : 'text-rose'}`}>
             {fmtCur(totalCost)}
             {!canAfford && <span className="text-[10px] ml-1.5 opacity-80">— Insufficient funds</span>}
           </span>
@@ -293,7 +293,7 @@ const TradePanel: React.FC<{
       <button
         onClick={handleSubmit}
         disabled={executing || !ticker || !price || !canAfford}
-        className={"w-full flex items-center justify-center gap-2 p-3 rounded-lg border font-data font-bold text-sm transition-all "}
+        className={`w-full flex items-center justify-center gap-2 p-3 rounded-lg border font-data font-bold text-sm transition-all ${action === 'BUY' ? 'bg-emerald/10 border-emerald/30 text-emerald hover:bg-emerald/20' : 'bg-rose/10 border-rose/30 text-rose hover:bg-rose/20'} disabled:opacity-50`}
       >
         {executing ? (
           <><RefreshCw size={14} className="animate-spin" /> Processing...</>
@@ -306,7 +306,7 @@ const TradePanel: React.FC<{
 
       {/* Status message */}
       {msg && (
-        <div className={"flex items-center gap-2 mt-3 p-2.5 rounded-lg border font-data text-xs "}>
+        <div className={`flex items-center gap-2 mt-3 p-2.5 rounded-lg border font-data text-xs ${msg.ok ? 'bg-emerald/10 border-emerald/20 text-emerald' : 'bg-rose/10 border-rose/20 text-rose'}`}>
           {msg.ok ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
           {msg.text}
         </div>
@@ -444,7 +444,7 @@ const PaperTradingPage: React.FC = () => {
                     <span className="font-display font-black text-4xl text-primary tracking-tight">
                       {fmtCur(summary.portfolio_value)}
                     </span>
-                    <span className={"flex items-center gap-1 font-bold text-sm "}>
+                    <span className={`flex items-center gap-1 font-bold text-sm ${summary.total_return_pct >= 0 ? 'text-emerald' : 'text-rose'}`}>
                       {summary.total_return_pct >= 0 ? <ArrowUpRight size={16} strokeWidth={3} /> : <ArrowDownRight size={16} strokeWidth={3} />}
                       {summary.total_return_pct >= 0 ? "+" : ""}{fmt(summary.total_return_pct)}%
                     </span>
@@ -550,10 +550,10 @@ const PaperTradingPage: React.FC = () => {
                           <td className="p-3 text-secondary">{p.quantity}</td>
                           <td className="p-3 text-secondary">₹{fmt(p.avg_cost)}</td>
                           <td className="p-3 text-secondary">₹{fmt(p.market_value)}</td>
-                          <td className={"p-3 font-bold "}>
+                          <td className={`p-3 font-bold ${p.unrealised_pnl >= 0 ? 'text-emerald' : 'text-rose'}`}>
                             {p.unrealised_pnl >= 0 ? "+" : ""}₹{fmt(p.unrealised_pnl)}
                           </td>
-                          <td className={"p-3 "}>
+                          <td className={`p-3 ${p.unrealised_pct >= 0 ? 'text-emerald' : 'text-rose'}`}>
                             {p.unrealised_pct >= 0 ? "+" : ""}{fmt(p.unrealised_pct)}%
                           </td>
                         </tr>

@@ -1,4 +1,5 @@
 import math
+import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -8,7 +9,27 @@ from pydantic import BaseModel
 from models import PaperPortfolio, PaperPosition, PaperTrade, User
 from auth_utils import get_db, get_current_user
 
+logger = logging.getLogger("apex")
 router = APIRouter(prefix="/api/paper", tags=["paper"])
+
+def _fetch_live_prices(tickers: list[str]) -> dict[str, float]:
+    """Batch-fetch current prices for a list of tickers via yfinance."""
+    prices: dict[str, float] = {}
+    if not tickers:
+        return prices
+    try:
+        from utils.yf_utils import get_ticker
+        for t in tickers:
+            try:
+                info = get_ticker(t)
+                hist = info.history(period="1d")
+                if not hist.empty:
+                    prices[t] = float(hist["Close"].iloc[-1])
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug(f"Live price fetch failed: {e}")
+    return prices
 
 class TradeRequest(BaseModel):
     ticker: str
@@ -37,15 +58,25 @@ def get_positions(db: Session = Depends(get_db), current_user: User = Depends(ge
     portfolio = get_or_create_portfolio(db, current_user.id)
     positions = db.query(PaperPosition).filter(PaperPosition.portfolio_id == portfolio.id).all()
     
-    # We send back simple JSON array
+    # Refresh live prices
+    tickers = [p.ticker for p in positions]
+    live_prices = _fetch_live_prices(tickers)
+    for p in positions:
+        if p.ticker in live_prices:
+            p.current_price = live_prices[p.ticker]
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+    
     return {"positions": [{
         "ticker": p.ticker,
         "quantity": p.shares,
         "avg_cost": p.avg_entry_price,
-        "current_price": p.current_price,
-        "market_value": p.current_price * p.shares,
-        "unrealised_pnl": (p.current_price - p.avg_entry_price) * p.shares,
-        "unrealised_pct": ((p.current_price / p.avg_entry_price) - 1.0) * 100.0 if p.avg_entry_price > 0 else 0.0,
+        "current_price": p.current_price or p.avg_entry_price,
+        "market_value": (p.current_price or p.avg_entry_price) * p.shares,
+        "unrealised_pnl": ((p.current_price or p.avg_entry_price) - p.avg_entry_price) * p.shares,
+        "unrealised_pct": (((p.current_price or p.avg_entry_price) / p.avg_entry_price) - 1.0) * 100.0 if p.avg_entry_price > 0 else 0.0,
         "opened_at": p.opened_at.isoformat()
     } for p in positions]}
 
@@ -75,11 +106,12 @@ def get_summary(db: Session = Depends(get_db), current_user: User = Depends(get_
     cash = portfolio.cash_balance
     realised_pnl = sum(t.pnl for t in trades if t.pnl)
     
-    # Needs live prices to truly get unrealised, but we'll approximate with cost
+    # Use current_price if available (refreshed by /positions), otherwise fall back to avg_entry
     invested = sum(p.shares * p.avg_entry_price for p in positions)
-    unrealised_pnl = 0.0 # Without live prices right here.
+    market_value = sum(p.shares * (p.current_price or p.avg_entry_price) for p in positions)
+    unrealised_pnl = market_value - invested
     
-    total = cash + invested + unrealised_pnl
+    total = cash + market_value
     ret_pct = ((total / 1000000.0) - 1.0) * 100.0
     
     num_trades = len(trades)
@@ -90,16 +122,16 @@ def get_summary(db: Session = Depends(get_db), current_user: User = Depends(get_
         "cash_balance": cash,
         "invested_value": invested,
         "portfolio_value": total,
-        "unrealised_pnl": unrealised_pnl,
-        "realised_pnl": realised_pnl,
-        "total_return_pct": ret_pct,
-        "win_rate": win_rate,
+        "unrealised_pnl": round(unrealised_pnl, 2),
+        "realised_pnl": round(realised_pnl, 2),
+        "total_return_pct": round(ret_pct, 2),
+        "win_rate": round(win_rate, 1),
         "trade_count": num_trades,
         "open_positions": len(positions),
         "initial_capital": 1000000.0,
         # Legacy aliases for backward compat
         "total_value": total,
-        "win_rate_pct": win_rate,
+        "win_rate_pct": round(win_rate, 1),
         "total_trades": num_trades
     }
 
@@ -120,8 +152,9 @@ def execute_trade(req: TradeRequest, db: Session = Depends(get_db), current_user
             new_qty = pos.shares + req.quantity
             pos.avg_entry_price = ((pos.shares * pos.avg_entry_price) + total_val) / new_qty
             pos.shares = new_qty
+            pos.current_price = req.price
         else:
-            pos = PaperPosition(portfolio_id=portfolio.id, ticker=req.ticker, shares=req.quantity, avg_entry_price=req.price)
+            pos = PaperPosition(portfolio_id=portfolio.id, ticker=req.ticker, shares=req.quantity, avg_entry_price=req.price, current_price=req.price)
             db.add(pos)
             
         trade = PaperTrade(portfolio_id=portfolio.id, ticker=req.ticker, action="BUY", shares=req.quantity, price=req.price, total_value=total_val, signal_confidence=req.confidence)
