@@ -47,7 +47,7 @@ const createClusterIcon = (count: number) => {
                 background:${bg}; opacity:0.9;
                 display:flex; flex-direction:column; align-items:center; justify-content:center;
                 color:#fff; font-weight:900;
-                font-family:'Orbitron',sans-serif;
+                font-family:inherit;
                 box-shadow: 0 0 20px ${bg}80;
                 border: 2px solid rgba(255,255,255,0.4);
             ">
@@ -248,8 +248,8 @@ export const GeoMapPage: React.FC = () => {
                     box-shadow: 0 8px 20px rgba(0,0,0,0.4);
                 }
                 .glass-tooltip.mini { padding: 4px 10px; min-width: 100px; }
-                .city-name, .company-name { color: #fff; font-family: 'Rajdhani', sans-serif; font-weight: 800; font-size: 13px; text-transform: uppercase; }
-                .node-count, .ticker-id { color: #00e5ff; font-family: 'Share Tech Mono', monospace; font-size: 9px; margin-top: 1px; }
+                .city-name, .company-name { color: #fff; font-family: inherit; font-weight: 800; font-size: 13px; text-transform: uppercase; }
+                .node-count, .ticker-id { color: #00e5ff; font-family: inherit; font-size: 9px; margin-top: 1px; }
                 .tag-row { display: flex; gap: 4px; margin-top: 4px; align-items: center; }
                 .sector-tag { font-size: 7px; padding: 0.5px 5px; border-radius: 3px; border: 1px solid; font-weight: 900; }
                 .leaflet-control-zoom { border: none !important; margin-right: 16px !important; margin-bottom: 16px !important; }
@@ -272,16 +272,16 @@ export const GeoMapPage: React.FC = () => {
                 }}
             >
                 <div className="flex items-center gap-3 group">
-                    <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shadow-lg group-hover:border-cyan-400 transition-all cursor-crosshair">
-                        <Globe className="text-cyan-400 animate-spin-slow" size={18} />
+                    <div className="w-9 h-9 rounded-xl bg-cyan/10 border border-cyan/20 flex items-center justify-center shadow-lg group-hover:border-cyan transition-all cursor-crosshair">
+                        <Globe className="text-cyan animate-spin-slow" size={18} />
                     </div>
                     <div>
-                        <div className="font-display font-black text-sm text-white tracking-[0.15em] uppercase leading-none">
-                            Geo_Intelligence <span className="text-slate-700 italic font-mono text-[10px] ml-1 select-none">v3.5</span>
+                        <div className="font-display font-black text-sm text-text-primary tracking-[0.15em] uppercase leading-none">
+                            Geo_Intelligence <span className="text-text-muted italic font-data text-[10px] ml-1 select-none">v3.5</span>
                         </div>
-                        <div className="font-mono text-[8px] text-slate-500 tracking-widest uppercase mt-1 flex items-center gap-1.5">
-                            <Activity size={8} className="text-emerald-500" />
-                            {features.length} Nodes &middot; <span className="text-cyan-400">{activeDomainCount} Visible</span>
+                        <div className="font-data text-[8px] text-text-muted tracking-widest uppercase mt-1 flex items-center gap-1.5">
+                            <Activity size={8} className="text-emerald" />
+                            {features.length} Nodes &middot; <span className="text-cyan">{activeDomainCount} Visible</span>
                         </div>
                     </div>
                 </div>
@@ -290,20 +290,20 @@ export const GeoMapPage: React.FC = () => {
                     {ALL_SECTORS.map((s) => (
                         <div key={s} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all shrink-0">
                             <div className="w-1 h-1 rounded-full" style={{ background: SECTOR_COLORS[s], boxShadow: `0 0 6px ${SECTOR_COLORS[s]}` }} />
-                            <span className="text-[9px] font-black text-white uppercase tracking-tight">{s}</span>
-                            <span className="text-[9px] font-mono font-bold text-slate-600">{sectorStats[s] || 0}</span>
+                            <span className="text-[9px] font-black text-text-primary uppercase tracking-tight">{s}</span>
+                            <span className="text-[9px] font-data font-bold text-text-muted">{sectorStats[s] || 0}</span>
                         </div>
                     ))}
                 </div>
 
                 <div className="flex items-center gap-3">
                     <div className="h-8 w-px bg-white/5" />
-                    <button onClick={() => window.location.reload()} className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-500 hover:text-cyan-400 transition-all">
+                    <button onClick={() => window.location.reload()} className="p-2 rounded-lg bg-white/5 border border-border-dim text-text-muted hover:text-cyan transition-all">
                         <RefreshCw size={14} />
                     </button>
-                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
-                        <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[8px] font-black text-emerald-400 tracking-widest">OK</span>
+                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-emerald/5 border border-emerald/10">
+                        <div className="w-1 h-1 rounded-full bg-emerald animate-pulse" />
+                        <span className="text-[8px] font-black text-emerald tracking-widest uppercase">Sync</span>
                     </div>
                 </div>
             </div>
@@ -324,9 +324,9 @@ export const GeoMapPage: React.FC = () => {
 
             {/* Loading Overlay */}
             {loading && (
-                <div className="absolute inset-0 bg-void/60 backdrop-blur-sm z-[2000] flex flex-col items-center justify-center gap-4">
-                    <Activity className="text-cyan-400 animate-pulse" size={48} />
-                    <span className="text-xs font-black text-white uppercase tracking-[0.4em] animate-pulse">Syncing Neural Nodes...</span>
+                <div className="absolute inset-0 bg-bg-base/60 backdrop-blur-sm z-[2000] flex flex-col items-center justify-center gap-4">
+                    <Activity className="text-cyan animate-pulse" size={48} />
+                    <span className="text-xs font-black text-text-primary uppercase tracking-[0.4em] animate-pulse">Syncing Neural Nodes...</span>
                 </div>
             )}
         </div>

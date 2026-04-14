@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { registerUser } from '../api/api';
-import { AlertCircle, Lock, User as UserIcon, Mail } from 'lucide-react';
+import { AlertCircle, Lock, User as UserIcon, Mail, ShieldCheck, Zap } from 'lucide-react';
 
 export default function Signup() {
   const [username, setUsername] = useState('');
@@ -18,7 +18,6 @@ export default function Signup() {
     
     try {
       await registerUser({ username, email, password });
-      // Redirect to login after successful registration
       navigate('/login');
     } catch (err: any) {
       setError(err.message || 'Failed to register');
@@ -28,71 +27,78 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-white flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-[#111827] rounded-xl border border-[#1f2937] p-8 shadow-2xl">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 mb-4">
-            <Lock className="w-8 h-8" />
+    <div className="min-h-screen bg-bg-base text-text-primary flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan/5 rounded-full blur-[120px] pointer-events-none" />
+      
+      <div className="max-w-md w-full glass-card p-10 relative z-10 border border-white/5 shadow-2xl animate-page-in">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-emerald/10 border border-emerald/30 text-emerald mb-6 shadow-lg shadow-emerald/10 -rotate-3 hover:rotate-0 transition-transform duration-500">
+            <ShieldCheck className="w-10 h-10" />
           </div>
-          <h2 className="text-2xl font-bold font-display tracking-wider">USER REGISTRATION</h2>
-          <p className="text-gray-400 mt-2">Create your operative account</p>
+          <h2 className="text-3xl font-display font-black tracking-tighter uppercase leading-none">
+            APEX <span className="text-emerald glow-emerald">REGISTRY</span>
+          </h2>
+          <p className="text-text-muted font-data-tiny uppercase tracking-[0.2em] mt-3">
+            New operative enlistment
+          </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-200">{error}</p>
+          <div className="mb-8 p-4 rounded-xl bg-rose/5 border border-rose/30 flex items-start gap-3 animate-pulse">
+            <AlertCircle className="w-5 h-5 text-rose shrink-0 mt-0.5" />
+            <p className="text-xs font-data text-rose">{error}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Username</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                <UserIcon className="h-5 w-5" />
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <label className="font-data-tiny text-text-muted uppercase tracking-widest ml-1">Agent Identifier</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted group-focus-within:text-emerald transition-colors">
+                <UserIcon className="h-4 w-4" />
               </div>
               <input 
                 type="text" 
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 required
-                className="w-full bg-[#0d1320] border border-[#1f2937] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder-gray-600 transition-colors"
+                className="w-full bg-white/5 border border-border-dim focus:border-emerald/50 focus:ring-0 rounded-xl py-3 pl-11 pr-4 text-text-primary font-data text-sm placeholder-text-muted/30 transition-all"
                 placeholder="neo"
               />
             </div>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Email Address</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                <Mail className="h-5 w-5" />
+          <div className="space-y-2">
+            <label className="font-data-tiny text-text-muted uppercase tracking-widest ml-1">Comms Link (Email)</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted group-focus-within:text-emerald transition-colors">
+                <Mail className="h-4 w-4" />
               </div>
               <input 
                 type="email" 
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                className="w-full bg-[#0d1320] border border-[#1f2937] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder-gray-600 transition-colors"
+                className="w-full bg-white/5 border border-border-dim focus:border-emerald/50 focus:ring-0 rounded-xl py-3 pl-11 pr-4 text-text-primary font-data text-sm placeholder-text-muted/30 transition-all"
                 placeholder="neo@matrix.com"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Password</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                <Lock className="h-5 w-5" />
+          <div className="space-y-2">
+            <label className="font-data-tiny text-text-muted uppercase tracking-widest ml-1">Encryption Cipher</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted group-focus-within:text-emerald transition-colors">
+                <Lock className="h-4 w-4" />
               </div>
               <input 
                 type="password" 
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                maxLength={72}
-                className="w-full bg-[#0d1320] border border-[#1f2937] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder-gray-600 transition-colors"
+                className="w-full bg-white/5 border border-border-dim focus:border-emerald/50 focus:ring-0 rounded-xl py-3 pl-11 pr-4 text-text-primary font-data text-sm placeholder-text-muted/30 transition-all"
                 placeholder="••••••••"
               />
             </div>
@@ -101,15 +107,21 @@ export default function Signup() {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full mt-6 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all disabled:opacity-50"
+            className="w-full py-4 px-6 bg-emerald/10 border border-emerald/30 text-emerald font-display font-black tracking-widest rounded-xl shadow-lg shadow-emerald/5 hover:bg-emerald/20 active:scale-95 transition-all disabled:opacity-50 mt-6 flex items-center justify-center gap-2 group"
           >
-            {loading ? 'GENERATING PROTOCOLS...' : 'CREATE ACCOUNT'}
+            {loading ? (
+              <><Zap className="w-4 h-4 animate-spin" /> GENERATING...</>
+            ) : (
+              <><Zap className="w-4 h-4 group-hover:fill-emerald transition-all" /> INITIALIZE CLEARANCE</>
+            )}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-400">
-          Already have an account? <Link to="/login" className="text-blue-400 hover:text-blue-300 transition-colors">Sign In</Link>
-        </p>
+        <div className="mt-10 text-center">
+          <p className="text-xs font-data-small text-text-muted uppercase tracking-widest">
+            Already authorized? <Link to="/login" className="text-emerald hover:text-white transition-colors ml-1 font-bold underline decoration-emerald/30 underline-offset-4">Access Terminal</Link>
+          </p>
+        </div>
       </div>
     </div>
   );
