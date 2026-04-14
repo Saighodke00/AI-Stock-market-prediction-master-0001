@@ -792,6 +792,13 @@ def _run_inference(ticker: str, mode: str = "swing", use_tft: bool = True) -> di
             "type": top_pat.direction.capitalize() if top_pat else "Neutral",
             "count": len(pat_res["patterns"])
         } if top_pat else None,
+        "patterns": [
+            {
+                "name": p.name,
+                "target": p.target_price,
+                "type": p.direction.capitalize()
+            } for p in pat_res["patterns"][:5] if p.target_price
+        ],
         "explanation": explanation,
         "importance":  importance,
         "regime":      _get_market_regime(df),

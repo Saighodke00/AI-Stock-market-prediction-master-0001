@@ -249,30 +249,31 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
                 ...fmtForecast.map(f => ({ time: f.t, value: f.p10 }))
             ]);
 
-            // ── NOW marker on the p50 line ──
-                p50Series.createPriceLine({
-                    price: anchorClose,
-                    color: '#6366f1',
-                    lineWidth: 1,
-                    lineStyle: LineStyle.Solid,
-                    axisLabelVisible: true,
-                    title: 'SIGNAL GENERATED',
-                });
+            // ── NOW marker on the p50 line (Anchor) ──
+            p50Series.createPriceLine({
+                price: anchorClose,
+                color: '#6366f1',
+                lineWidth: 2,
+                lineStyle: LineStyle.Solid,
+                axisLabelVisible: true,
+                title: 'SIGNAL GENERATED',
+            });
 
-                // ── Pattern Targets ──
-                patterns.forEach((p, idx) => {
-                    if (p.target) {
-                        p50Series.createPriceLine({
-                            price: p.target,
-                            color: p.type === 'Bullish' ? '#10b981' : (p.type === 'Bearish' ? '#f43f5e' : '#6366f1'),
-                            lineWidth: 1,
-                            lineStyle: LineStyle.Dashed,
-                            axisLabelVisible: true,
-                            title: `${p.name} Target`,
-                        });
-                    }
-                });
-            }
+            // ── Pattern Targets (Max 5 confident ones) ──
+            patterns.forEach((p) => {
+                if (p.target) {
+                    const color = p.type === 'Bullish' ? '#10b981' : (p.type === 'Bearish' ? '#f43f5e' : '#6366f1');
+                    p50Series.createPriceLine({
+                        price: p.target,
+                        color: color,
+                        lineWidth: 1,
+                        lineStyle: LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `${p.name} Target`,
+                    });
+                }
+            });
+        }
 
         // 5. Tooltip/Legend Sync
         chart.subscribeCrosshairMove(param => {
