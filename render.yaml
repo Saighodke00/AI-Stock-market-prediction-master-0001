@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: apex-ai
+    env: docker
+    region: frankfurt # Or choose your preferred region like oregon, ohio, etc.
+    plan: free # Remember that ML libraries are heavy; you might need to upgrade to starter/standard if it crashes.
+    dockerCommand: uvicorn main:app --host 0.0.0.0 --port 9001 --workers 2
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PORT
+        value: "9001"
