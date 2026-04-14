@@ -25,6 +25,8 @@ warnings.filterwarnings("ignore", message=".*_INTERPRETER_DELETION_WARNING.*", c
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 # --- Deferred Imports Helper ---
 tf = np = pd = yf = None

@@ -585,20 +585,33 @@ const Dashboard: React.FC = () => {
               </div>
             </section>
 
-            {/* ── FII / DII Data (Placeholder) ───────────────────────────────── */}
+            {/* ── FII / DII Data (Live) ───────────────────────────────── */}
             <section className="glass border border-mid rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-4">
                 <BarChart2 size={15} className="text-indigo" />
                 <span className="neon-label text-muted">FII / DII Flow</span>
+                {marketData?.fii_flow?.sentiment && (
+                  <span className={`font-data-tiny px-1.5 py-0.5 rounded ml-auto ${
+                    marketData.fii_flow.sentiment === 'BULLISH' ? 'bg-emerald/10 text-emerald' : 
+                    marketData.fii_flow.sentiment === 'BEARISH' ? 'bg-rose/10 text-rose' : 
+                    'bg-white/5 text-muted'
+                  }`}>
+                    {marketData.fii_flow.sentiment}
+                  </span>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white/5 border border-dim rounded-lg p-3 text-center">
                   <div className="font-data-small text-muted mb-1">FII NET</div>
-                  <div className="font-data font-bold text-rose">-2,450 Cr</div>
+                  <div className={`font-data font-bold ${marketData?.fii_flow?.fii_net >= 0 ? 'text-emerald' : 'text-rose'}`}>
+                    {marketData?.fii_flow ? `${marketData.fii_flow.fii_net > 0 ? '+' : ''}${fmt(marketData.fii_flow.fii_net, 0)} Cr` : '─'}
+                  </div>
                 </div>
                 <div className="bg-white/5 border border-dim rounded-lg p-3 text-center">
                   <div className="font-data-small text-muted mb-1">DII NET</div>
-                  <div className="font-data font-bold text-emerald">+3,120 Cr</div>
+                  <div className={`font-data font-bold ${marketData?.fii_flow?.dii_net >= 0 ? 'text-emerald' : 'text-rose'}`}>
+                    {marketData?.fii_flow ? `${marketData.fii_flow.dii_net > 0 ? '+' : ''}${fmt(marketData.fii_flow.dii_net, 0)} Cr` : '─'}
+                  </div>
                 </div>
               </div>
             </section>

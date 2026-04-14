@@ -8,6 +8,7 @@ import {
   ChevronDown, ChevronUp
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { PortfolioSnapshot } from "../components/dashboard/PortfolioSnapshot";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -431,29 +432,12 @@ const PaperTradingPage: React.FC = () => {
         {/* LEFT: Summary + Chart + Positions */}
         <div className="flex flex-col gap-6">
 
-          {/* ── Portfolio Summary ───────────────────────────────────────────── */}
+          {/* ── Portfolio Snapshot & Metrics ─────────────────────────── */}
+          <PortfolioSnapshot />
+
           <div className="neon-frame rounded-2xl p-6">
             {summary ? (
               <>
-                {/* Main value */}
-                <div className="mb-5">
-                  <div className="font-data-small text-muted mb-1">
-                    TOTAL NET ASSET VALUE
-                  </div>
-                  <div className="flex items-baseline flex-wrap gap-4">
-                    <span className="font-display font-black text-4xl text-primary tracking-tight">
-                      {fmtCur(summary.portfolio_value)}
-                    </span>
-                    <span className={`flex items-center gap-1 font-bold text-sm ${summary.total_return_pct >= 0 ? 'text-emerald' : 'text-rose'}`}>
-                      {summary.total_return_pct >= 0 ? <ArrowUpRight size={16} strokeWidth={3} /> : <ArrowDownRight size={16} strokeWidth={3} />}
-                      {summary.total_return_pct >= 0 ? "+" : ""}{fmt(summary.total_return_pct)}%
-                    </span>
-                  </div>
-                  <div className="text-xs text-muted mt-1">
-                    Started with {fmtCur(summary.initial_capital || 1000000)}
-                  </div>
-                </div>
-
                 {/* Equity chart */}
                 <div className="mb-5">
                   <EquityChart trades={history} initialCapital={summary.initial_capital || 1000000} />

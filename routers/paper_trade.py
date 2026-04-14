@@ -12,6 +12,26 @@ from auth_utils import get_db, get_current_user
 logger = logging.getLogger("apex")
 router = APIRouter(prefix="/api/paper", tags=["paper"])
 
+@router.get("/global-stats")
+def get_global_paper_stats(db: Session = Depends(get_db)):
+    """Public aggregated stats for the home dashboard (no individual user context)."""
+    try:
+        trades = db.query(PaperTrade).filter(PaperTrade.action == "SELL").all()
+        total_pnl = sum(t.pnl for t in trades if t.pnl)
+        num_trades = len(trades)
+        wins = len([t for t in trades if t.pnl and t.pnl > 0.0])
+        win_rate = (wins / num_trades * 100) if num_trades > 0 else 0.0
+        
+        return {
+            "total_pnl": round(total_pnl, 2),
+            "total_trades": num_trades,
+            "win_rate": round(win_rate, 1),
+            "status": "synchronized"
+        }
+    except Exception as e:
+        logger.error(f"Global stats error: {e}")
+        return {"error": "Failed to fetch global stats"}
+
 def _fetch_live_prices(tickers: list[str]) -> dict[str, float]:
     """Batch-fetch current prices for a list of tickers via yfinance."""
     prices: dict[str, float] = {}
