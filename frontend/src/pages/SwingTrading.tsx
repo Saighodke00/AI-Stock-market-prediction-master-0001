@@ -271,6 +271,9 @@ export const SwingTradingPage: React.FC = () => {
 
                             {/* MAIN SIGNAL AREA */}
                             <div className="grid grid-cols-1 gap-6">
+                                <div className="flex flex-col gap-6">
+                                    <SignalCard data={signal} isLoading={false} timeframe={`${tf} SWING`} />
+                                </div>
                                 <div className="h-[calc(100vh-420px)] min-h-[500px]">
                                     <CandlestickChart 
                                         ticker={ticker}
@@ -281,9 +284,6 @@ export const SwingTradingPage: React.FC = () => {
                                         isLive={isLive}
                                         intervalMs={60000}
                                     />
-                                </div>
-                                <div className="flex flex-col gap-6">
-                                    <SignalCard data={signal} isLoading={false} timeframe={`${tf} SWING`} />
                                 </div>
                                 <div className="mt-4">
                                     <PositionSizer data={signal} />
