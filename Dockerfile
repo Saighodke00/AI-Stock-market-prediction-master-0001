@@ -42,5 +42,5 @@ COPY main.py .
 # Copy built frontend from Stage 1 into the backend container
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-EXPOSE 9001
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-9001} --workers 4"]
+EXPOSE 7860
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860} --workers 4"]

@@ -1,3 +1,12 @@
+---
+title: Apex AI
+emoji: 📈
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # APEX AI: Advanced Stock Market Intelligence v3.0
 
 ![APEX AI Hero](assets/hero.png)
