@@ -11,7 +11,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import useAuthStore from "../store/useAuthStore";
+import { useAuthStore } from "../store/useAuthStore";
 import {
   TrendingUp, TrendingDown, Minus, RefreshCw, ExternalLink,
   Clock, Newspaper, Activity, Shield, Zap, BarChart2,

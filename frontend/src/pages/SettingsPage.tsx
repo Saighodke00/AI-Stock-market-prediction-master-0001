@@ -12,7 +12,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import useAuthStore from "../store/useAuthStore";
+import { useAuthStore } from "../store/useAuthStore";
 import {
   Settings, Sliders, Info, User, Bell, Shield, Database,
   ChevronRight, Save, RefreshCw, Activity, TrendingUp,
