@@ -273,21 +273,21 @@ export const IntradayTradingPage: React.FC = () => {
 
                             {/* MAIN SIGNAL AREA */}
                             <div className="grid grid-cols-1 gap-6">
-                                <NeuralSignalHeader data={signal} mode="intraday" />
+                                <div className="h-[calc(100vh-420px)] min-h-[500px]">
+                                    <CandlestickChart 
+                                        ticker={ticker}
+                                        ohlcv={signal.ohlcv || []} 
+                                        forecast={signal.forecast || []} 
+                                        patterns={patterns}
+                                        action={signal.action} 
+                                        isLive={isLive}
+                                        intervalMs={30000}
+                                    />
+                                </div>
                                 <div className="flex flex-col gap-6">
                                     <SignalCard data={signal} isLoading={false} timeframe={`${tf} SCALP`} />
-                                    <div className="h-[calc(100vh-420px)] min-h-[500px]">
-                                        <CandlestickChart 
-                                            ticker={ticker}
-                                            ohlcv={signal.ohlcv || []} 
-                                            forecast={signal.forecast || []} 
-                                            patterns={patterns}
-                                            action={signal.action} 
-                                            isLive={isLive}
-                                            intervalMs={60000}
-                                        />
-                                    </div>
                                 </div>
+                            </div>
                                 <div className="mt-4">
                                     <PositionSizer data={signal} />
                                 </div>
