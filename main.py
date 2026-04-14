@@ -1194,10 +1194,11 @@ async def market_pulse():
             # Short history for pulse to keep it fast
             nifty = download_yf("^NSEI", period="1d", progress=False)
             vix = download_yf("^INDIAVIX", period="1d", progress=False)
+            sensex = download_yf("^BSESN", period="1d", progress=False)
+            banknifty = download_yf("^NSEBANK", period="1d", progress=False)
         except Exception as e:
             logger.warning(f"Market Pulse fetch failed: {e}. Using placeholders.")
-            nifty = pd.DataFrame()
-            vix = pd.DataFrame()
+            nifty = sensex = banknifty = vix = pd.DataFrame()
         
         def _get_last_price(df: pd.DataFrame) -> float:
             if df.empty: return 0.0
@@ -1209,38 +1210,46 @@ async def market_pulse():
             if len(df) < 2: return 0.0
             close = df["Close"]
             if isinstance(close, pd.DataFrame): close = close.iloc[:, 0]
-            # Use last two bars for a "pulse" change
             return ((float(close.iloc[-1]) / float(close.iloc[-2])) - 1) * 100
 
         nifty_price = _get_last_price(nifty)
         nifty_change = _get_change(nifty)
+
+        sensex_price = _get_last_price(sensex)
+        sensex_change = _get_change(sensex)
+
+        banknifty_price = _get_last_price(banknifty)
+        banknifty_change = _get_change(banknifty)
         
-        # Ensure we don't accidentally use nifty data for vix if download failed
-        vix_raw = _get_last_price(vix) if not vix.empty else 0.0
-        # Sanity check: VIX usually < 100. If it's 23000+, it's a Nifty leak.
-        vix_price = vix_raw if vix_raw < 200 else 0.0
+        vix_price = _get_last_price(vix)
+        vix_change = _get_change(vix)
         
-        # 2. Get FII/DII flow
         flow = _state.intel.get_fii_dii_flow()
         
-        # 3. Determine market status (NSE Hours: 9:15 to 15:30 IST)
-        # Assuming server time is set correctly or handles IST offset
         now = datetime.now()
         is_weekday = now.weekday() < 5
         is_hours = (9*60 + 15) <= (now.hour * 60 + now.minute) <= (15*60 + 30)
         status = "LIVE" if (is_weekday and is_hours) else "CLOSED"
         
-        if status == "LIVE" and now.second % 30 == 0:
-            _add_log(f"Market Pulse: Nifty at {nifty_price:,.0f} ({nifty_change:+.2f}%)")
-
         return _json_sanitize({
             "nifty": {
                 "price": round(nifty_price, 2),
                 "change_pct": round(nifty_change, 2),
                 "sparkline": _generate_sparkline(nifty, 30) if not nifty.empty else []
             },
+            "sensex": {
+                "price": round(sensex_price, 2),
+                "change_pct": round(sensex_change, 2),
+                "sparkline": _generate_sparkline(sensex, 30) if not sensex.empty else []
+            },
+            "banknifty": {
+                "price": round(banknifty_price, 2),
+                "change_pct": round(banknifty_change, 2),
+                "sparkline": _generate_sparkline(banknifty, 30) if not banknifty.empty else []
+            },
             "vix": {
                 "price": round(vix_price, 2),
+                "change_pct": round(vix_change, 2),
                 "color": "green" if vix_price < 15 else ("yellow" if vix_price < 19 else "red")
             },
             "fii_flow": flow,

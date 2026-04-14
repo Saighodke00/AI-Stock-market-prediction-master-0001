@@ -209,7 +209,7 @@ const Dashboard: React.FC = () => {
   const token = useAuthStore((s: any) => s.token);
 
   const authHeaders: Record<string, string> = token
-    ? { "Content-Type": "application/json", Authorization: "Bearer " }
+    ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
     : { "Content-Type": "application/json" };
 
   // ── Fetch Market Pulse ──────────────────────────────────────────────────────
@@ -241,7 +241,7 @@ const Dashboard: React.FC = () => {
       await Promise.allSettled(
         NEWS_TICKERS.map(async (ticker) => {
           try {
-            const res = await fetch("/api/sentiment//news?limit=5");
+            const res = await fetch(`/api/sentiment/${ticker}/news?limit=5`);
             if (res.ok) {
               const d = await res.json();
               const items: NewsItem[] = (d.news || []).map((n: any) => ({
@@ -383,9 +383,9 @@ const Dashboard: React.FC = () => {
         {/* ── Market Indices ────────────────────────────────────────────────── */}
         <section className="flex flex-wrap gap-4">
           <IndexCard label="NIFTY 50" data={nifty ? { price: nifty.price, change_pct: nifty.change_pct, sparkline: nifty.sparkline } : null} />
-          <IndexCard label="INDIA VIX" data={vix ? { price: vix.price, change_pct: 0 } : null} />
-          <IndexCard label="SENSEX" data={null} />
-          <IndexCard label="BANK NIFTY" data={null} />
+          <IndexCard label="INDIA VIX" data={vix ? { price: vix.price, change_pct: vix.change_pct } : null} />
+          <IndexCard label="SENSEX" data={marketData?.sensex} />
+          <IndexCard label="BANK NIFTY" data={marketData?.banknifty} />
         </section>
 
         {/* ── Main Grid: Portfolio + Top Signals + News ─────────────────────── */}

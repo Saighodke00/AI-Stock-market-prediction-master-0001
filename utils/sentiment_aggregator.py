@@ -28,6 +28,23 @@ class SentimentAggregator:
         APEX AI — Sentiment Matrix Intelligence v3.1
         Aggregates news, corporate statements, social sentiment, and bulk deals.
         """
+        # Guard against invalid/empty tickers from malformed frontend requests
+        if not ticker or len(ticker.strip()) < 2 or ticker.upper() == "NEWS":
+            logging.warning(f"SentimentAggregator: Invalid ticker received: '{ticker}'")
+            return {
+                "ticker": ticker.upper() if ticker else "UNKNOWN",
+                "timestamp": datetime.now().isoformat(),
+                "ticker_meta": {"sector": "N/A", "industry": "N/A", "market_cap": 0, "beta": 1.0},
+                "aggregate": {"score": 0.0, "label": "NEUTRAL", "emoji": "🟡", "confidence": 0.0},
+                "layers": {
+                    "news": {"score": 0.0, "article_count": 0, "items": []},
+                    "bulk_deals": {"score": 0.0, "signal": "NEUTRAL", "summary": "No data", "deals": []},
+                    "statements": {"score": 0.0, "items": [], "status": "INACTIVE"},
+                    "social": {"score": 0.0, "buzz": 0, "reddit": {}, "stocktwits": {}, "status": "INACTIVE"}
+                },
+                "summary_ai": "Invalid or missing ticker provided. Sentiment analysis aborted."
+            }
+
         from utils.sentiment import get_sentiment, score_headlines
         from utils.sebi_bulk_deals import get_deal_summary
         from utils.sentiment_scrapers import SentimentScrapers

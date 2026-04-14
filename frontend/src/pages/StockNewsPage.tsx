@@ -191,8 +191,8 @@ const StockNewsPage: React.FC = () => {
 
     try {
       const [matrixRes, newsRes] = await Promise.allSettled([
-        fetch("/api/sentiment/"),
-        fetch("/api/sentiment//news?page=1&limit=25"),
+        fetch(`/api/sentiment/${ticker}`),
+        fetch(`/api/sentiment/${ticker}/news?page=1&limit=25`),
       ]);
 
       if (matrixRes.status === "fulfilled" && matrixRes.value.ok) {
@@ -206,7 +206,7 @@ const StockNewsPage: React.FC = () => {
       }
 
       try {
-        const sigRes = await fetch("/api/signal/?mode=swing");
+        const sigRes = await fetch(`/api/signal/${ticker}?mode=swing`);
         if (sigRes.ok) {
           const sd = await sigRes.json();
           setStockData({
