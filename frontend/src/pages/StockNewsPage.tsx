@@ -1,17 +1,5 @@
-/**
- * StockNewsPage.tsx — APEX AI Stock Intelligence Hub
- *
- * Features:
- *  - Full-screen news feed with search bar
- *  - Ticker-based filtering
- *  - Sentiment scores per article
- *  - Market data panel alongside news
- *  - Quick stock info cards with mini charts
- *  - RSS + yfinance news aggregation via /api/sentiment endpoints
- */
-
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+﻿import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Search, RefreshCw, TrendingUp, TrendingDown, ExternalLink,
   Newspaper, Activity, BarChart2, Clock, X, ChevronRight,
@@ -62,8 +50,6 @@ const POPULAR_TICKERS = [
   { label: "Sun Pharma", ticker: "SUNPHARMA.NS" },
 ];
 
-const CATEGORIES = ["Market", "IT", "Banking", "Pharma", "Energy", "Auto"];
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmt = (n: number, d = 2) =>
@@ -72,17 +58,17 @@ const fmt = (n: number, d = 2) =>
 const timeAgo = (dateStr: string) => {
   try {
     const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
-    if (diff < 60) return `${Math.floor(diff)}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
+    if (diff < 60) return ${Math.floor(diff)}s ago;
+    if (diff < 3600) return ${Math.floor(diff / 60)}m ago;
+    if (diff < 86400) return ${Math.floor(diff / 3600)}h ago;
+    return ${Math.floor(diff / 86400)}d ago;
   } catch { return ""; }
 };
 
 const sentimentMeta = (score: number) => {
-  if (score > 0.2) return { label: "BULLISH", color: "#00e676", icon: <CheckCircle2 size={11} /> };
-  if (score < -0.2) return { label: "BEARISH", color: "#ff4b4b", icon: <AlertTriangle size={11} /> };
-  return { label: "NEUTRAL", color: "#ffc107", icon: <Minus size={11} /> };
+  if (score > 0.2) return { label: "BULLISH", colorClass: "text-emerald", bgClass: "bg-emerald/10 border border-emerald/20", icon: <CheckCircle2 size={11} /> };
+  if (score < -0.2) return { label: "BEARISH", colorClass: "text-rose", bgClass: "bg-rose/10 border border-rose/20", icon: <AlertTriangle size={11} /> };
+  return { label: "NEUTRAL", colorClass: "text-amber", bgClass: "bg-amber/10 border border-amber/20", icon: <Minus size={11} /> };
 };
 
 // ─── Article Card ─────────────────────────────────────────────────────────────
@@ -97,128 +83,62 @@ const ArticleCard: React.FC<{ article: NewsArticle; index: number; featured?: bo
       href={article.url || "#"}
       target="_blank"
       rel="noopener noreferrer"
-      style={{
-        display: "flex",
-        flexDirection: featured ? "column" : "row",
-        gap: featured ? 14 : 12,
-        padding: featured ? "20px" : "16px",
-        background: featured
-          ? "linear-gradient(135deg, rgba(99,179,237,0.06), rgba(10,25,50,0.8))"
-          : "rgba(255,255,255,0.02)",
-        border: `1px solid ${featured ? "rgba(99,179,237,0.2)" : "rgba(255,255,255,0.05)"}`,
-        borderRadius: featured ? 14 : 10,
-        textDecoration: "none",
-        cursor: article.url ? "pointer" : "default",
-        transition: "all 0.2s",
-        animation: `newsIn 0.4s ease ${index * 0.05}s both`,
-        overflow: "hidden",
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.background = featured
-          ? "linear-gradient(135deg, rgba(99,179,237,0.1), rgba(10,25,50,0.9))"
-          : "rgba(255,255,255,0.04)";
-        e.currentTarget.style.borderColor = featured
-          ? "rgba(99,179,237,0.4)"
-          : "rgba(255,255,255,0.1)";
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.background = featured
-          ? "linear-gradient(135deg, rgba(99,179,237,0.06), rgba(10,25,50,0.8))"
-          : "rgba(255,255,255,0.02)";
-        e.currentTarget.style.borderColor = featured
-          ? "rgba(99,179,237,0.2)"
-          : "rgba(255,255,255,0.05)";
-      }}
+      className={"flex  hover:border-border-bright hover:bg-white/10 transition-all cursor-[] group"}
+      style={{ animation: "slide-in-right 0.3s ease-out s backwards" }}
     >
       {/* Left: sentiment bar */}
       {!featured && (
-        <div style={{
-          width: 3, flexShrink: 0,
-          background: sm.color,
-          borderRadius: 99, opacity: 0.8,
-          minHeight: 50,
-        }} />
+        <div className={"w-[3px] rounded-full shrink-0 min-h-[48px] opacity-80 `} />
       )}
 
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="flex-1 min-w-0">
         {/* Meta row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           {featured && (
-            <span style={{
-              background: "rgba(99,179,237,0.15)", color: "#63b3ed",
-              fontSize: 9, padding: "2px 8px", borderRadius: 4,
-              fontFamily: "monospace", letterSpacing: 1, textTransform: "uppercase",
-            }}>
+            <span className="font-data-small bg-cyan/10 text-cyan border border-cyan/20 px-1.5 py-0.5 rounded tracking-widest uppercase">
               TOP STORY
             </span>
           )}
           {article.ticker && (
-            <span style={{
-              background: "rgba(167,139,250,0.12)", color: "#a78bfa",
-              fontSize: 9, padding: "1px 6px", borderRadius: 4,
-              fontFamily: "monospace", textTransform: "uppercase",
-            }}>
+            <span className="font-data-small bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded uppercase">
               {article.ticker.replace(".NS", "").replace(".BO", "")}
             </span>
           )}
-          <span style={{ fontSize: 10, color: "#4a6a8a", fontFamily: "monospace" }}>
+          <span className="font-data-small text-text-muted">
             {article.source}
           </span>
           {article.published && (
             <>
-              <span style={{ color: "#2a4a6a", fontSize: 10 }}>·</span>
-              <span style={{ fontSize: 10, color: "#3a5a7a", display: "flex", alignItems: "center", gap: 3 }}>
+              <span className="text-[10px] text-text-muted opacity-50">·</span>
+              <span className="font-data-small text-text-muted flex items-center gap-1">
                 <Clock size={9} /> {timeAgo(article.published)}
               </span>
             </>
           )}
-          <span style={{
-            marginLeft: "auto",
-            display: "flex", alignItems: "center", gap: 4,
-            fontSize: 10, color: sm.color, fontFamily: "monospace",
-          }}>
+          <span className={"ml-auto flex items-center gap-1 font-data-small "}>
             {sm.icon} {sm.label}
           </span>
         </div>
 
         {/* Title */}
-        <p style={{
-          margin: 0,
-          fontSize: featured ? 16 : 13,
-          fontWeight: featured ? 700 : 500,
-          color: "#d0e0f0",
-          lineHeight: 1.5,
-          display: "-webkit-box",
-          WebkitLineClamp: featured ? 3 : 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}>
+        <p className={"m-0 text-text-primary leading-relaxed "}>
           {article.title}
         </p>
 
         {/* Summary */}
         {featured && article.summary && (
-          <p style={{
-            margin: "8px 0 0",
-            fontSize: 12,
-            color: "#4a7a9a",
-            lineHeight: 1.6,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}>
+          <p className="mt-2 text-xs text-text-secondary leading-relaxed line-clamp-2">
             {article.summary}
           </p>
         )}
 
         {/* Footer */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-          <span style={{ fontSize: 10, color: "#2a4a7a", fontFamily: "monospace" }}>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="font-data-small text-text-muted">
             Score: {article.score > 0 ? "+" : ""}{fmt(article.score)}
           </span>
           {article.url && (
-            <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 3, fontSize: 10, color: "#2a4a6a" }}>
+            <span className="ml-auto flex items-center gap-1 font-data text-[10px] text-text-muted group-hover:text-cyan transition-colors">
               Read more <ExternalLink size={9} />
             </span>
           )}
@@ -238,19 +158,7 @@ const TickerQuickCard: React.FC<{
 }> = ({ ticker, label, active, onClick }) => (
   <button
     onClick={onClick}
-    style={{
-      background: active ? "rgba(99,179,237,0.12)" : "rgba(255,255,255,0.02)",
-      border: `1px solid ${active ? "rgba(99,179,237,0.4)" : "rgba(255,255,255,0.06)"}`,
-      borderRadius: 8,
-      padding: "8px 14px",
-      cursor: "pointer",
-      color: active ? "#63b3ed" : "#5a7a9a",
-      fontSize: 12,
-      fontFamily: "monospace",
-      transition: "all 0.15s",
-      whiteSpace: "nowrap",
-      flexShrink: 0,
-    }}
+    className={"font-data-small px-3 py-1.5 rounded-lg border transition-all shrink-0 "}
   >
     {label}
   </button>
@@ -260,9 +168,9 @@ const TickerQuickCard: React.FC<{
 
 const StockNewsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const initialTicker = searchParams.get("ticker") || "";
 
-  const [searchQuery, setSearchQuery] = useState(initialTicker);
   const [activeTicker, setActiveTicker] = useState(
     initialTicker ? POPULAR_TICKERS.find(t => t.ticker.includes(initialTicker))?.ticker || "RELIANCE.NS"
       : "RELIANCE.NS"
@@ -282,10 +190,9 @@ const StockNewsPage: React.FC = () => {
     setStockData(null);
 
     try {
-      // Full sentiment matrix
       const [matrixRes, newsRes] = await Promise.allSettled([
-        fetch(`/api/sentiment/${ticker}`),
-        fetch(`/api/sentiment/${ticker}/news?page=1&limit=25`),
+        fetch("/api/sentiment/"),
+        fetch("/api/sentiment//news?page=1&limit=25"),
       ]);
 
       if (matrixRes.status === "fulfilled" && matrixRes.value.ok) {
@@ -298,9 +205,8 @@ const StockNewsPage: React.FC = () => {
         setArticles((d.news || []).map((n: any) => ({ ...n, ticker })));
       }
 
-      // Stock price
       try {
-        const sigRes = await fetch(`/api/signal/${ticker}?mode=swing`);
+        const sigRes = await fetch("/api/signal/?mode=swing");
         if (sigRes.ok) {
           const sd = await sigRes.json();
           setStockData({
@@ -323,7 +229,7 @@ const StockNewsPage: React.FC = () => {
     e.preventDefault();
     const q = customSearch.trim().toUpperCase();
     if (!q) return;
-    const ticker = q.includes(".NS") || q.includes(".BO") ? q : `${q}.NS`;
+    const ticker = q.includes(".NS") || q.includes(".BO") ? q : ${q}.NS;
     setActiveTicker(ticker);
     setSearchParams({ ticker: q });
     setCustomSearch("");
@@ -339,76 +245,36 @@ const StockNewsPage: React.FC = () => {
   const [featured, ...rest] = articles;
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#060b14",
-      color: "#c8d8f0",
-      fontFamily: "'Rajdhani', 'Segoe UI', sans-serif",
-    }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-        @keyframes newsIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(99,179,237,0.2); border-radius: 99px; }
-        .news-ticker-btn:hover { background: rgba(255,255,255,0.04) !important; }
-      `}</style>
-
+    <div className="page-container py-8 animate-page-in">
       {/* ── Page Header ─────────────────────────────────────────────────────── */}
-      <div style={{
-        padding: "24px 40px 20px",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-        background: "linear-gradient(180deg, rgba(10,20,40,0.8) 0%, transparent 100%)",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <Newspaper size={20} color="#63b3ed" />
-          <h1 style={{
-            margin: 0, fontSize: 22,
-            fontFamily: "'Orbitron', monospace",
-            fontWeight: 900, color: "#e2e8f0", letterSpacing: 1,
-          }}>
+      <div className="pb-6 mb-6 border-b border-border-dim">
+        <div className="flex items-center gap-3 mb-5">
+          <Newspaper size={24} className="text-cyan" />
+          <h1 className="m-0 text-2xl font-display font-bold text-text-primary tracking-wide">
             STOCK INTELLIGENCE
           </h1>
-          <span style={{
-            background: "rgba(0,230,118,0.12)", color: "#00e676",
-            fontSize: 9, padding: "2px 8px", borderRadius: 4,
-            fontFamily: "monospace", letterSpacing: 2,
-          }}>
+          <span className="font-data-tiny bg-emerald/10 text-emerald px-1.5 py-0.5 rounded tracking-widest ml-2">
             LIVE NEWS
           </span>
         </div>
 
         {/* ── Search Bar ──────────────────────────────────────────────────────── */}
-        <form onSubmit={handleSearch} style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <div style={{
-            flex: 1, display: "flex", alignItems: "center", gap: 10,
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(99,179,237,0.2)",
-            borderRadius: 10,
-            padding: "10px 16px",
-          }}>
-            <Search size={15} color="#4a7a9a" />
+        <form onSubmit={handleSearch} className="flex flex-wrap gap-3 mb-5">
+          <div className="flex-1 flex items-center gap-2 bg-white/5 border border-cyan/20 rounded-lg px-3 py-2 min-w-[200px] focus-within:border-cyan/50 transition-colors">
+            <Search size={15} className="text-text-muted" />
             <input
               ref={searchRef}
               type="text"
               value={customSearch}
               onChange={e => setCustomSearch(e.target.value)}
-              placeholder="Search ticker or company... (e.g. RELIANCE, TCS, HDFC)"
-              style={{
-                flex: 1, background: "transparent", border: "none",
-                outline: "none", color: "#c8d8f0",
-                fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
-              }}
+              placeholder="Search ticker... (e.g. RELIANCE, TCS)"
+              className="w-full bg-transparent border-none outline-none text-text-primary text-sm font-data"
             />
             {customSearch && (
               <button
                 type="button"
                 onClick={() => setCustomSearch("")}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#4a6a8a" }}
+                className="bg-transparent border-none text-text-muted hover:text-white cursor-pointer"
               >
                 <X size={13} />
               </button>
@@ -416,34 +282,21 @@ const StockNewsPage: React.FC = () => {
           </div>
           <button
             type="submit"
-            style={{
-              background: "linear-gradient(135deg, #1a4a8a, #0e2a5a)",
-              border: "1px solid rgba(99,179,237,0.3)",
-              borderRadius: 10, padding: "10px 20px",
-              color: "#63b3ed", cursor: "pointer",
-              fontSize: 13, fontWeight: 600, fontFamily: "monospace",
-            }}
+            className="px-5 py-2 bg-cyan/10 border border-cyan/30 rounded-lg text-cyan font-data text-sm font-bold glow-border-cyan hover:bg-cyan/20 transition-all"
           >
-            Search
+            SEARCH
           </button>
           <button
             type="button"
             onClick={() => fetchNews(activeTicker)}
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 10, padding: "10px 14px",
-              color: "#5a7a9a", cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 6,
-              fontSize: 12, fontFamily: "monospace",
-            }}
+            className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-border-dim rounded-lg text-text-muted font-data text-xs hover:text-text-primary hover:border-border-bright transition-all"
           >
             <RefreshCw size={13} />
           </button>
         </form>
 
         {/* ── Popular Tickers ─────────────────────────────────────────────────── */}
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+        <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
           {POPULAR_TICKERS.map(t => (
             <TickerQuickCard
               key={t.ticker}
@@ -457,70 +310,44 @@ const StockNewsPage: React.FC = () => {
       </div>
 
       {/* ── Body ────────────────────────────────────────────────────────────── */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 300px",
-        gap: 0,
-        maxHeight: "calc(100vh - 200px)",
-      }}>
+      <div className="grid lg:grid-cols-[1fr_320px] gap-8">
 
         {/* LEFT: News Feed */}
-        <div style={{
-          padding: "24px 32px 40px 40px",
-          overflowY: "auto",
-        }}>
+        <div className="flex flex-col">
           {/* Section header */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-            <h2 style={{
-              margin: 0, fontSize: 16,
-              fontFamily: "'Orbitron', monospace",
-              color: "#e2e8f0", fontWeight: 700,
-            }}>
-              {activeLabel}
+          <div className="flex items-center flex-wrap gap-3 mb-5">
+            <h2 className="m-0 text-xl font-display font-bold text-text-primary tracking-wide">
+              {activeLabel} News
             </h2>
             {sentMeta && (
-              <span style={{
-                background: `${sentMeta.color}18`,
-                border: `1px solid ${sentMeta.color}40`,
-                color: sentMeta.color,
-                padding: "3px 10px", borderRadius: 6,
-                fontSize: 10, fontFamily: "monospace",
-                display: "flex", alignItems: "center", gap: 4,
-              }}>
+              <span className={"font-data-small px-2 py-1 rounded-md flex items-center gap-1  `}>
                 {sentMeta.icon} {sentMeta.label}
               </span>
             )}
-            <span style={{ fontSize: 11, color: "#3a5a7a", fontFamily: "monospace", marginLeft: "auto" }}>
+            <span className="ml-auto text-xs text-text-muted font-data">
               {articles.length} articles
             </span>
           </div>
 
           {loading ? (
-            <div style={{ padding: "80px 0", textAlign: "center" }}>
-              <div style={{
-                display: "inline-block", width: 32, height: 32,
-                border: "3px solid rgba(99,179,237,0.2)",
-                borderTopColor: "#63b3ed",
-                borderRadius: "50%",
-                animation: "spin 0.8s linear infinite",
-                marginBottom: 16,
-              }} />
-              <p style={{ color: "#3a5a7a", fontFamily: "monospace", margin: 0 }}>
+            <div className="py-16 text-center">
+              <div className="inline-block w-8 h-8 border-2 border-cyan/20 border-t-cyan rounded-full animate-spin mb-4" />
+              <p className="text-text-muted font-data text-sm">
                 Fetching {activeLabel} news...
               </p>
             </div>
           ) : articles.length === 0 ? (
-            <div style={{ padding: "80px 0", textAlign: "center", color: "#3a5a7a" }}>
-              <Newspaper size={40} style={{ marginBottom: 16, opacity: 0.4 }} />
-              <p style={{ fontFamily: "monospace", fontSize: 14 }}>No news found for {activeLabel}</p>
+            <div className="py-16 text-center text-text-muted">
+              <Newspaper size={40} className="mx-auto mb-4 opacity-40" />
+              <p className="font-data text-sm">No news found for {activeLabel}</p>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="flex flex-col gap-3 custom-scrollbar">
               {/* Featured top story */}
               {featured && <ArticleCard article={featured} index={0} featured />}
 
               {/* Grid for rest */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+              <div className="flex flex-col gap-2 mt-1">
                 {rest.map((a, i) => (
                   <ArticleCard key={a.title + i} article={a} index={i + 1} />
                 ))}
@@ -530,140 +357,94 @@ const StockNewsPage: React.FC = () => {
         </div>
 
         {/* RIGHT: Stock Info Panel */}
-        <div style={{
-          borderLeft: "1px solid rgba(255,255,255,0.05)",
-          padding: "24px 20px",
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: 20,
-        }}>
+        <div className="flex flex-col gap-5">
           {/* Stock Snapshot */}
-          <div style={{
-            background: "rgba(8,16,32,0.6)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: 14,
-            padding: "18px",
-          }}>
-            <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6a8a", fontFamily: "monospace", marginBottom: 8, textTransform: "uppercase" }}>
-              {activeLabel}
+          <div className="glass border border-border-mid rounded-xl p-5">
+            <div className="neon-label text-text-muted mb-2">
+              {activeLabel} Overview
             </div>
             {stockData ? (
               <>
-                <div style={{ fontSize: 28, fontWeight: 900, fontFamily: "'Orbitron', monospace", color: "#e2e8f0" }}>
+                <div className="font-display text-3xl font-black text-text-primary tracking-tight">
                   ₹{fmt(stockData.price)}
                 </div>
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 6, marginTop: 4,
-                  color: stockData.change_pct >= 0 ? "#00e676" : "#ff4b4b",
-                  fontSize: 13, fontWeight: 600,
-                }}>
+                <div className={"flex items-center gap-1.5 mt-1 font-bold text-sm "}>
                   {stockData.change_pct >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                   {stockData.change_pct >= 0 ? "+" : ""}{fmt(stockData.change_pct)}% today
                 </div>
               </>
             ) : (
-              <div style={{ color: "#3a5a7a", fontSize: 13, fontFamily: "monospace" }}>
-                {loading ? "Loading..." : "Click 'Analyze' to fetch price"}
+              <div className="text-text-muted text-xs font-data flex items-center gap-2 mt-2 h-8">
+                {loading ? (
+                  <><RefreshCw size={12} className="animate-spin" /> Loading price...</>
+                ) : "Price unavailable"}
               </div>
             )}
           </div>
 
           {/* Sentiment Summary */}
           {sentimentData && (
-            <div style={{
-              background: "rgba(8,16,32,0.6)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 14,
-              padding: "18px",
-            }}>
-              <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6a8a", fontFamily: "monospace", marginBottom: 12, textTransform: "uppercase" }}>
-                AI Sentiment Analysis
+            <div className="glass border border-border-mid rounded-xl p-5">
+              <div className="neon-label text-text-muted mb-3">
+                AI Sentiment Matrix
               </div>
 
               {/* Score gauge */}
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, color: "#3a5a7a", fontFamily: "monospace" }}>Bearish</span>
-                  <span style={{
-                    fontSize: 13, fontWeight: 700,
-                    color: sentMeta?.color,
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}>
-                    {sentimentData.aggregate.score > 0 ? "+" : ""}
-                    {fmt(sentimentData.aggregate.score)}
+              <div className="mb-4">
+                <div className="flex items-center justify-between font-data-small text-text-muted mb-1.5">
+                  <span>BEARISH</span>
+                  <span className={"font-data font-bold text-sm `}>
+                    {sentimentData.aggregate.score > 0 ? "+" : ""}{fmt(sentimentData.aggregate.score)}
                   </span>
-                  <span style={{ fontSize: 11, color: "#3a5a7a", fontFamily: "monospace" }}>Bullish</span>
+                  <span>BULLISH</span>
                 </div>
-                <div style={{
-                  height: 6, background: "rgba(255,255,255,0.06)",
-                  borderRadius: 99, overflow: "hidden",
-                }}>
-                  <div style={{
-                    height: "100%",
-                    width: `${Math.min(Math.max((sentimentData.aggregate.score + 1) / 2 * 100, 2), 98)}%`,
-                    background: `linear-gradient(90deg, #ff4b4b, ${sentMeta?.color ?? "#ffc107"})`,
-                    borderRadius: 99,
-                    transition: "width 0.6s ease",
-                  }} />
+                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: ${Math.min(Math.max((sentimentData.aggregate.score + 1) / 2 * 100, 2), 98)}%,
+                      background: linear-gradient(90deg, #f43f5e, )
+                    }}
+                  />
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div className="flex justify-between items-end">
                 <div>
-                  <div style={{ fontSize: 10, color: "#3a5a7a", fontFamily: "monospace" }}>Signal</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: sentMeta?.color, fontFamily: "monospace" }}>
+                  <div className="font-data-tiny text-text-muted">SIGNAL</div>
+                  <div className={"font-data font-bold text-base `}>
                     {sentimentData.aggregate.label}
                   </div>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 10, color: "#3a5a7a", fontFamily: "monospace" }}>Confidence</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#63b3ed", fontFamily: "monospace" }}>
+                <div className="text-right">
+                  <div className="font-data-tiny text-text-muted">CONFIDENCE</div>
+                  <div className="font-data font-bold text-base text-cyan">
                     {fmt(sentimentData.aggregate.confidence * 100)}%
                   </div>
                 </div>
               </div>
 
               {/* Article count */}
-              <div style={{
-                marginTop: 12, paddingTop: 12,
-                borderTop: "1px solid rgba(255,255,255,0.05)",
-                fontSize: 11, color: "#3a5a7a", fontFamily: "monospace",
-              }}>
-                Based on {sentimentData.layers.news.article_count} news articles
+              <div className="mt-4 pt-3 border-t border-border-dim font-data text-[10px] text-text-muted">
+                Analyzed {sentimentData.layers.news.article_count} real-time news sources
               </div>
             </div>
           )}
 
           {/* Explore other tickers */}
-          <div style={{
-            background: "rgba(8,16,32,0.6)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: 14,
-            padding: "18px",
-          }}>
-            <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6a8a", fontFamily: "monospace", marginBottom: 12, textTransform: "uppercase" }}>
-              Explore Other Stocks
+          <div className="glass border border-border-mid rounded-xl p-5">
+            <div className="neon-label text-text-muted mb-3">
+              Hot Sectors
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {POPULAR_TICKERS.filter(t => t.ticker !== activeTicker).slice(0, 8).map(t => (
+            <div className="flex flex-col gap-1.5">
+              {POPULAR_TICKERS.filter(t => t.ticker !== activeTicker).slice(0, 5).map(t => (
                 <button
                   key={t.ticker}
                   onClick={() => setActiveTicker(t.ticker)}
-                  className="news-ticker-btn"
-                  style={{
-                    background: "transparent",
-                    border: "1px solid rgba(255,255,255,0.05)",
-                    borderRadius: 8, padding: "8px 12px",
-                    cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    color: "#7a9ab0",
-                    fontSize: 12, fontFamily: "monospace",
-                    transition: "all 0.15s",
-                  }}
+                  className="flex items-center justify-between w-full bg-white/5 border border-border-dim rounded-lg px-3 py-2 text-text-muted font-data text-xs hover:border-border-bright hover:text-text-primary hover:bg-white/10 cursor-pointer transition-all"
                 >
                   {t.label}
-                  <ChevronRight size={12} color="#3a5a7a" />
+                  <ChevronRight size={12} className="opacity-50" />
                 </button>
               ))}
             </div>
@@ -671,19 +452,10 @@ const StockNewsPage: React.FC = () => {
 
           {/* Quick action */}
           <button
-            onClick={() => window.open(`/swing?ticker=${activeTicker}`, "_self")}
-            style={{
-              width: "100%",
-              background: "linear-gradient(135deg, rgba(0,230,118,0.12), rgba(0,180,100,0.06))",
-              border: "1px solid rgba(0,230,118,0.25)",
-              borderRadius: 10, padding: "12px",
-              cursor: "pointer", color: "#00e676",
-              fontSize: 13, fontWeight: 600, fontFamily: "monospace",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              transition: "all 0.2s",
-            }}
+            onClick={() => navigate(/swing?ticker=)}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-cyan/10 border border-cyan/30 rounded-xl text-cyan font-data text-sm font-bold glow-border-cyan hover:bg-cyan/20 transition-all shadow-[0_0_15px_rgba(0,210,255,0.15)]"
           >
-            <Activity size={14} /> Analyze {activeLabel} Signal
+            <Activity size={14} /> Analyze {activeLabel} 
           </button>
         </div>
       </div>

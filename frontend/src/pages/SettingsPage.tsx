@@ -1,16 +1,4 @@
-/**
- * SettingsPage.tsx — APEX AI Settings
- *
- * Combines:
- *  1. Hyper Tuner (moved from its own page)
- *  2. About / System Info
- *  3. Links to Stock News
- *  4. User preferences
- *
- * The HyperTuner logic is embedded directly here and calls /api/tuner endpoints.
- */
-
-import React, { useEffect, useState, useCallback } from "react";
+﻿import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import {
@@ -68,64 +56,44 @@ const GateSlider: React.FC<{
   step: number;
   onChange: (v: number) => void;
   formatValue?: (v: number) => string;
-  color?: string;
-}> = ({ label, description, value, min, max, step, onChange, formatValue, color = "#63b3ed" }) => {
+  colorClass?: string;
+  bgFillClass?: string;
+}> = ({ label, description, value, min, max, step, onChange, formatValue, colorClass = "text-cyan", bgFillClass = "bg-cyan" }) => {
   const pct = ((value - min) / (max - min)) * 100;
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+    <div className="mb-5">
+      <div className="flex justify-between items-center mb-1.5">
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#c8d8f0", fontFamily: "monospace" }}>{label}</div>
-          <div style={{ fontSize: 10, color: "#3a5a7a", marginTop: 2 }}>{description}</div>
+          <div className="text-[13px] font-bold font-data text-text-primary">{label}</div>
+          <div className="text-[10px] text-text-muted mt-0.5">{description}</div>
         </div>
-        <span style={{
-          fontSize: 15, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
-          color,
-          background: `${color}18`,
-          border: `1px solid ${color}30`,
-          padding: "2px 10px", borderRadius: 6,
-          minWidth: 64, textAlign: "center",
-        }}>
+        <span className={"text-sm font-bold font-data  bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-md min-w-[64px] text-center"}>
           {formatValue ? formatValue(value) : fmt(value)}
         </span>
       </div>
 
-      <div style={{ position: "relative", height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 99 }}>
-        <div style={{
-          position: "absolute", left: 0, top: 0, height: "100%",
-          width: `${pct}%`,
-          background: `linear-gradient(90deg, ${color}80, ${color})`,
-          borderRadius: 99,
-          transition: "width 0.1s",
-        }} />
+      <div className="relative h-1.5 bg-white/5 rounded-full mt-2">
+        <div 
+          className={"absolute left-0 top-0 h-full rounded-full transition-all `}
+          style={{ width: ${pct}% }} 
+        />
         <input
           type="range"
           min={min} max={max} step={step}
           value={value}
           onChange={e => onChange(Number(e.target.value))}
-          style={{
-            position: "absolute", inset: 0, width: "100%", height: "100%",
-            opacity: 0, cursor: "pointer", margin: 0,
-          }}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0"
         />
-        <div style={{
-          position: "absolute",
-          left: `${pct}%`,
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          width: 14, height: 14,
-          background: color,
-          borderRadius: "50%",
-          border: "2px solid #060b14",
-          pointerEvents: "none",
-          boxShadow: `0 0 8px ${color}60`,
-        }} />
+        <div 
+          className={"absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 border-bg-base pointer-events-none `}
+          style={{ left: ${pct}%, boxShadow: "0 0 8px currentColor" }}
+        />
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
-        <span style={{ fontSize: 9, color: "#2a4a6a", fontFamily: "monospace" }}>{min}</span>
-        <span style={{ fontSize: 9, color: "#2a4a6a", fontFamily: "monospace" }}>{max}</span>
+      <div className="flex justify-between mt-1">
+        <span className="text-[9px] text-text-muted font-data">{min}</span>
+        <span className="text-[9px] text-text-muted font-data">{max}</span>
       </div>
     </div>
   );
@@ -177,7 +145,7 @@ const HyperTunerSection: React.FC = () => {
     setLoading(true);
     setBacktestResult(null);
     try {
-      const res = await fetch(`/api/tuner/backtest?ticker=${backtestTicker}.NS`);
+      const res = await fetch(/api/tuner/backtest?ticker=.NS);
       if (res.ok) setBacktestResult(await res.json());
     } catch {}
     setLoading(false);
@@ -187,11 +155,10 @@ const HyperTunerSection: React.FC = () => {
     setLoading(true);
     setOptimizeResult(null);
     try {
-      const res = await fetch(`/api/tuner/optimize?ticker=${backtestTicker}.NS`);
+      const res = await fetch(/api/tuner/optimize?ticker=.NS);
       if (res.ok) {
         const d: OptimizeResult = await res.json();
         setOptimizeResult(d);
-        // Apply optimized config
         if (d.best_config && localConfig) {
           setLocalConfig({ ...localConfig, ...d.best_config });
         }
@@ -204,13 +171,6 @@ const HyperTunerSection: React.FC = () => {
     setLocalConfig(prev => prev ? { ...prev, [key]: val } : prev);
   };
 
-  const gateColor = (key: string) => {
-    if (key.includes("cone")) return "#a78bfa";
-    if (key.includes("sent")) return "#fbbf24";
-    if (key.includes("rsi")) return "#00e676";
-    return "#63b3ed";
-  };
-
   const subTabs: { id: "thresholds" | "backtest" | "optimize"; label: string; icon: React.ReactNode }[] = [
     { id: "thresholds", label: "Gate Thresholds", icon: <Sliders size={13} /> },
     { id: "backtest", label: "Backtest", icon: <BarChart2 size={13} /> },
@@ -220,23 +180,12 @@ const HyperTunerSection: React.FC = () => {
   return (
     <div>
       {/* Sub-tab bar */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 24, borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 16 }}>
+      <div className="flex gap-2 mb-6 border-b border-border-dim pb-4">
         {subTabs.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveSubTab(t.id)}
-            style={{
-              background: activeSubTab === t.id ? "rgba(99,179,237,0.1)" : "transparent",
-              border: `1px solid ${activeSubTab === t.id ? "rgba(99,179,237,0.3)" : "rgba(255,255,255,0.06)"}`,
-              borderRadius: 8,
-              padding: "7px 14px",
-              cursor: "pointer",
-              color: activeSubTab === t.id ? "#63b3ed" : "#5a7a9a",
-              fontSize: 12,
-              fontFamily: "monospace",
-              display: "flex", alignItems: "center", gap: 6,
-              transition: "all 0.15s",
-            }}
+            className={"flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border font-data text-xs transition-all "}
           >
             {t.icon} {t.label}
           </button>
@@ -245,87 +194,77 @@ const HyperTunerSection: React.FC = () => {
 
       {/* ── Thresholds Tab ─────────────────────────────────────────────────── */}
       {activeSubTab === "thresholds" && localConfig && (
-        <div>
-          <div style={{
-            background: "rgba(99,179,237,0.04)",
-            border: "1px solid rgba(99,179,237,0.12)",
-            borderRadius: 10, padding: "12px 16px", marginBottom: 24,
-            fontSize: 12, color: "#4a7a9a", lineHeight: 1.6,
-          }}>
-            <strong style={{ color: "#63b3ed" }}>Gate System:</strong> The 3-Gate engine vetoes any signal that doesn't pass all three checks — Cone Width (model certainty), Sentiment (news alignment), and RSI (technical momentum). Adjust these thresholds to be more strict or permissive.
+        <div className="animate-page-in">
+          <div className="bg-cyan/5 border border-cyan/10 rounded-lg p-4 mb-6 text-xs text-text-secondary leading-relaxed">
+            <strong className="text-cyan">Gate System:</strong> The 3-Gate engine vetoes any signal that doesn't pass all three checks — Cone Width (model certainty), Sentiment (news alignment), and RSI (technical momentum). Adjust these thresholds to be more strict or permissive.
           </div>
 
           {/* Gate 1 */}
-          <div style={{ background: "rgba(167,139,250,0.04)", border: "1px solid rgba(167,139,250,0.1)", borderRadius: 10, padding: "16px", marginBottom: 16 }}>
-            <div style={{ fontSize: 11, color: "#6a5a8a", fontFamily: "monospace", letterSpacing: 1, marginBottom: 12 }}>
+          <div className="glass-card p-5 border border-indigo-500/10 mb-4 bg-indigo-500/5">
+            <div className="font-data-tiny text-indigo-400 tracking-widest mb-4 uppercase">
               GATE 1 — PREDICTION CONE WIDTH
             </div>
             <GateSlider
               label="Max Cone Width"
               description="Max (P90-P10)/P50 ratio. Tighter = more selective signals."
               value={localConfig.cone_max}
-              min={0.05}
-              max={0.30}
-              step={0.01}
+              min={0.05} max={0.30} step={0.01}
               onChange={v => updateGate("cone_max", v)}
-              color="#a78bfa"
+              colorClass="text-indigo-400"
+              bgFillClass="bg-indigo-500"
             />
           </div>
 
           {/* Gate 2 */}
-          <div style={{ background: "rgba(251,191,36,0.04)", border: "1px solid rgba(251,191,36,0.1)", borderRadius: 10, padding: "16px", marginBottom: 16 }}>
-            <div style={{ fontSize: 11, color: "#8a7a3a", fontFamily: "monospace", letterSpacing: 1, marginBottom: 12 }}>
+          <div className="glass-card p-5 border border-amber/10 mb-4 bg-amber/5">
+            <div className="font-data-tiny text-amber tracking-widest mb-4 uppercase">
               GATE 2 — FINBERT SENTIMENT ALIGNMENT
             </div>
             <GateSlider
               label="Min Sentiment (BUY)"
               description="FinBERT score must be ≥ this for a BUY signal to pass."
               value={localConfig.sent_buy_min}
-              min={-0.30}
-              max={0.30}
-              step={0.01}
+              min={-0.30} max={0.30} step={0.01}
               onChange={v => updateGate("sent_buy_min", v)}
-              formatValue={v => v >= 0 ? `+${fmt(v)}` : fmt(v)}
-              color="#fbbf24"
+              formatValue={v => v >= 0 ? + : fmt(v)}
+              colorClass="text-amber"
+              bgFillClass="bg-amber"
             />
             <GateSlider
               label="Max Sentiment (SELL)"
               description="FinBERT score must be ≤ this for a SELL signal to pass."
               value={localConfig.sent_sell_max}
-              min={0}
-              max={0.20}
-              step={0.01}
+              min={0} max={0.20} step={0.01}
               onChange={v => updateGate("sent_sell_max", v)}
-              color="#fbbf24"
+              colorClass="text-amber"
+              bgFillClass="bg-amber"
             />
           </div>
 
           {/* Gate 3 */}
-          <div style={{ background: "rgba(0,230,118,0.04)", border: "1px solid rgba(0,230,118,0.1)", borderRadius: 10, padding: "16px", marginBottom: 24 }}>
-            <div style={{ fontSize: 11, color: "#2a7a4a", fontFamily: "monospace", letterSpacing: 1, marginBottom: 12 }}>
+          <div className="glass-card p-5 border border-emerald/10 mb-6 bg-emerald/5">
+            <div className="font-data-tiny text-emerald tracking-widest mb-4 uppercase">
               GATE 3 — RSI TECHNICAL CONFLUENCE
             </div>
             <GateSlider
               label="RSI Lower Bound (BUY)"
               description="RSI must be ≥ this for a BUY. Lower catches deeper dips."
               value={localConfig.rsi_buy_lo}
-              min={20}
-              max={55}
-              step={1}
+              min={20} max={55} step={1}
               onChange={v => updateGate("rsi_buy_lo", v)}
-              formatValue={v => `${v}`}
-              color="#00e676"
+              formatValue={v => ${v}}
+              colorClass="text-emerald"
+              bgFillClass="bg-emerald"
             />
             <GateSlider
               label="RSI Upper Bound (BUY)"
               description="RSI must be ≤ this for a BUY. Higher allows breakout momentum."
               value={localConfig.rsi_buy_hi}
-              min={60}
-              max={90}
-              step={1}
+              min={60} max={90} step={1}
               onChange={v => updateGate("rsi_buy_hi", v)}
-              formatValue={v => `${v}`}
-              color="#00e676"
+              formatValue={v => ${v}}
+              colorClass="text-emerald"
+              bgFillClass="bg-emerald"
             />
           </div>
 
@@ -333,26 +272,9 @@ const HyperTunerSection: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={saveStatus === "saving"}
-            style={{
-              width: "100%",
-              background: saveStatus === "saved"
-                ? "rgba(0,230,118,0.12)"
-                : saveStatus === "error"
-                  ? "rgba(255,75,75,0.12)"
-                  : "linear-gradient(135deg, #1a4a8a, #0e2a5a)",
-              border: `1px solid ${saveStatus === "saved" ? "rgba(0,230,118,0.3)" : saveStatus === "error" ? "rgba(255,75,75,0.3)" : "rgba(99,179,237,0.3)"}`,
-              borderRadius: 10,
-              padding: "12px",
-              cursor: "pointer",
-              color: saveStatus === "saved" ? "#00e676" : saveStatus === "error" ? "#ff4b4b" : "#63b3ed",
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: "monospace",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              transition: "all 0.2s",
-            }}
+            className={"w-full flex items-center justify-center gap-2 p-3 rounded-xl font-data text-sm font-bold transition-all "}
           >
-            {saveStatus === "saving" ? <><RefreshCw size={14} /> Saving...</>
+            {saveStatus === "saving" ? <><RefreshCw size={14} className="animate-spin" /> Saving...</>
               : saveStatus === "saved" ? <><CheckCircle2 size={14} /> Saved Successfully</>
                 : saveStatus === "error" ? <><AlertTriangle size={14} /> Save Failed</>
                   : <><Save size={14} /> Save Threshold Configuration</>}
@@ -362,60 +284,37 @@ const HyperTunerSection: React.FC = () => {
 
       {/* ── Backtest Tab ──────────────────────────────────────────────────── */}
       {activeSubTab === "backtest" && (
-        <div>
-          <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-            <div style={{
-              flex: 1,
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 8, padding: "10px 14px",
-              display: "flex", alignItems: "center", gap: 8,
-            }}>
-              <Activity size={13} color="#4a7a9a" />
+        <div className="animate-page-in">
+          <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex-1 flex items-center gap-2 bg-white/5 border border-border-dim rounded-lg px-3 py-2 focus-within:border-border-bright">
+              <Activity size={13} className="text-text-muted" />
               <input
                 value={backtestTicker}
                 onChange={e => setBacktestTicker(e.target.value.toUpperCase())}
                 placeholder="Ticker (e.g. RELIANCE)"
-                style={{
-                  flex: 1, background: "transparent", border: "none", outline: "none",
-                  color: "#c8d8f0", fontSize: 13, fontFamily: "monospace",
-                }}
+                className="w-full bg-transparent border-none outline-none text-text-primary text-sm font-data"
               />
             </div>
             <button
               onClick={handleBacktest}
               disabled={loading}
-              style={{
-                background: "rgba(99,179,237,0.1)",
-                border: "1px solid rgba(99,179,237,0.25)",
-                borderRadius: 8, padding: "10px 18px",
-                cursor: "pointer", color: "#63b3ed",
-                fontSize: 12, fontFamily: "monospace",
-                display: "flex", alignItems: "center", gap: 6,
-              }}
+              className="px-4 py-2 bg-cyan/10 border border-cyan/30 rounded-lg text-cyan font-data text-xs flex items-center gap-1.5 hover:bg-cyan/20"
             >
-              {loading ? <><RefreshCw size={13} /> Running...</> : <><BarChart2 size={13} /> Run Backtest</>}
+              {loading ? <><RefreshCw size={13} className="animate-spin" /> Running...</> : <><BarChart2 size={13} /> Run Backtest</>}
             </button>
           </div>
 
           {backtestResult && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+            <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Win Rate", value: `${fmt(backtestResult.win_rate)}%`, good: backtestResult.win_rate >= 50 },
-                { label: "Total Return", value: `${backtestResult.total_return_pct >= 0 ? "+" : ""}${fmt(backtestResult.total_return_pct)}%`, good: backtestResult.total_return_pct >= 0 },
+                { label: "Win Rate", value: ${fmt(backtestResult.win_rate)}%, good: backtestResult.win_rate >= 50 },
+                { label: "Total Return", value: ${backtestResult.total_return_pct >= 0 ? "+" : ""}%, good: backtestResult.total_return_pct >= 0 },
                 { label: "Total Trades", value: backtestResult.total_trades, good: null },
-                { label: "Avg Trade", value: `${fmt(backtestResult.avg_trade_pct)}%`, good: backtestResult.avg_trade_pct >= 0 },
+                { label: "Avg Trade", value: ${fmt(backtestResult.avg_trade_pct)}%, good: backtestResult.avg_trade_pct >= 0 },
               ].map(stat => (
-                <div key={stat.label} style={{
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 10, padding: "16px",
-                }}>
-                  <div style={{ fontSize: 10, color: "#3a5a7a", fontFamily: "monospace", marginBottom: 6 }}>{stat.label}</div>
-                  <div style={{
-                    fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
-                    color: stat.good === null ? "#c8d8f0" : stat.good ? "#00e676" : "#ff4b4b",
-                  }}>
+                <div key={stat.label} className="glass-card p-4 rounded-xl">
+                  <div className="text-[10px] text-text-muted font-data mb-1.5">{stat.label}</div>
+                  <div className={"text-xl font-bold font-data `}>
                     {stat.value}
                   </div>
                 </div>
@@ -424,9 +323,9 @@ const HyperTunerSection: React.FC = () => {
           )}
 
           {!backtestResult && !loading && (
-            <div style={{ textAlign: "center", padding: "50px 0", color: "#3a5a7a" }}>
-              <BarChart2 size={36} style={{ marginBottom: 12, opacity: 0.4 }} />
-              <p style={{ fontFamily: "monospace", fontSize: 13 }}>
+            <div className="py-12 text-center text-text-muted">
+              <BarChart2 size={36} className="mx-auto mb-3 opacity-40" />
+              <p className="font-data text-sm">
                 Enter a ticker and run backtest to evaluate current gate thresholds.
               </p>
             </div>
@@ -436,96 +335,57 @@ const HyperTunerSection: React.FC = () => {
 
       {/* ── Optimize Tab ──────────────────────────────────────────────────── */}
       {activeSubTab === "optimize" && (
-        <div>
-          <div style={{
-            background: "rgba(167,139,250,0.04)",
-            border: "1px solid rgba(167,139,250,0.12)",
-            borderRadius: 10, padding: "12px 16px", marginBottom: 20,
-            fontSize: 12, color: "#6a5a8a", lineHeight: 1.6,
-          }}>
-            <strong style={{ color: "#a78bfa" }}>Neural Optimization:</strong> The AI will grid-search over threshold combinations and find the best parameters for the selected ticker. This may take 20-30 seconds.
+        <div className="animate-page-in">
+          <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-lg p-4 mb-5 text-xs text-indigo-200/70 leading-relaxed">
+            <strong className="text-indigo-400">Neural Optimization:</strong> The AI will grid-search over threshold combinations and find the best parameters for the selected ticker. This may take 20-30 seconds.
           </div>
 
-          <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-            <div style={{
-              flex: 1,
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 8, padding: "10px 14px",
-              display: "flex", alignItems: "center", gap: 8,
-            }}>
-              <Activity size={13} color="#4a7a9a" />
+          <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex-1 flex items-center gap-2 bg-white/5 border border-border-dim rounded-lg px-3 py-2 focus-within:border-border-bright">
+              <Activity size={13} className="text-text-muted" />
               <input
                 value={backtestTicker}
                 onChange={e => setBacktestTicker(e.target.value.toUpperCase())}
                 placeholder="Ticker (e.g. RELIANCE)"
-                style={{
-                  flex: 1, background: "transparent", border: "none", outline: "none",
-                  color: "#c8d8f0", fontSize: 13, fontFamily: "monospace",
-                }}
+                className="w-full bg-transparent border-none outline-none text-text-primary text-sm font-data"
               />
             </div>
             <button
               onClick={handleOptimize}
               disabled={loading}
-              style={{
-                background: "rgba(167,139,250,0.1)",
-                border: "1px solid rgba(167,139,250,0.25)",
-                borderRadius: 8, padding: "10px 18px",
-                cursor: "pointer", color: "#a78bfa",
-                fontSize: 12, fontFamily: "monospace",
-                display: "flex", alignItems: "center", gap: 6,
-              }}
+              className="px-4 py-2 bg-indigo-500/10 border border-indigo-500/30 rounded-lg text-indigo-400 font-data text-xs flex items-center gap-1.5 hover:bg-indigo-500/20"
             >
-              {loading ? <><RefreshCw size={13} /> Optimizing...</> : <><Zap size={13} /> Start Neural Search</>}
+              {loading ? <><RefreshCw size={13} className="animate-spin" /> Optimizing...</> : <><Zap size={13} /> Start Neural Search</>}
             </button>
           </div>
 
           {optimizeResult && (
             <div>
-              <div style={{
-                background: "rgba(0,230,118,0.06)",
-                border: "1px solid rgba(0,230,118,0.15)",
-                borderRadius: 10, padding: "16px", marginBottom: 16,
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-              }}>
+              <div className="flex justify-between items-center bg-emerald/5 border border-emerald/20 rounded-xl p-4 mb-4">
                 <div>
-                  <div style={{ fontSize: 10, color: "#2a7a4a", fontFamily: "monospace" }}>OPTIMIZATION SCORE</div>
-                  <div style={{ fontSize: 28, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", color: "#00e676" }}>
+                  <div className="text-[10px] text-emerald/80 font-data tracking-wider mb-0.5">OPTIMIZATION SCORE</div>
+                  <div className="text-3xl font-black font-data text-emerald tracking-tight">
                     {fmt(optimizeResult.optimized_score)}
                   </div>
                 </div>
-                <CheckCircle2 size={32} color="#00e676" />
+                <CheckCircle2 size={32} className="text-emerald" />
               </div>
 
-              <div style={{ fontSize: 12, color: "#4a6a8a", fontFamily: "monospace", marginBottom: 10 }}>
+              <div className="text-xs text-text-muted font-data mb-2.5">
                 Optimal thresholds (auto-applied above):
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="flex flex-col gap-1.5">
                 {Object.entries(optimizeResult.best_config).map(([key, val]) => (
-                  <div key={key} style={{
-                    display: "flex", justifyContent: "space-between",
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.05)",
-                    borderRadius: 8, padding: "8px 12px",
-                  }}>
-                    <span style={{ fontSize: 12, fontFamily: "monospace", color: "#7a9ab0" }}>{key}</span>
-                    <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: "#a78bfa" }}>{fmt(val as number)}</span>
+                  <div key={key} className="flex justify-between bg-white/5 border border-border-dim rounded-lg px-3 py-2.5">
+                    <span className="text-xs font-data text-text-secondary">{key}</span>
+                    <span className="text-xs font-bold font-data text-indigo-400">{fmt(val as number)}</span>
                   </div>
                 ))}
               </div>
 
               <button
                 onClick={handleSave}
-                style={{
-                  width: "100%", marginTop: 16,
-                  background: "linear-gradient(135deg, rgba(167,139,250,0.15), rgba(99,179,237,0.1))",
-                  border: "1px solid rgba(167,139,250,0.3)",
-                  borderRadius: 10, padding: "12px",
-                  cursor: "pointer", color: "#a78bfa",
-                  fontSize: 13, fontWeight: 600, fontFamily: "monospace",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                }}
+                className="w-full mt-4 flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-indigo-500/10 to-cyan/10 border border-indigo-500/30 rounded-xl font-data text-sm font-bold text-indigo-400 hover:from-indigo-500/20 hover:to-cyan/20 transition-all"
               >
                 <Save size={14} /> Apply & Save Optimized Config
               </button>
@@ -547,36 +407,20 @@ const AboutSection: React.FC = () => {
   }, []);
 
   return (
-    <div>
+    <div className="animate-page-in">
       {/* Hero */}
-      <div style={{
-        background: "linear-gradient(135deg, rgba(10,25,50,0.8), rgba(6,15,30,0.9))",
-        border: "1px solid rgba(99,179,237,0.15)",
-        borderRadius: 14,
-        padding: "24px",
-        marginBottom: 20,
-        display: "flex",
-        alignItems: "center",
-        gap: 20,
-      }}>
-        <div style={{
-          width: 56, height: 56,
-          background: "linear-gradient(135deg, #1a4a8a, #0e2a5a)",
-          borderRadius: 12,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          border: "1px solid rgba(99,179,237,0.3)",
-          fontSize: 24,
-        }}>
+      <div className="glass-card p-6 rounded-2xl mb-5 flex items-center gap-5 backdrop-blur-md">
+        <div className="w-14 h-14 bg-gradient-to-br from-indigo-900 to-cyan-900 rounded-xl flex items-center justify-center border border-cyan/30 text-2xl">
           ⚡
         </div>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 900, fontFamily: "'Orbitron', monospace", color: "#e2e8f0" }}>
+          <div className="text-xl font-black font-display text-text-primary tracking-wide">
             APEX AI
           </div>
-          <div style={{ fontSize: 12, color: "#63b3ed", fontFamily: "monospace" }}>
+          <div className="text-xs text-cyan font-data mt-0.5">
             v{health?.version ?? "3.0.2"} — Advanced Stock Market Intelligence
           </div>
-          <div style={{ fontSize: 11, color: "#4a6a8a", marginTop: 4 }}>
+          <div className="text-[11px] text-text-muted mt-1">
             AI-powered trading signals for the NSE Indian market
           </div>
         </div>
@@ -584,33 +428,20 @@ const AboutSection: React.FC = () => {
 
       {/* System Status */}
       {health && (
-        <div style={{
-          background: "rgba(8,16,32,0.6)",
-          border: "1px solid rgba(255,255,255,0.07)",
-          borderRadius: 14,
-          padding: "18px",
-          marginBottom: 16,
-        }}>
-          <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6a8a", fontFamily: "monospace", marginBottom: 14, textTransform: "uppercase" }}>
+        <div className="glass border border-border-mid rounded-xl p-5 mb-5">
+          <div className="text-[10px] tracking-widest text-text-muted font-data mb-3.5 uppercase">
             System Status
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-2 gap-3">
             {[
               { label: "API Status", value: health.status === "ok" ? "ONLINE" : "DEGRADED", good: health.status === "ok" },
               { label: "Scaler Loaded", value: health.scaler_loaded ? "YES" : "NO", good: health.scaler_loaded },
               { label: "TFLite Models", value: health.tflite_models?.length ?? 0, good: null },
               { label: "Companies DB", value: health.geo_count ?? 0, good: null },
             ].map(s => (
-              <div key={s.label} style={{
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid rgba(255,255,255,0.05)",
-                borderRadius: 8, padding: "10px 12px",
-              }}>
-                <div style={{ fontSize: 9, color: "#3a5a7a", fontFamily: "monospace" }}>{s.label}</div>
-                <div style={{
-                  fontSize: 14, fontWeight: 700, fontFamily: "monospace", marginTop: 3,
-                  color: s.good === null ? "#7a9ab0" : s.good ? "#00e676" : "#ff4b4b",
-                }}>
+              <div key={s.label} className="bg-white/5 border border-border-dim rounded-lg px-3 py-2.5">
+                <div className="text-[9px] text-text-muted font-data">{s.label}</div>
+                <div className={"text-sm font-bold font-data mt-0.5 `}>
                   {s.value}
                 </div>
               </div>
@@ -620,39 +451,27 @@ const AboutSection: React.FC = () => {
       )}
 
       {/* Team */}
-      <div style={{
-        background: "rgba(8,16,32,0.6)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: 14,
-        padding: "18px",
-      }}>
-        <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6a8a", fontFamily: "monospace", marginBottom: 14, textTransform: "uppercase" }}>
+      <div className="glass border border-border-mid rounded-xl p-5">
+        <div className="text-[10px] tracking-widest text-text-muted font-data mb-3.5 uppercase">
           Built By
         </div>
-        {[
-          { name: "Sai Narendra Ghodke", role: "Lead AI Architect" },
-          { name: "Sunraj Shetty", role: "Quantitative Analyst" },
-          { name: "Siddhartha Vijay Bhosale", role: "Full-Stack Engineer" },
-        ].map(m => (
-          <div key={m.name} style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "8px 0",
-            borderBottom: "1px solid rgba(255,255,255,0.04)",
-          }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: "50%",
-              background: "linear-gradient(135deg, #1a4a8a, #2a6a5a)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 13, fontWeight: 700, color: "#e2e8f0",
-            }}>
-              {m.name[0]}
+        <div className="flex flex-col">
+          {[
+            { name: "Sai Narendra Ghodke", role: "Lead AI Architect" },
+            { name: "Sunraj Shetty", role: "Quantitative Analyst" },
+            { name: "Siddhartha Vijay Bhosale", role: "Full-Stack Engineer" },
+          ].map(m => (
+            <div key={m.name} className="flex items-center gap-3 py-2.5 border-b border-border-dim last:border-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-700 to-teal-700 flex items-center justify-center text-xs font-bold text-white shadow-md">
+                {m.name[0]}
+              </div>
+              <div>
+                <div className="text-xs font-bold text-text-primary">{m.name}</div>
+                <div className="text-[10px] text-text-muted font-data mt-0.5">{m.role}</div>
+              </div>
             </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#c8d8f0" }}>{m.name}</div>
-              <div style={{ fontSize: 10, color: "#3a6a8a", fontFamily: "monospace" }}>{m.role}</div>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -673,69 +492,38 @@ const SettingsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#060b14",
-      color: "#c8d8f0",
-      fontFamily: "'Rajdhani', 'Segoe UI', sans-serif",
-    }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        input[type=range]::-webkit-slider-thumb { display: none; }
-        input[type=range] { -webkit-appearance: none; }
-      `}</style>
-
-      <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", minHeight: "100vh" }}>
-
+    <div className="page-container !p-0 min-h-[calc(100vh-64px)]">
+      <div className="grid md:grid-cols-[240px_1fr] min-h-[calc(100vh-64px)]">
+        
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
-        <div style={{
-          borderRight: "1px solid rgba(255,255,255,0.05)",
-          padding: "32px 0",
-          background: "rgba(4,10,22,0.6)",
-          display: "flex", flexDirection: "column",
-        }}>
-          <div style={{ padding: "0 24px", marginBottom: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <Settings size={16} color="#63b3ed" />
-              <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Orbitron', monospace", color: "#e2e8f0", letterSpacing: 1 }}>
+        <div className="border-r border-border-dim bg-white/[0.01] py-8 flex flex-col">
+          <div className="px-6 mb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Settings size={16} className="text-cyan" />
+              <span className="text-sm font-bold font-display tracking-widest text-text-primary uppercase">
                 SETTINGS
               </span>
             </div>
-            <div style={{ fontSize: 10, color: "#3a5a7a", fontFamily: "monospace" }}>
+            <div className="text-[10px] text-text-muted font-data">
               APEX AI Configuration Hub
             </div>
           </div>
 
-          <nav style={{ flex: 1 }}>
+          <nav className="flex-1">
             {tabs.map(t => (
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                style={{
-                  width: "100%",
-                  background: activeTab === t.id
-                    ? "linear-gradient(90deg, rgba(99,179,237,0.1), transparent)"
-                    : "transparent",
-                  border: "none",
-                  borderLeft: `2px solid ${activeTab === t.id ? "#63b3ed" : "transparent"}`,
-                  padding: "12px 24px",
-                  cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 10,
-                  color: activeTab === t.id ? "#63b3ed" : "#5a7a9a",
-                  fontSize: 13, fontFamily: "monospace",
-                  transition: "all 0.15s",
-                  textAlign: "left",
-                }}
+                className={"w-full px-6 py-3 flex items-center gap-2.5 font-data text-[13px] transition-all text-left border-l-2 "}
               >
                 {t.icon} {t.label}
-                {activeTab === t.id && <ChevronRight size={12} style={{ marginLeft: "auto" }} />}
+                {activeTab === t.id && <ChevronRight size={12} className="ml-auto opacity-50" />}
               </button>
             ))}
 
             {/* Quick links */}
-            <div style={{ padding: "20px 24px 0", borderTop: "1px solid rgba(255,255,255,0.05)", marginTop: 20 }}>
-              <div style={{ fontSize: 9, letterSpacing: 2, color: "#2a4a6a", fontFamily: "monospace", marginBottom: 10 }}>
+            <div className="px-6 pt-5 mt-5 border-t border-border-dim">
+              <div className="text-[9px] tracking-widest text-text-muted font-data mb-2.5 uppercase">
                 QUICK LINKS
               </div>
               {[
@@ -746,13 +534,7 @@ const SettingsPage: React.FC = () => {
                 <button
                   key={l.label}
                   onClick={() => navigate(l.path)}
-                  style={{
-                    width: "100%", background: "transparent", border: "none",
-                    padding: "8px 0", cursor: "pointer",
-                    display: "flex", alignItems: "center", gap: 8,
-                    color: "#4a6a8a", fontSize: 12, fontFamily: "monospace",
-                    transition: "color 0.15s",
-                  }}
+                  className="w-full py-2 bg-transparent border-none flex items-center gap-2 text-text-muted font-data text-xs hover:text-cyan transition-colors"
                 >
                   {l.icon} {l.label}
                 </button>
@@ -762,17 +544,10 @@ const SettingsPage: React.FC = () => {
 
           {/* Logout */}
           {user && (
-            <div style={{ padding: "0 24px" }}>
+            <div className="px-6 mt-8">
               <button
                 onClick={() => { logout(); navigate("/login"); }}
-                style={{
-                  width: "100%", background: "rgba(255,75,75,0.06)",
-                  border: "1px solid rgba(255,75,75,0.15)",
-                  borderRadius: 8, padding: "10px",
-                  cursor: "pointer", color: "#ff4b4b",
-                  fontSize: 12, fontFamily: "monospace",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                }}
+                className="w-full flex items-center justify-center gap-1.5 p-2.5 bg-rose/5 border border-rose/10 rounded-lg text-rose font-data text-xs hover:bg-rose/10 transition-all"
               >
                 <LogOut size={13} /> Sign Out
               </button>
@@ -781,49 +556,30 @@ const SettingsPage: React.FC = () => {
         </div>
 
         {/* ── Content ───────────────────────────────────────────────────────── */}
-        <div style={{ padding: "32px 40px", overflowY: "auto", maxHeight: "100vh" }}>
+        <div className="p-8 md:p-10 max-h-[100vh] overflow-y-auto custom-scrollbar">
           {/* Section header */}
-          <div style={{ marginBottom: 28 }}>
-            <h2 style={{
-              margin: 0, fontSize: 20,
-              fontFamily: "'Orbitron', monospace",
-              color: "#e2e8f0", fontWeight: 700, letterSpacing: 0.5,
-            }}>
+          <div className="mb-7">
+            <h2 className="m-0 text-xl font-display font-bold text-text-primary tracking-wide">
               {tabs.find(t => t.id === activeTab)?.label}
             </h2>
-            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginTop: 16 }} />
+            <div className="h-[1px] bg-border-dim mt-4" />
           </div>
 
           {/* Tab Content */}
-          <div style={{ animation: "fadeIn 0.25s ease" }}>
+          <div className="max-w-3xl">
             {activeTab === "tuner" && <HyperTunerSection />}
             {activeTab === "about" && <AboutSection />}
             {activeTab === "account" && (
-              <div>
-                <div style={{
-                  background: "rgba(8,16,32,0.6)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 14, padding: "24px",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-                    <div style={{
-                      width: 48, height: 48, borderRadius: "50%",
-                      background: "linear-gradient(135deg, #1a4a8a, #2a6a5a)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 20, fontWeight: 700, color: "#e2e8f0",
-                    }}>
+              <div className="animate-page-in">
+                <div className="glass border border-border-mid rounded-xl p-6">
+                  <div className="flex items-center gap-4 mb-5">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-700 to-teal-700 flex items-center justify-center text-xl font-bold text-white shadow-md">
                       {user?.username?.[0]?.toUpperCase() ?? "?"}
                     </div>
                     <div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: "#e2e8f0" }}>{user?.username ?? "Guest"}</div>
-                      <div style={{ fontSize: 12, color: "#4a7a9a", fontFamily: "monospace" }}>{user?.email ?? ""}</div>
-                      <div style={{
-                        display: "inline-block", marginTop: 4,
-                        background: user?.role === "ADMIN" ? "rgba(251,191,36,0.12)" : "rgba(99,179,237,0.12)",
-                        color: user?.role === "ADMIN" ? "#fbbf24" : "#63b3ed",
-                        fontSize: 9, padding: "1px 8px", borderRadius: 4,
-                        fontFamily: "monospace", letterSpacing: 1,
-                      }}>
+                      <div className="text-base font-bold text-text-primary">{user?.username ?? "Guest"}</div>
+                      <div className="text-xs text-text-muted font-data">{user?.email ?? ""}</div>
+                      <div className={"inline-block mt-1 text-[9px] px-2 py-0.5 rounded font-data tracking-widest uppercase `}>
                         {user?.role ?? "USER"}
                       </div>
                     </div>
@@ -831,15 +587,7 @@ const SettingsPage: React.FC = () => {
                   {user?.role === "ADMIN" && (
                     <button
                       onClick={() => navigate("/admin")}
-                      style={{
-                        width: "100%",
-                        background: "rgba(251,191,36,0.06)",
-                        border: "1px solid rgba(251,191,36,0.2)",
-                        borderRadius: 8, padding: "10px",
-                        cursor: "pointer", color: "#fbbf24",
-                        fontSize: 12, fontFamily: "monospace",
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                      }}
+                      className="w-full flex items-center justify-center gap-1.5 p-2.5 bg-amber/10 border border-amber/20 rounded-lg text-amber font-data text-xs font-bold hover:bg-amber/20 transition-all"
                     >
                       <Shield size={13} /> Open Admin Dashboard
                     </button>
@@ -848,9 +596,9 @@ const SettingsPage: React.FC = () => {
               </div>
             )}
             {activeTab === "system" && (
-              <div style={{ color: "#4a6a8a", fontFamily: "monospace", fontSize: 13 }}>
+              <div className="text-text-muted font-data text-sm animate-page-in">
                 <p>System diagnostics and model info will appear here.</p>
-                <p>Navigate to <strong style={{ color: "#63b3ed" }}>/api/health</strong> to see full system status.</p>
+                <p className="mt-2">Navigate to <strong className="text-cyan font-bold">/api/health</strong> to see full system status.</p>
               </div>
             )}
           </div>

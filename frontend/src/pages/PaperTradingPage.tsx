@@ -1,15 +1,4 @@
-/**
- * PaperTradingPage.tsx — APEX AI Paper Trading v2.0
- *
- * Fixes:
- *  1. Real-time P&L that persists and shows growth/loss correctly
- *  2. Equity curve chart that reflects actual trade history
- *  3. Position MTM updated from live price on each load
- *  4. Proper win/loss tracking visible at a glance
- *  5. Personalized, connected UI matching Dashboard aesthetic
- */
-
-import React, { useEffect, useState, useCallback } from "react";
+﻿import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import {
@@ -81,7 +70,6 @@ const fmtDate = (iso: string) => {
 const EquityChart: React.FC<{ trades: Trade[]; initialCapital: number }> = ({
   trades, initialCapital,
 }) => {
-  // Build equity curve from trade history
   const chartData = React.useMemo(() => {
     if (!trades || trades.length === 0) {
       return [{ date: "Start", value: initialCapital }];
@@ -109,10 +97,10 @@ const EquityChart: React.FC<{ trades: Trade[]; initialCapital: number }> = ({
 
   const lastVal = chartData[chartData.length - 1]?.value ?? initialCapital;
   const isGrowth = lastVal >= initialCapital;
-  const chartColor = isGrowth ? "#00e676" : "#ff4b4b";
+  const chartColor = isGrowth ? "#10b981" : "#f43f5e";
 
   return (
-    <div style={{ width: "100%", height: 160 }}>
+    <div className="w-full h-40">
       <ResponsiveContainer>
         <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
           <defs>
@@ -123,25 +111,25 @@ const EquityChart: React.FC<{ trades: Trade[]; initialCapital: number }> = ({
           </defs>
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 9, fill: "#3a5a7a", fontFamily: "monospace" }}
+            tick={{ fontSize: 9, fill: "#64748b", fontFamily: "monospace" }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 9, fill: "#3a5a7a", fontFamily: "monospace" }}
+            tick={{ fontSize: 9, fill: "#64748b", fontFamily: "monospace" }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`}
+            tickFormatter={v => ₹k}
             width={44}
           />
           <Tooltip
             contentStyle={{
-              background: "#0a192f",
-              border: "1px solid rgba(99,179,237,0.2)",
+              background: "#0a111f",
+              border: "1px solid rgba(0, 210, 255, 0.2)",
               borderRadius: 8,
               fontSize: 11,
               fontFamily: "monospace",
-              color: "#c8d8f0",
+              color: "#f8fafc",
             }}
             formatter={(v: number) => [fmtCur(v), "Portfolio Value"]}
           />
@@ -179,8 +167,8 @@ const TradePanel: React.FC<{
     setFetching(true);
     try {
       const t = ticker.trim().toUpperCase();
-      const fullTicker = t.includes(".NS") || t.includes(".BO") ? t : `${t}.NS`;
-      const res = await fetch(`/api/signal/${fullTicker}?mode=swing`);
+      const fullTicker = t.includes(".NS") || t.includes(".BO") ? t : ${t}.NS;
+      const res = await fetch("/api/signal/?mode=swing");
       if (res.ok) {
         const d = await res.json();
         const p = d.current_price || d.price;
@@ -195,10 +183,10 @@ const TradePanel: React.FC<{
     setExecuting(true);
     setMsg(null);
     const fullTicker = ticker.trim().toUpperCase();
-    const t = fullTicker.includes(".NS") || fullTicker.includes(".BO") ? fullTicker : `${fullTicker}.NS`;
+    const t = fullTicker.includes(".NS") || fullTicker.includes(".BO") ? fullTicker : ${fullTicker}.NS;
     try {
       await onTrade(t, action, qty, Number(price));
-      setMsg({ text: `${action} executed — ${qty} × ${t} @ ₹${price}`, ok: true });
+      setMsg({ text: ${action} executed —  ×  @ ₹, ok: true });
       setTimeout(() => setMsg(null), 4000);
     } catch (err: any) {
       setMsg({ text: err.message || "Trade failed", ok: false });
@@ -210,43 +198,21 @@ const TradePanel: React.FC<{
   const canAfford = action === "BUY" ? totalCost <= cashBalance : true;
 
   return (
-    <div style={{
-      background: "rgba(8,16,32,0.8)",
-      border: "1px solid rgba(255,255,255,0.07)",
-      borderRadius: 14,
-      padding: "20px",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-        <Zap size={15} color="#63b3ed" />
-        <span style={{ fontSize: 11, letterSpacing: 2, color: "#4a6a8a", textTransform: "uppercase", fontFamily: "monospace" }}>
+    <div className="glass-card p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Zap size={15} className="text-cyan" />
+        <span className="neon-label text-text-muted">
           Neural Order Entry
         </span>
       </div>
 
       {/* Action selector */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+      <div className="grid grid-cols-2 gap-2 mb-4">
         {(["BUY", "SELL"] as const).map(a => (
           <button
             key={a}
             onClick={() => setAction(a)}
-            style={{
-              padding: "10px",
-              border: action === a
-                ? `1px solid ${a === "BUY" ? "rgba(0,230,118,0.4)" : "rgba(255,75,75,0.4)"}`
-                : "1px solid rgba(255,255,255,0.06)",
-              background: action === a
-                ? a === "BUY" ? "rgba(0,230,118,0.1)" : "rgba(255,75,75,0.1)"
-                : "transparent",
-              borderRadius: 8,
-              cursor: "pointer",
-              color: action === a
-                ? a === "BUY" ? "#00e676" : "#ff4b4b"
-                : "#5a7a9a",
-              fontSize: 13,
-              fontWeight: 700,
-              fontFamily: "monospace",
-              transition: "all 0.15s",
-            }}
+            className={"p-2.5 rounded-lg border font-data font-bold text-sm transition-all "}
           >
             {a === "BUY" ? "↑ BUY" : "↓ SELL"}
           </button>
@@ -254,39 +220,27 @@ const TradePanel: React.FC<{
       </div>
 
       {/* Ticker input */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+      <div className="flex gap-2 mb-3">
         <input
           value={ticker}
           onChange={e => setTicker(e.target.value)}
           onKeyDown={e => e.key === "Enter" && fetchPrice()}
           placeholder="Ticker (e.g. RELIANCE)"
-          style={{
-            flex: 1, background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 8, padding: "10px 14px",
-            color: "#c8d8f0", fontSize: 13, fontFamily: "monospace",
-            outline: "none",
-          }}
+          className="flex-1 bg-white/5 border border-border-dim rounded-lg p-2.5 text-text-primary text-sm font-data outline-none focus:border-border-bright"
         />
         <button
           onClick={fetchPrice}
           disabled={fetching}
-          style={{
-            background: "rgba(99,179,237,0.08)",
-            border: "1px solid rgba(99,179,237,0.2)",
-            borderRadius: 8, padding: "10px 12px",
-            cursor: "pointer", color: "#63b3ed",
-            fontSize: 11, fontFamily: "monospace",
-          }}
+          className="px-3 py-2.5 bg-cyan/10 border border-cyan/20 rounded-lg text-cyan font-data text-xs cursor-pointer hover:bg-cyan/20 transition-all"
         >
           {fetching ? "..." : "↓ LTP"}
         </button>
       </div>
 
       {/* Price & Qty */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+      <div className="grid grid-cols-2 gap-2 mb-4">
         <div>
-          <label style={{ fontSize: 10, color: "#3a5a7a", fontFamily: "monospace", display: "block", marginBottom: 5 }}>
+          <label className="block text-[10px] text-text-muted font-data mb-1.5">
             PRICE (₹)
           </label>
           <input
@@ -294,28 +248,17 @@ const TradePanel: React.FC<{
             value={price}
             onChange={e => setPrice(e.target.value)}
             placeholder="0.00"
-            style={{
-              width: "100%", background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 8, padding: "10px 14px",
-              color: "#c8d8f0", fontSize: 14, fontFamily: "monospace",
-              outline: "none", boxSizing: "border-box",
-            }}
+            className="w-full bg-white/5 border border-border-dim rounded-lg p-2.5 text-text-primary text-sm font-data outline-none focus:border-border-bright"
           />
         </div>
         <div>
-          <label style={{ fontSize: 10, color: "#3a5a7a", fontFamily: "monospace", display: "block", marginBottom: 5 }}>
+          <label className="block text-[10px] text-text-muted font-data mb-1.5">
             QUANTITY
           </label>
-          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+          <div className="flex items-center">
             <button
               onClick={() => setQty(Math.max(1, qty - 1))}
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "8px 0 0 8px",
-                padding: "10px 12px", cursor: "pointer", color: "#7a9ab0",
-              }}
+              className="px-3 py-2.5 bg-white/5 border border-border-dim rounded-l-lg text-text-muted hover:bg-white/10"
             >
               <Minus size={12} />
             </button>
@@ -323,26 +266,11 @@ const TradePanel: React.FC<{
               type="number"
               value={qty}
               onChange={e => setQty(Math.max(1, Number(e.target.value)))}
-              style={{
-                flex: 1, textAlign: "center",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderTop: "1px solid rgba(255,255,255,0.08)",
-                borderBottom: "1px solid rgba(255,255,255,0.08)",
-                borderLeft: "none", borderRight: "none",
-                padding: "10px 6px",
-                color: "#c8d8f0", fontSize: 14, fontFamily: "monospace",
-                outline: "none",
-              }}
+              className="flex-1 text-center bg-white/5 border-y border-border-dim border-x-0 py-2.5 text-text-primary text-sm font-data outline-none w-full"
             />
             <button
               onClick={() => setQty(qty + 1)}
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "0 8px 8px 0",
-                padding: "10px 12px", cursor: "pointer", color: "#7a9ab0",
-              }}
+              className="px-3 py-2.5 bg-white/5 border border-border-dim rounded-r-lg text-text-muted hover:bg-white/10"
             >
               <Plus size={12} />
             </button>
@@ -352,20 +280,11 @@ const TradePanel: React.FC<{
 
       {/* Total cost */}
       {totalCost > 0 && (
-        <div style={{
-          display: "flex", justifyContent: "space-between",
-          padding: "8px 12px", marginBottom: 12,
-          background: canAfford ? "rgba(0,230,118,0.05)" : "rgba(255,75,75,0.05)",
-          border: `1px solid ${canAfford ? "rgba(0,230,118,0.15)" : "rgba(255,75,75,0.15)"}`,
-          borderRadius: 8,
-        }}>
-          <span style={{ fontSize: 11, color: "#4a6a8a", fontFamily: "monospace" }}>Total Cost</span>
-          <span style={{
-            fontSize: 13, fontWeight: 700, fontFamily: "monospace",
-            color: canAfford ? "#00e676" : "#ff4b4b",
-          }}>
+        <div className={"flex justify-between items-center p-3 rounded-lg mb-4 border "}>
+          <span className="text-xs text-text-muted font-data">Total Cost</span>
+          <span className={"text-sm font-bold font-data "}>
             {fmtCur(totalCost)}
-            {!canAfford && <span style={{ fontSize: 10, marginLeft: 6 }}>— Insufficient funds</span>}
+            {!canAfford && <span className="text-[10px] ml-1.5 opacity-80">— Insufficient funds</span>}
           </span>
         </div>
       )}
@@ -374,48 +293,20 @@ const TradePanel: React.FC<{
       <button
         onClick={handleSubmit}
         disabled={executing || !ticker || !price || !canAfford}
-        style={{
-          width: "100%",
-          background: executing || !ticker || !price || !canAfford
-            ? "rgba(255,255,255,0.04)"
-            : action === "BUY"
-              ? "linear-gradient(135deg, rgba(0,230,118,0.2), rgba(0,160,80,0.1))"
-              : "linear-gradient(135deg, rgba(255,75,75,0.2), rgba(200,40,40,0.1))",
-          border: `1px solid ${executing || !ticker || !price || !canAfford
-            ? "rgba(255,255,255,0.06)"
-            : action === "BUY" ? "rgba(0,230,118,0.3)" : "rgba(255,75,75,0.3)"}`,
-          borderRadius: 10,
-          padding: "13px",
-          cursor: executing || !ticker || !price || !canAfford ? "not-allowed" : "pointer",
-          color: executing || !ticker || !price || !canAfford
-            ? "#3a5a7a"
-            : action === "BUY" ? "#00e676" : "#ff4b4b",
-          fontSize: 13,
-          fontWeight: 700,
-          fontFamily: "monospace",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          transition: "all 0.2s",
-        }}
+        className={"w-full flex items-center justify-center gap-2 p-3 rounded-lg border font-data font-bold text-sm transition-all "}
       >
-        {executing
-          ? <><RefreshCw size={14} /> Processing...</>
-          : action === "BUY"
-            ? <><TrendingUp size={14} /> Execute BUY</>
-            : <><TrendingDown size={14} /> Execute SELL</>}
+        {executing ? (
+          <><RefreshCw size={14} className="animate-spin" /> Processing...</>
+        ) : action === "BUY" ? (
+          <><TrendingUp size={14} /> Execute BUY</>
+        ) : (
+          <><TrendingDown size={14} /> Execute SELL</>
+        )}
       </button>
 
       {/* Status message */}
       {msg && (
-        <div style={{
-          marginTop: 12,
-          padding: "8px 12px",
-          background: msg.ok ? "rgba(0,230,118,0.08)" : "rgba(255,75,75,0.08)",
-          border: `1px solid ${msg.ok ? "rgba(0,230,118,0.2)" : "rgba(255,75,75,0.2)"}`,
-          borderRadius: 8,
-          display: "flex", alignItems: "center", gap: 6,
-          fontSize: 11, fontFamily: "monospace",
-          color: msg.ok ? "#00e676" : "#ff4b4b",
-        }}>
+        <div className={"flex items-center gap-2 mt-3 p-2.5 rounded-lg border font-data text-xs "}>
           {msg.ok ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
           {msg.text}
         </div>
@@ -440,7 +331,7 @@ const PaperTradingPage: React.FC = () => {
 
   const headers = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    Authorization: "Bearer ",
   };
 
   const fetchAll = useCallback(async () => {
@@ -496,181 +387,92 @@ const PaperTradingPage: React.FC = () => {
     setResetting(false);
   };
 
-  const totalPnl = summary
-    ? summary.unrealised_pnl + summary.realised_pnl
-    : 0;
-
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#060b14",
-      color: "#c8d8f0",
-      fontFamily: "'Rajdhani', 'Segoe UI', sans-serif",
-    }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(99,179,237,0.15); border-radius: 99px; }
-      `}</style>
-
+    <div className="page-container py-8 animate-page-in">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div style={{
-        padding: "24px 40px 20px",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Wallet size={20} color="#63b3ed" />
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-5 mb-5 border-b border-border-dim">
+        <div className="flex items-center gap-3">
+          <Wallet size={24} className="text-cyan" />
           <div>
-            <h1 style={{
-              margin: 0, fontSize: 18,
-              fontFamily: "'Orbitron', monospace",
-              fontWeight: 900, color: "#e2e8f0", letterSpacing: 1,
-            }}>
+            <h1 className="m-0 text-2xl font-display font-bold text-text-primary tracking-wide">
               PAPER TRADING
             </h1>
-            <div style={{ fontSize: 11, color: "#3a5a7a", fontFamily: "monospace" }}>
+            <div className="text-xs text-text-muted font-data">
               Neural Ledger — Zero-Risk Simulation
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={fetchAll} style={{
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: 8, padding: "8px 14px",
-            cursor: "pointer", color: "#4a6a8a",
-            fontSize: 12, fontFamily: "monospace",
-            display: "flex", alignItems: "center", gap: 6,
-          }}>
-            <RefreshCw size={12} /> Refresh
+        <div className="flex gap-3">
+          <button onClick={fetchAll} className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-border-dim rounded-lg text-text-muted font-data text-xs hover:text-text-primary hover:border-border-bright transition-all">
+            <RefreshCw size={12} /> REFRESH
           </button>
-          <button onClick={() => setShowReset(!showReset)} style={{
-            background: "rgba(255,75,75,0.05)",
-            border: "1px solid rgba(255,75,75,0.15)",
-            borderRadius: 8, padding: "8px 14px",
-            cursor: "pointer", color: "#ff4b4b",
-            fontSize: 12, fontFamily: "monospace",
-            display: "flex", alignItems: "center", gap: 6,
-          }}>
-            <Trash2 size={12} /> Reset
+          <button onClick={() => setShowReset(!showReset)} className="flex items-center gap-1.5 px-3 py-2 bg-rose/5 border border-rose/10 rounded-lg text-rose font-data text-xs hover:bg-rose/10 transition-all">
+            <Trash2 size={12} /> RESET
           </button>
         </div>
       </div>
 
       {/* Reset confirmation */}
       {showReset && (
-        <div style={{
-          margin: "0 40px",
-          padding: "12px 16px",
-          background: "rgba(255,75,75,0.06)",
-          border: "1px solid rgba(255,75,75,0.2)",
-          borderRadius: 10,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          marginTop: 16,
-          fontSize: 13,
-        }}>
-          <span style={{ color: "#ff8080" }}>Reset portfolio to ₹10,00,000? All trades will be deleted.</span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setShowReset(false)} style={{
-              background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 6, padding: "5px 12px", cursor: "pointer",
-              color: "#5a7a9a", fontSize: 12, fontFamily: "monospace",
-            }}>
+        <div className="flex items-center justify-between p-4 mb-6 bg-rose/5 border border-rose/20 rounded-xl">
+          <span className="text-rose/80 text-sm">Reset portfolio to ₹10,00,000? All trades will be deleted.</span>
+          <div className="flex gap-2">
+            <button onClick={() => setShowReset(false)} className="px-3 py-1.5 bg-transparent border border-white/10 rounded-lg text-text-muted text-xs font-data hover:text-text-primary">
               Cancel
             </button>
-            <button onClick={resetPortfolio} disabled={resetting} style={{
-              background: "rgba(255,75,75,0.15)", border: "1px solid rgba(255,75,75,0.3)",
-              borderRadius: 6, padding: "5px 12px", cursor: "pointer",
-              color: "#ff4b4b", fontSize: 12, fontFamily: "monospace",
-            }}>
+            <button onClick={resetPortfolio} disabled={resetting} className="px-3 py-1.5 bg-rose/10 border border-rose/30 rounded-lg text-rose text-xs font-data hover:bg-rose/20">
               {resetting ? "Resetting..." : "Confirm Reset"}
             </button>
           </div>
         </div>
       )}
 
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 320px",
-        gap: "24px",
-      }}>
+      <div className="grid lg:grid-cols-[1fr_340px] gap-6">
         {/* LEFT: Summary + Chart + Positions */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div className="flex flex-col gap-6">
 
           {/* ── Portfolio Summary ───────────────────────────────────────────── */}
-          <div style={{
-            background: "linear-gradient(135deg, rgba(10,25,50,0.8), rgba(6,15,30,0.9))",
-            border: "1px solid rgba(99,179,237,0.12)",
-            borderRadius: 16,
-            padding: "24px",
-            animation: "fadeIn 0.4s ease",
-          }}>
+          <div className="neon-frame rounded-2xl p-6">
             {summary ? (
               <>
                 {/* Main value */}
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 11, color: "#4a6a8a", fontFamily: "monospace", marginBottom: 4 }}>
-                    Total Net Asset Value
+                <div className="mb-5">
+                  <div className="font-data-small text-text-muted mb-1">
+                    TOTAL NET ASSET VALUE
                   </div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap" }}>
-                    <span style={{
-                      fontSize: 38, fontWeight: 900, fontFamily: "'Orbitron', monospace", color: "#e2e8f0",
-                    }}>
+                  <div className="flex items-baseline flex-wrap gap-4">
+                    <span className="font-display font-black text-4xl text-text-primary tracking-tight">
                       {fmtCur(summary.portfolio_value)}
                     </span>
-                    <span style={{
-                      fontSize: 15, fontWeight: 600,
-                      color: summary.total_return_pct >= 0 ? "#00e676" : "#ff4b4b",
-                      display: "flex", alignItems: "center", gap: 4,
-                    }}>
-                      {summary.total_return_pct >= 0 ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
+                    <span className={"flex items-center gap-1 font-bold text-sm "}>
+                      {summary.total_return_pct >= 0 ? <ArrowUpRight size={16} strokeWidth={3} /> : <ArrowDownRight size={16} strokeWidth={3} />}
                       {summary.total_return_pct >= 0 ? "+" : ""}{fmt(summary.total_return_pct)}%
                     </span>
                   </div>
-                  <div style={{ fontSize: 13, color: "#3a5a7a", marginTop: 4 }}>
+                  <div className="text-xs text-text-muted mt-1">
                     Started with {fmtCur(summary.initial_capital || 1000000)}
                   </div>
                 </div>
 
                 {/* Equity chart */}
-                <div style={{ marginBottom: 20 }}>
+                <div className="mb-5">
                   <EquityChart trades={history} initialCapital={summary.initial_capital || 1000000} />
                 </div>
 
                 {/* Stats grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
-                    {
-                      label: "Cash", value: fmtCur(summary.cash_balance),
-                      color: "#63b3ed", icon: <Wallet size={12} />,
-                    },
-                    {
-                      label: "Invested", value: fmtCur(summary.invested_value),
-                      color: "#a78bfa", icon: <BarChart2 size={12} />,
-                    },
-                    {
-                      label: "Unrealised", value: `${summary.unrealised_pnl >= 0 ? "+" : ""}${fmtCur(summary.unrealised_pnl)}`,
-                      color: summary.unrealised_pnl >= 0 ? "#00e676" : "#ff4b4b",
-                      icon: summary.unrealised_pnl >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />,
-                    },
-                    {
-                      label: "Realised", value: `${summary.realised_pnl >= 0 ? "+" : ""}${fmtCur(summary.realised_pnl)}`,
-                      color: summary.realised_pnl >= 0 ? "#00e676" : "#ff4b4b",
-                      icon: <Target size={12} />,
-                    },
+                    { label: "CASH", value: fmtCur(summary.cash_balance), colorClass: "text-cyan", icon: <Wallet size={12} /> },
+                    { label: "INVESTED", value: fmtCur(summary.invested_value), colorClass: "text-indigo", icon: <BarChart2 size={12} /> },
+                    { label: "UNREALISED", value: ${summary.unrealised_pnl >= 0 ? '+' : ''}, colorClass: summary.unrealised_pnl >= 0 ? "text-emerald" : "text-rose", icon: summary.unrealised_pnl >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} /> },
+                    { label: "REALISED", value: ${summary.realised_pnl >= 0 ? '+' : ''}, colorClass: summary.realised_pnl >= 0 ? "text-emerald" : "text-rose", icon: <Target size={12} /> },
                   ].map(s => (
-                    <div key={s.label} style={{
-                      background: "rgba(255,255,255,0.03)",
-                      border: "1px solid rgba(255,255,255,0.05)",
-                      borderRadius: 10, padding: "12px 10px",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, color: s.color, marginBottom: 5 }}>
+                    <div key={s.label} className="glass-card p-3 rounded-xl">
+                      <div className={"flex items-center gap-1.5 mb-1 "}>
                         {s.icon}
-                        <span style={{ fontSize: 9, fontFamily: "monospace", color: "#3a5a7a" }}>{s.label}</span>
+                        <span className="font-data-tiny text-text-muted">{s.label}</span>
                       </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: s.color, fontFamily: "'JetBrains Mono', monospace" }}>
+                      <div className={"font-data font-bold text-sm "}>
                         {s.value}
                       </div>
                     </div>
@@ -678,18 +480,15 @@ const PaperTradingPage: React.FC = () => {
                 </div>
 
                 {/* Bottom meta */}
-                <div style={{
-                  display: "flex", gap: 24, marginTop: 16,
-                  paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.05)",
-                }}>
+                <div className="flex gap-6 mt-4 pt-4 border-t border-border-dim">
                   {[
-                    { label: "Win Rate", value: `${fmt(summary.win_rate)}%`, color: summary.win_rate >= 50 ? "#00e676" : "#ff4b4b" },
-                    { label: "Open Positions", value: summary.open_positions, color: "#7a9ab0" },
-                    { label: "Total Trades", value: summary.trade_count, color: "#7a9ab0" },
+                    { label: "WIN RATE", value: ${fmt(summary.win_rate)}%, good: summary.win_rate >= 50 },
+                    { label: "OPEN POSITIONS", value: summary.open_positions, good: null },
+                    { label: "TOTAL TRADES", value: summary.trade_count, good: null },
                   ].map(s => (
-                    <div key={s.label}>
-                      <div style={{ fontSize: 10, color: "#3a5a7a", fontFamily: "monospace" }}>{s.label}</div>
-                      <div style={{ fontSize: 20, fontWeight: 900, fontFamily: "'Orbitron', monospace", color: s.color }}>
+                    <div key={s.label} className="flex flex-col gap-0.5">
+                      <div className="font-data-tiny text-text-muted">{s.label}</div>
+                      <div className={"font-display text-2xl font-bold "}>
                         {s.value}
                       </div>
                     </div>
@@ -697,89 +496,60 @@ const PaperTradingPage: React.FC = () => {
                 </div>
               </>
             ) : (
-              <div style={{ textAlign: "center", padding: "40px", color: "#3a5a7a" }}>
-                <div style={{
-                  display: "inline-block", width: 28, height: 28,
-                  border: "2px solid rgba(99,179,237,0.2)",
-                  borderTopColor: "#63b3ed",
-                  borderRadius: "50%",
-                  animation: "spin 0.8s linear infinite",
-                }} />
-                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              <div className="py-10 text-center text-text-muted">
+                <div className="inline-block w-6 h-6 border-2 border-cyan/20 border-t-cyan rounded-full animate-spin" />
               </div>
             )}
           </div>
 
           {/* ── Positions / History Tabs ─────────────────────────────────────── */}
-          <div style={{
-            background: "rgba(8,16,32,0.8)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: 16,
-            overflow: "hidden",
-            animation: "fadeIn 0.5s ease",
-          }}>
+          <div className="glass-card overflow-hidden !p-0 border border-border-mid rounded-2xl">
             {/* Tab header */}
-            <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex border-b border-border-dim">
               {(["positions", "history"] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  style={{
-                    flex: 1, padding: "14px",
-                    background: activeTab === tab ? "rgba(99,179,237,0.06)" : "transparent",
-                    border: "none",
-                    borderBottom: activeTab === tab ? "2px solid #63b3ed" : "2px solid transparent",
-                    cursor: "pointer",
-                    color: activeTab === tab ? "#63b3ed" : "#5a7a9a",
-                    fontSize: 12, fontWeight: 600, fontFamily: "monospace",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                    textTransform: "uppercase", letterSpacing: 1,
-                    transition: "all 0.15s",
-                  }}
+                  className={"flex-1 flex items-center justify-center gap-2 p-3 font-data text-xs font-bold uppercase transition-all "}
                 >
                   {tab === "positions" ? <Activity size={13} /> : <Clock size={13} />}
-                  {tab} {tab === "positions" ? `(${positions.length})` : `(${history.length})`}
+                  {tab} {tab === "positions" ? () : ()}
                 </button>
               ))}
             </div>
 
             {/* Table */}
-            <div style={{ overflowX: "auto", maxHeight: 320, overflowY: "auto" }}>
+            <div className="overflow-x-auto max-h-80 overflow-y-auto custom-scrollbar">
               {activeTab === "positions" ? (
                 positions.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "40px", color: "#3a5a7a" }}>
-                    <Activity size={28} style={{ marginBottom: 10, opacity: 0.4 }} />
-                    <p style={{ margin: 0, fontSize: 13, fontFamily: "monospace" }}>
+                  <div className="py-10 text-center text-text-muted">
+                    <Activity size={28} className="mx-auto mb-2 opacity-40" />
+                    <p className="text-xs font-data m-0">
                       No open positions. Execute a BUY order to begin.
                     </p>
                   </div>
                 ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: "monospace" }}>
-                    <thead>
-                      <tr style={{ background: "rgba(255,255,255,0.02)" }}>
+                  <table className="w-full text-xs font-data text-left border-collapse">
+                    <thead className="bg-white/5 sticky top-0 backdrop-blur-md">
+                      <tr>
                         {["Ticker", "Qty", "Avg Cost", "Mkt Value", "P&L", "Return %"].map(h => (
-                          <th key={h} style={{ padding: "10px 16px", textAlign: "left", color: "#3a5a7a", fontSize: 10, letterSpacing: 1, fontWeight: 600 }}>
-                            {h}
-                          </th>
+                          <th key={h} className="p-3 text-text-muted font-bold tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody>
-                      {positions.map((p, i) => (
-                        <tr key={p.ticker} style={{
-                          borderTop: "1px solid rgba(255,255,255,0.03)",
-                          background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
-                        }}>
-                          <td style={{ padding: "10px 16px", color: "#c8d8f0", fontWeight: 600 }}>
+                    <tbody className="divide-y divide-border-dim">
+                      {positions.map((p) => (
+                        <tr key={p.ticker} className="hover:bg-white/5 transition-colors">
+                          <td className="p-3 text-text-primary font-bold">
                             {p.ticker.replace(".NS", "").replace(".BO", "")}
                           </td>
-                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>{p.quantity}</td>
-                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>₹{fmt(p.avg_cost)}</td>
-                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>₹{fmt(p.market_value)}</td>
-                          <td style={{ padding: "10px 16px", color: p.unrealised_pnl >= 0 ? "#00e676" : "#ff4b4b", fontWeight: 700 }}>
+                          <td className="p-3 text-text-secondary">{p.quantity}</td>
+                          <td className="p-3 text-text-secondary">₹{fmt(p.avg_cost)}</td>
+                          <td className="p-3 text-text-secondary">₹{fmt(p.market_value)}</td>
+                          <td className={"p-3 font-bold "}>
                             {p.unrealised_pnl >= 0 ? "+" : ""}₹{fmt(p.unrealised_pnl)}
                           </td>
-                          <td style={{ padding: "10px 16px", color: p.unrealised_pct >= 0 ? "#00e676" : "#ff4b4b" }}>
+                          <td className={"p-3 "}>
                             {p.unrealised_pct >= 0 ? "+" : ""}{fmt(p.unrealised_pct)}%
                           </td>
                         </tr>
@@ -789,51 +559,37 @@ const PaperTradingPage: React.FC = () => {
                 )
               ) : (
                 history.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "40px", color: "#3a5a7a" }}>
-                    <Clock size={28} style={{ marginBottom: 10, opacity: 0.4 }} />
-                    <p style={{ margin: 0, fontSize: 13, fontFamily: "monospace" }}>
-                      No trade history yet.
-                    </p>
+                  <div className="py-10 text-center text-text-muted">
+                    <Clock size={28} className="mx-auto mb-2 opacity-40" />
+                    <p className="text-xs font-data m-0">No trade history yet.</p>
                   </div>
                 ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: "monospace" }}>
-                    <thead>
-                      <tr style={{ background: "rgba(255,255,255,0.02)" }}>
+                  <table className="w-full text-xs font-data text-left border-collapse">
+                    <thead className="bg-white/5 sticky top-0 backdrop-blur-md">
+                      <tr>
                         {["Ticker", "Action", "Qty", "Price", "Total", "P&L", "Time"].map(h => (
-                          <th key={h} style={{ padding: "10px 16px", textAlign: "left", color: "#3a5a7a", fontSize: 10, letterSpacing: 1, fontWeight: 600 }}>
-                            {h}
-                          </th>
+                          <th key={h} className="p-3 text-text-muted font-bold tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody>
-                      {history.slice(0, 30).map((t, i) => (
-                        <tr key={t.id} style={{
-                          borderTop: "1px solid rgba(255,255,255,0.03)",
-                          background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
-                        }}>
-                          <td style={{ padding: "10px 16px", color: "#c8d8f0", fontWeight: 600 }}>
+                    <tbody className="divide-y divide-border-dim">
+                      {history.slice(0, 30).map((t) => (
+                        <tr key={t.id} className="hover:bg-white/5 transition-colors">
+                          <td className="p-3 text-text-primary font-bold">
                             {t.ticker.replace(".NS", "").replace(".BO", "")}
                           </td>
-                          <td style={{ padding: "10px 16px" }}>
-                            <span style={{
-                              padding: "2px 8px", borderRadius: 4,
-                              background: t.action === "BUY" ? "rgba(0,230,118,0.1)" : "rgba(255,75,75,0.1)",
-                              color: t.action === "BUY" ? "#00e676" : "#ff4b4b",
-                              fontSize: 10, fontWeight: 700,
-                            }}>
+                          <td className="p-3">
+                            <span className={"px-2 py-0.5 rounded font-bold "}>
                               {t.action}
                             </span>
                           </td>
-                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>{t.quantity}</td>
-                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>₹{fmt(t.price)}</td>
-                          <td style={{ padding: "10px 16px", color: "#7a9ab0" }}>₹{fmt(t.total)}</td>
-                          <td style={{ padding: "10px 16px", color: t.realised_pnl >= 0 ? "#00e676" : "#ff4b4b", fontWeight: 700 }}>
-                            {t.action === "SELL"
-                              ? `${t.realised_pnl >= 0 ? "+" : ""}₹${fmt(t.realised_pnl)}`
-                              : "—"}
+                          <td className="p-3 text-text-secondary">{t.quantity}</td>
+                          <td className="p-3 text-text-secondary">₹{fmt(t.price)}</td>
+                          <td className="p-3 text-text-secondary">₹{fmt(t.total)}</td>
+                          <td className={"p-3 font-bold "}>
+                            {t.action === "SELL" ? ${t.realised_pnl >= 0 ? "+" : ""}₹ : "─"}
                           </td>
-                          <td style={{ padding: "10px 16px", color: "#3a5a7a" }}>{fmtDate(t.executed_at)}</td>
+                          <td className="p-3 text-text-muted">{fmtDate(t.executed_at)}</td>
                         </tr>
                       ))}
                     </tbody>
