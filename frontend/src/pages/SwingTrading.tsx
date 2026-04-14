@@ -13,7 +13,9 @@ import { SignalBadge } from '../components/trading/SignalBadge';
 import { GateCard } from '../components/trading/GateCard';
 import { PatternIntelligence } from '../components/trading/PatternIntelligence';
 import { NeuralSignalHeader } from '../components/trading/NeuralSignalHeader';
+import { PatternSignalSummary } from '../components/trading/PatternSignalSummary';
 import { ScratchPad } from '../components/trading/ScratchPad';
+
 import { Edit3 } from 'lucide-react';
 
 export const SwingTradingPage: React.FC = () => {
@@ -290,8 +292,11 @@ export const SwingTradingPage: React.FC = () => {
                                 </div>
                                 
                                 {/* Pattern Intelligence (Neural Geometry) */}
-                                <div className="mt-4 bg-void/30 border border-indigo-500/20 rounded-[2rem] p-8 backdrop-blur-md">
-                                    <PatternIntelligence ticker={ticker} mode="swing" patterns={patterns} />
+                                <div className="mt-4 flex flex-col gap-4">
+                                    <PatternSignalSummary patterns={signal?.pattern} patternList={patterns} ticker={ticker} />
+                                    <div className="bg-void/30 border border-indigo-500/20 rounded-[2rem] p-8 backdrop-blur-md">
+                                        <PatternIntelligence ticker={ticker} mode="swing" patterns={patterns} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
